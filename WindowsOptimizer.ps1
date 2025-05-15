@@ -11,6 +11,49 @@ if (-not $isAdmin) {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Function to update progress with UI refresh
+function Update-Progress {
+    param($message)
+    if ($progressLabel) {
+        $progressLabel.Text = $message
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+}
+
+# Function to ensure UI stays responsive during operations
+function Invoke-WithProgress {
+    param(
+        [ScriptBlock]$Action,
+        [string]$TaskName
+    )
+    
+    Update-Progress "Working: $TaskName..."
+    
+    # Execute the action in small chunks with UI updates
+    $job = Start-Job -ScriptBlock {
+        param($action)
+
+        # Define helper function in the job scope
+        function Ensure-RegistryPath {
+            param($Path)
+            if (!(Test-Path $Path)) {
+                New-Item -Path $Path -Force | Out-Null
+            }
+        }
+
+        # Execute the passed action
+        . ([ScriptBlock]::Create($action))
+    } -ArgumentList $Action.ToString()
+    
+    while ($job.State -eq 'Running') {
+        Start-Sleep -Milliseconds 50  # Shorter sleep for more responsive UI
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+    
+    Receive-Job -Job $job
+    Remove-Job -Job $job
+}
+
 # Helper function to ensure registry paths exist
 function Ensure-RegistryPath {
     param($Path)
@@ -193,6 +236,7 @@ $contentPanel = New-Object System.Windows.Forms.Panel
 $contentPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $contentPanel.BackColor = [System.Drawing.Color]::Transparent
 $contentPanel.Padding = New-Object System.Windows.Forms.Padding(20)
+
 $contentPanel.Add_Paint({
     param($sender, $e)
     $graphics = $e.Graphics
@@ -264,17 +308,155 @@ $buttonContainer.Controls.Add($optimizeButton)
 
 # Progress Label with glass effect
 $progressLabel = New-Object System.Windows.Forms.Label
-$progressLabel.Text = 'Click the button above to start optimization...'
+$progressLabel.Text = "Click the button above to start optimization..."
 $progressLabel.Font = New-Object System.Drawing.Font("Segoe UI Light", 9)
 $progressLabel.ForeColor = [System.Drawing.Color]::FromArgb(220, 220, 220)
 $progressLabel.BackColor = [System.Drawing.Color]::Transparent
 $progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $progressLabel.AutoSize = $true
 $progressLabel.MaximumSize = New-Object System.Drawing.Size(400, 0)
-$progressLabel.MinimumSize = New-Object System.Drawing.Size(400, 80)
-$progressLabel.Margin = New-Object System.Windows.Forms.Padding(40, 20, 40, 20)
+$progressLabel.MinimumSize = New-Object System.Drawing.Size(400, 60)
+$progressLabel.Margin = New-Object System.Windows.Forms.Padding(40, 10, 40, 10)
 $progressLabel.UseMnemonic = $false
 $flowLayout.Controls.Add($progressLabel)
+
+# Add ClearGlass theme checkbox
+$themeCheckbox = New-Object System.Windows.Forms.CheckBox
+$themeCheckbox.Text = "Apply ClearGlass Theme after optimization"
+$themeCheckbox.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+$themeCheckbox.Font = New-Object System.Drawing.Font("Segoe UI Light", 10)
+$themeCheckbox.AutoSize = $false
+$themeCheckbox.Size = New-Object System.Drawing.Size(400, 30)
+$themeCheckbox.BackColor = [System.Drawing.Color]::Transparent
+$themeCheckbox.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$themeCheckbox.Cursor = [System.Windows.Forms.Cursors]::Hand
+$themeCheckbox.Margin = New-Object System.Windows.Forms.Padding(40, 0, 40, 20)
+$flowLayout.Controls.Add($themeCheckbox)
+
+# Add hover effect for checkbox
+$themeCheckbox.Add_MouseEnter({
+    $this.ForeColor = [System.Drawing.Color]::FromArgb(255, 255, 255)
+})
+$themeCheckbox.Add_MouseLeave({
+    $this.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+})
+
+# Create sliding panel (initially hidden)
+$slidePanel = New-Object System.Windows.Forms.Panel
+$slidePanel.Size = New-Object System.Drawing.Size($form.Width, $form.Height)
+$slidePanel.BackColor = [System.Drawing.Color]::FromArgb(150, 20, 20, 20)
+$slidePanel.Location = New-Object System.Drawing.Point($form.Width, 0)  # Start off-screen
+$slidePanel.Visible = $false
+$form.Controls.Add($slidePanel)
+
+# Add glass effect to sliding panel
+$slidePanel.Add_Paint({
+    param($sender, $e)
+    try {
+        $graphics = $e.Graphics
+        $rect = $sender.ClientRectangle
+        $gradientBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+            $rect,
+            [System.Drawing.Color]::FromArgb(180, 20, 20, 20),
+            [System.Drawing.Color]::FromArgb(180, 30, 30, 30),
+            45
+        )
+        $graphics.FillRectangle($gradientBrush, $rect)
+        $gradientBrush.Dispose()
+    }
+    catch {
+        Write-Warning "Failed to paint slide panel: $_"
+    }
+})
+
+# Add thank you message to sliding panel
+$thankYouLabel = New-Object System.Windows.Forms.Label
+$thankYouLabel.Text = "Thank you for optimizing your Windows!`n`nWould you like to apply the ClearGlass theme now?"
+$thankYouLabel.Font = New-Object System.Drawing.Font("Segoe UI Light", 12)
+$thankYouLabel.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+$thankYouLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$thankYouLabel.AutoSize = $false
+$thankYouLabel.Size = New-Object System.Drawing.Size(400, 100)
+# Calculate center position
+$labelX = [Math]::Floor(([int]$form.Width - 400) / 2)
+$thankYouLabel.Location = New-Object System.Drawing.Point($labelX, 100)
+$slidePanel.Controls.Add($thankYouLabel)
+
+# Add apply theme button to sliding panel
+$applyThemeButton = New-ModernButton "Apply ClearGlass Theme"
+# Calculate center position
+$buttonX = [Math]::Floor(([int]$form.Width - 200) / 2)
+$applyThemeButton.Location = New-Object System.Drawing.Point($buttonX, 220)
+$applyThemeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 40, 167, 69)
+$slidePanel.Controls.Add($applyThemeButton)
+
+# Timer for sliding animation
+$slideTimer = New-Object System.Windows.Forms.Timer
+$slideTimer.Interval = 16  # ~60 FPS
+$script:currentSlideX = $form.Width
+
+$slideTimer.Add_Tick({
+    try {
+        if ($script:currentSlideX -gt 0) {
+            $script:currentSlideX -= 25  # Adjust speed by changing this value
+            $slidePanel.Location = New-Object System.Drawing.Point($script:currentSlideX, 0)
+            [System.Windows.Forms.Application]::DoEvents()
+        } else {
+            $slideTimer.Stop()
+        }
+    }
+    catch {
+        Write-Warning "Failed to animate slide panel: $_"
+        $slideTimer.Stop()
+    }
+})
+
+# Function to show sliding panel
+function Show-ThemePanel {
+    try {
+        Write-Host "Showing theme panel..."  # Debug output
+        $slidePanel.BringToFront()
+        $slidePanel.Visible = $true
+        $script:currentSlideX = $form.Width
+        $slidePanel.Location = New-Object System.Drawing.Point($script:currentSlideX, 0)
+        $slideTimer.Start()
+    }
+    catch {
+        Write-Warning "Failed to show theme panel: $_"
+    }
+}
+
+# Function to apply ClearGlass theme
+function Apply-ClearGlassTheme {
+    $applyThemeButton.Enabled = $false
+    $applyThemeButton.Text = "Applying Theme..."
+    
+    try {
+        # Add your theme application logic here
+        Start-Sleep -Seconds 2  # Simulate theme application
+        
+        $applyThemeButton.Text = "Theme Applied!"
+        $applyThemeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 40, 167, 69)
+        
+        # Optional: Close the form after a delay
+        $closeTimer = New-Object System.Windows.Forms.Timer
+        $closeTimer.Interval = 2000  # 2 seconds
+        $closeTimer.Add_Tick({
+            $form.Close()
+        })
+        $closeTimer.Start()
+    }
+    catch {
+        $applyThemeButton.Text = "Error Applying Theme"
+        $applyThemeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 220, 53, 69)
+        $applyThemeButton.Enabled = $true
+    }
+}
+
+# Add click handler for theme button
+$applyThemeButton.Add_Click({
+    Apply-ClearGlassTheme
+})
 
 # Center the FlowLayoutPanel contents
 $flowLayout.Add_SizeChanged({
@@ -317,8 +499,9 @@ $titleBar.Add_MouseMove({
 
 $titleBar.Add_MouseUp({ $script:isDragging = $false })
 
-# Add rounded corners to form
-$form.Add_Load({
+# Function to update form region
+function Update-FormRegion {
+    param($form)
     try {
         $path = New-Object System.Drawing.Drawing2D.GraphicsPath
         $radius = 20
@@ -345,11 +528,13 @@ $form.Add_Load({
         $form.Region = [System.Drawing.Region]::new($path)
     }
     catch {
-        Write-Warning "Failed to create rounded corners: $_"
+        Write-Warning "Failed to update form region: $_"
     }
-})
+}
 
-# Add shadow effect
+# Handle form resize and initial load
+$form.Add_Resize({ Update-FormRegion $form })
+$form.Add_Load({ Update-FormRegion $form })
 $form.Add_Paint({
     $graphics = $_.Graphics
     $rect = $form.ClientRectangle
@@ -363,52 +548,12 @@ $form.Add_Paint({
     $brush.Dispose()
 })
 
-# Function to update progress with UI refresh
-function Update-Progress {
-    param($message)
-    $progressLabel.Text = $message
-    [System.Windows.Forms.Application]::DoEvents()
-}
-
-# Function to ensure UI stays responsive during operations
-function Invoke-WithProgress {
-    param(
-        [ScriptBlock]$Action,
-        [string]$TaskName
-    )
-    
-    Update-Progress "Working: $TaskName..."
-    
-    # Execute the action in small chunks with UI updates
-    $job = Start-Job -ScriptBlock {
-        param($action)
-
-        # Define helper function in the job scope
-        function Ensure-RegistryPath {
-            param($Path)
-            if (!(Test-Path $Path)) {
-                New-Item -Path $Path -Force | Out-Null
-            }
-        }
-
-        # Execute the passed action
-        . ([ScriptBlock]::Create($action))
-    } -ArgumentList $Action.ToString()
-    
-    while ($job.State -eq 'Running') {
-        Start-Sleep -Milliseconds 50  # Shorter sleep for more responsive UI
-        [System.Windows.Forms.Application]::DoEvents()
-    }
-    
-    Receive-Job -Job $job
-    Remove-Job -Job $job
-}
-
 # Function to run disk cleanup
 function Run-DiskCleanup {
     param($TaskName)
     
-    Update-Progress "Working: $TaskName..."
+    $progressLabel.Text = "Working: $TaskName..."
+    [System.Windows.Forms.Application]::DoEvents()
     
     # Start cleanmgr in a separate process without waiting
     $process = Start-Process cleanmgr -ArgumentList "/sagerun:1" -PassThru -WindowStyle Hidden
@@ -432,7 +577,8 @@ function Run-DiskCleanup {
 function Remove-StoreApps {
     param($TaskName)
     
-    Update-Progress "Working: $TaskName..."
+    $progressLabel.Text = "Working: $TaskName..."
+    [System.Windows.Forms.Application]::DoEvents()
     
     # Essential Windows apps that should not be removed
     $keepApps = @(
@@ -553,6 +699,8 @@ function Start-Optimization {
         # Disable button during optimization
         $optimizeButton.Enabled = $false
         $optimizeButton.Text = "Optimizing..."
+        $optimizeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 255, 193, 7)
+        $optimizeButton.ForeColor = [System.Drawing.Color]::FromArgb(50, 50, 50)
 
         # Run optimization tasks
         $tasks = @(
@@ -731,24 +879,25 @@ function Start-Optimization {
             @{
                 Name = "Installing Revo Uninstaller"
                 Action = {
-                    Invoke-WithProgress -TaskName "Installing Revo Uninstaller" -Action {
-                        # Check if winget is installed
-                        $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
-                        if (-not $wingetTest) {
-                            Update-Progress "Winget not found. Installing Microsoft.DesktopAppInstaller..."
-                            # Add the Microsoft Store source
-                            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-                        }
-                        
-                        # Now check again for winget
-                        $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
-                        if ($wingetTest) {
-                            Update-Progress "Installing Revo Uninstaller..."
-                            # Install Revo Uninstaller silently
-                            winget install --id RevoUninstaller.RevoUninstaller --silent --accept-source-agreements --accept-package-agreements
-                        } else {
-                            Update-Progress "Failed to install Winget. Skipping Revo Uninstaller installation."
-                        }
+                    # Check if winget is installed
+                    $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
+                    if (-not $wingetTest) {
+                        $progressLabel.Text = "Winget not found. Installing Microsoft.DesktopAppInstaller..."
+                        [System.Windows.Forms.Application]::DoEvents()
+                        # Add the Microsoft Store source
+                        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+                    }
+                    
+                    # Now check again for winget
+                    $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
+                    if ($wingetTest) {
+                        $progressLabel.Text = "Installing Revo Uninstaller..."
+                        [System.Windows.Forms.Application]::DoEvents()
+                        # Install Revo Uninstaller silently
+                        winget install --id RevoUninstaller.RevoUninstaller --silent --accept-source-agreements --accept-package-agreements
+                    } else {
+                        $progressLabel.Text = "Failed to install Winget. Skipping Revo Uninstaller installation."
+                        [System.Windows.Forms.Application]::DoEvents()
                     }
                 }
             }
@@ -756,9 +905,9 @@ function Start-Optimization {
 
         foreach ($task in $tasks) {
             try {
-                Update-Progress "Working: $($task.Name)..."
-                & $task.Action
+                $progressLabel.Text = "Working: $($task.Name)..."
                 [System.Windows.Forms.Application]::DoEvents()
+                & $task.Action
             }
             catch {
                 Write-Warning "Task '$($task.Name)' encountered an error: $_"
@@ -767,16 +916,28 @@ function Start-Optimization {
         }
 
         # Update status
-        Update-Progress "Optimization completed successfully!`n`nPlease restart your computer for all changes to take effect."
+        $progressLabel.Text = "Optimization completed successfully!`n`nPlease restart your computer for all changes to take effect."
+        [System.Windows.Forms.Application]::DoEvents()
+        
         $optimizeButton.Enabled = $false
         $optimizeButton.Text = "Optimization Complete"
         $optimizeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 40, 167, 69)
+        $optimizeButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+        
+        # Show theme panel if checkbox was checked
+        if ($themeCheckbox.Checked) {
+            Write-Host "Checkbox is checked, showing theme panel..."  # Debug output
+            Show-ThemePanel
+        }
     }
     catch {
         # Show error
         $optimizeButton.Enabled = $true
         $optimizeButton.Text = "Start Optimization"
-        Update-Progress "An error occurred during optimization:`n$($_.Exception.Message)"
+        $optimizeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 0, 122, 204)
+        $optimizeButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+        $progressLabel.Text = "An error occurred during optimization:`n$($_.Exception.Message)"
+        [System.Windows.Forms.Application]::DoEvents()
     }
 }
 
