@@ -319,12 +319,34 @@ $titleBar.Add_MouseUp({ $script:isDragging = $false })
 
 # Add rounded corners to form
 $form.Add_Load({
-    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $path.AddArc(0, 0, 20, 20, 180, 90)
-    $path.AddArc($form.Width - 20, 0, 20, 20, 270, 90)
-    $path.AddArc($form.Width - 20, $form.Height - 20, 20, 20, 0, 90)
-    $path.AddArc(0, $form.Height - 20, 20, 20, 90, 90)
-    $form.Region = [System.Drawing.Region]::new($path)
+    try {
+        $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+        $radius = 20
+        $rect = $form.ClientRectangle
+
+        # Top left corner
+        $path.AddArc($rect.X, $rect.Y, $radius * 2, $radius * 2, 180, 90)
+        # Top edge
+        $path.AddLine($rect.X + $radius, $rect.Y, $rect.Right - $radius, $rect.Y)
+        # Top right corner
+        $path.AddArc($rect.Right - ($radius * 2), $rect.Y, $radius * 2, $radius * 2, 270, 90)
+        # Right edge
+        $path.AddLine($rect.Right, $rect.Y + $radius, $rect.Right, $rect.Bottom - $radius)
+        # Bottom right corner
+        $path.AddArc($rect.Right - ($radius * 2), $rect.Bottom - ($radius * 2), $radius * 2, $radius * 2, 0, 90)
+        # Bottom edge
+        $path.AddLine($rect.Right - $radius, $rect.Bottom, $rect.X + $radius, $rect.Bottom)
+        # Bottom left corner
+        $path.AddArc($rect.X, $rect.Bottom - ($radius * 2), $radius * 2, $radius * 2, 90, 90)
+        # Left edge
+        $path.AddLine($rect.X, $rect.Bottom - $radius, $rect.X, $rect.Y + $radius)
+
+        $path.CloseFigure()
+        $form.Region = [System.Drawing.Region]::new($path)
+    }
+    catch {
+        Write-Warning "Failed to create rounded corners: $_"
+    }
 })
 
 # Add shadow effect
@@ -704,6 +726,31 @@ function Start-Optimization {
             @{
                 Name = "Removing Store Apps"
                 Action = { Remove-StoreApps -TaskName "Removing Store Apps" }
+            },
+            # New task for Winget and Revo Uninstaller
+            @{
+                Name = "Installing Revo Uninstaller"
+                Action = {
+                    Invoke-WithProgress -TaskName "Installing Revo Uninstaller" -Action {
+                        # Check if winget is installed
+                        $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
+                        if (-not $wingetTest) {
+                            Update-Progress "Winget not found. Installing Microsoft.DesktopAppInstaller..."
+                            # Add the Microsoft Store source
+                            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+                        }
+                        
+                        # Now check again for winget
+                        $wingetTest = Get-Command winget -ErrorAction SilentlyContinue
+                        if ($wingetTest) {
+                            Update-Progress "Installing Revo Uninstaller..."
+                            # Install Revo Uninstaller silently
+                            winget install --id RevoUninstaller.RevoUninstaller --silent --accept-source-agreements --accept-package-agreements
+                        } else {
+                            Update-Progress "Failed to install Winget. Skipping Revo Uninstaller installation."
+                        }
+                    }
+                }
             }
         )
 
