@@ -11,6 +11,14 @@ if (-not $isAdmin) {
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Helper function to ensure registry paths exist
+function Ensure-RegistryPath {
+    param($Path)
+    if (!(Test-Path $Path)) {
+        New-Item -Path $Path -Force | Out-Null
+    }
+}
+
 # Add required type for transparency
 Add-Type -TypeDefinition @"
     using System;
@@ -68,6 +76,21 @@ $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'None'
 $form.BackColor = [System.Drawing.Color]::FromArgb(18, 18, 18)
 $form.Opacity = 0.95
+
+# Create animation timer
+$script:animationTimer = New-Object System.Windows.Forms.Timer
+$script:animationTimer.Interval = 16  # ~60 FPS for smooth animation
+$script:currentAngle = 0
+$script:animationTimer.Add_Tick({
+    try {
+        if ($progressWheel -ne $null) {
+            $script:currentAngle = ($script:currentAngle + 3) % 360  # Smaller increment for smoother rotation
+            $progressWheel.UpdateAngle($script:currentAngle)
+        }
+    } catch {
+        # Silently handle any animation errors
+    }
+})
 
 # Enable transparency with error handling
 $form.Add_HandleCreated({
@@ -192,7 +215,7 @@ $flowLayout.BackColor = [System.Drawing.Color]::Transparent
 $flowLayout.FlowDirection = [System.Windows.Forms.FlowDirection]::TopDown
 $flowLayout.WrapContents = $false
 $flowLayout.AutoSize = $false
-$flowLayout.Padding = New-Object System.Windows.Forms.Padding(20)
+$flowLayout.Padding = New-Object System.Windows.Forms.Padding(10)
 $contentPanel.Controls.Add($flowLayout)
 
 # Welcome Label with glass effect
@@ -202,15 +225,42 @@ $welcomeLabel.Font = New-Object System.Drawing.Font("Segoe UI Light", 10)
 $welcomeLabel.ForeColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
 $welcomeLabel.BackColor = [System.Drawing.Color]::Transparent
 $welcomeLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-$welcomeLabel.AutoSize = $false
-$welcomeLabel.Size = New-Object System.Drawing.Size(460, 60)
-$welcomeLabel.Margin = New-Object System.Windows.Forms.Padding(0, 20, 0, 20)
+$welcomeLabel.AutoSize = $true
+$welcomeLabel.MaximumSize = New-Object System.Drawing.Size(400, 0)
+$welcomeLabel.MinimumSize = New-Object System.Drawing.Size(400, 120)
+$welcomeLabel.Margin = New-Object System.Windows.Forms.Padding(40, 20, 40, 20)
+$welcomeLabel.UseMnemonic = $false
 $flowLayout.Controls.Add($welcomeLabel)
+
+# Create container panel for button
+$buttonContainer = New-Object System.Windows.Forms.Panel
+$buttonContainer.BackColor = [System.Drawing.Color]::Transparent
+$buttonContainer.Size = New-Object System.Drawing.Size(500, 80)
+$buttonContainer.Margin = New-Object System.Windows.Forms.Padding(0)
+$buttonContainer.Add_Paint({
+    param($sender, $e)
+    try {
+        $graphics = $e.Graphics
+        $rect = $sender.ClientRectangle
+        $gradientBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+            $rect,
+            [System.Drawing.Color]::FromArgb(150, 20, 20, 20),
+            [System.Drawing.Color]::FromArgb(150, 30, 30, 30),
+            45
+        )
+        $graphics.FillRectangle($gradientBrush, $rect)
+        $gradientBrush.Dispose()
+    }
+    catch {
+        Write-Warning "Failed to paint button container: $_"
+    }
+})
+$flowLayout.Controls.Add($buttonContainer)
 
 # Create Optimize Button
 $optimizeButton = New-ModernButton "Start Optimization"
-$optimizeButton.Margin = New-Object System.Windows.Forms.Padding(130, 20, 130, 20)
-$flowLayout.Controls.Add($optimizeButton)
+$optimizeButton.Location = New-Object System.Drawing.Point(140, 20)
+$buttonContainer.Controls.Add($optimizeButton)
 
 # Progress Label with glass effect
 $progressLabel = New-Object System.Windows.Forms.Label
@@ -218,10 +268,12 @@ $progressLabel.Text = 'Click the button above to start optimization...'
 $progressLabel.Font = New-Object System.Drawing.Font("Segoe UI Light", 9)
 $progressLabel.ForeColor = [System.Drawing.Color]::FromArgb(220, 220, 220)
 $progressLabel.BackColor = [System.Drawing.Color]::Transparent
-$progressLabel.TextAlign = [System.Drawing.ContentAlignment]::TopCenter
-$progressLabel.AutoSize = $false
-$progressLabel.Size = New-Object System.Drawing.Size(460, 60)
-$progressLabel.Margin = New-Object System.Windows.Forms.Padding(0, 20, 0, 20)
+$progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$progressLabel.AutoSize = $true
+$progressLabel.MaximumSize = New-Object System.Drawing.Size(400, 0)
+$progressLabel.MinimumSize = New-Object System.Drawing.Size(400, 80)
+$progressLabel.Margin = New-Object System.Windows.Forms.Padding(40, 20, 40, 20)
+$progressLabel.UseMnemonic = $false
 $flowLayout.Controls.Add($progressLabel)
 
 # Center the FlowLayoutPanel contents
@@ -289,201 +341,186 @@ $form.Add_Paint({
     $brush.Dispose()
 })
 
-# Helper function to create registry paths if they don't exist
-function Ensure-RegistryPath {
-    param($Path)
-    if (!(Test-Path $Path)) {
-        New-Item -Path $Path -Force | Out-Null
-    }
-}
-
-# Function to update progress
+# Function to update progress with UI refresh
 function Update-Progress {
     param($message)
     $progressLabel.Text = $message
-    $form.Refresh()
+    [System.Windows.Forms.Application]::DoEvents()
 }
 
-# Function to create restore point
-function Create-RestorePoint {
-    Update-Progress "Creating system restore point..."
+# Function to ensure UI stays responsive during operations
+function Invoke-WithProgress {
+    param(
+        [ScriptBlock]$Action,
+        [string]$TaskName
+    )
     
-    # Create registry key to allow more frequent restore points
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force
+    Update-Progress "Working: $TaskName..."
     
-    Enable-ComputerRestore -Drive "C:\"
-    Checkpoint-Computer -Description "Before Windows Optimization" -RestorePointType "MODIFY_SETTINGS" -ErrorAction SilentlyContinue
-}
+    # Execute the action in small chunks with UI updates
+    $job = Start-Job -ScriptBlock {
+        param($action)
 
-# Function to clean temporary files
-function Clean-TempFiles {
-    Update-Progress "Cleaning temporary files..."
-    Remove-Item -Path "C:\Windows\Temp\*" -Force -Recurse -ErrorAction SilentlyContinue
-    Remove-Item -Path "$env:TEMP\*" -Force -Recurse -ErrorAction SilentlyContinue
-}
+        # Define helper function in the job scope
+        function Ensure-RegistryPath {
+            param($Path)
+            if (!(Test-Path $Path)) {
+                New-Item -Path $Path -Force | Out-Null
+            }
+        }
 
-# Function to disable consumer features
-function Disable-ConsumerFeatures {
-    Update-Progress "Disabling consumer features..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableWindowsConsumerFeatures" -Value 1 -Type DWord -Force
-}
-
-# Function to disable telemetry
-function Disable-Telemetry {
-    Update-Progress "Disabling telemetry..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection"
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection" -Name "AllowTelemetry" -Value 0 -Type DWord -Force
-}
-
-# Function to disable activity history
-function Disable-ActivityHistory {
-    Update-Progress "Disabling activity history..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -Force
-}
-
-# Function to disable automatic folder discovery
-function Disable-AutomaticFolderDiscovery {
-    Update-Progress "Disabling automatic folder discovery..."
-    Ensure-RegistryPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "NavPaneExpandToCurrentFolder" -Value 0 -Type DWord -Force
-}
-
-# Function to disable Game DVR
-function Disable-GameDVR {
-    Update-Progress "Disabling Game DVR..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Value 0 -Type DWord -Force
-}
-
-# Function to disable hibernation
-function Disable-Hibernation {
-    Update-Progress "Disabling hibernation..."
-    powercfg /hibernate off
-}
-
-# Function to disable HomeGroup
-function Disable-HomeGroup {
-    Update-Progress "Disabling HomeGroup..."
-    if (Get-Service "HomeGroupProvider" -ErrorAction SilentlyContinue) {
-        Stop-Service "HomeGroupProvider" -Force -ErrorAction SilentlyContinue
-        Set-Service "HomeGroupProvider" -StartupType Disabled -ErrorAction SilentlyContinue
+        # Execute the passed action
+        . ([ScriptBlock]::Create($action))
+    } -ArgumentList $Action.ToString()
+    
+    while ($job.State -eq 'Running') {
+        Start-Sleep -Milliseconds 50  # Shorter sleep for more responsive UI
+        [System.Windows.Forms.Application]::DoEvents()
     }
-}
-
-# Function to disable location tracking
-function Disable-LocationTracking {
-    Update-Progress "Disabling location tracking..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name "Value" -Value "Deny" -Force
-}
-
-# Function to disable Storage Sense
-function Disable-StorageSense {
-    Update-Progress "Disabling Storage Sense..."
-    Remove-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" -Force -ErrorAction SilentlyContinue
-}
-
-# Function to disable Wi-Fi Sense
-function Disable-WiFiSense {
-    Update-Progress "Disabling Wi-Fi Sense..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi"
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting"
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots"
     
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Value 0 -Type DWord -Force
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Value 0 -Type DWord -Force
-}
-
-# Function to enable End Task with right click
-function Enable-EndTaskRightClick {
-    Update-Progress "Enabling End Task with right click..."
-    Ensure-RegistryPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarRightClickMenu" -Value 1 -Type DWord -Force
+    Receive-Job -Job $job
+    Remove-Job -Job $job
 }
 
 # Function to run disk cleanup
 function Run-DiskCleanup {
-    Update-Progress "Running disk cleanup..."
-    cleanmgr /sagerun:1
-}
-
-# Function to disable PowerShell 7 telemetry
-function Disable-PS7Telemetry {
-    Update-Progress "Disabling PowerShell 7 telemetry..."
-    [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')
-}
-
-# Function to set services to manual
-function Set-ServicesToManual {
-    Update-Progress "Setting services to manual..."
-    $services = @(
-        "DiagTrack",
-        "dmwappushservice",
-        "RetailDemo",
-        "diagnosticshub.standardcollector.service"
-    )
+    param($TaskName)
     
-    foreach ($service in $services) {
-        if (Get-Service $service -ErrorAction SilentlyContinue) {
-            Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
-            Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
-        }
+    Update-Progress "Working: $TaskName..."
+    
+    # Start cleanmgr in a separate process without waiting
+    $process = Start-Process cleanmgr -ArgumentList "/sagerun:1" -PassThru -WindowStyle Hidden
+    
+    # Wait for a maximum of 30 seconds while keeping UI responsive
+    $timeout = 30
+    $elapsed = 0
+    while (!$process.HasExited -and $elapsed -lt $timeout) {
+        Start-Sleep -Milliseconds 500
+        [System.Windows.Forms.Application]::DoEvents()
+        $elapsed++
+    }
+    
+    # If process is still running after timeout, we'll continue anyway
+    if (!$process.HasExited) {
+        Write-Warning "Disk cleanup is still running in background"
     }
 }
 
-# Function to disable recall
-function Disable-Recall {
-    Update-Progress "Disabling recall feature..."
-    Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat"
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat" -Name "DisableUAR" -Value 1 -Type DWord -Force
-}
-
-# Function to remove Microsoft Store apps
+# Function to safely remove a provisioned package
 function Remove-StoreApps {
-    Update-Progress "Removing Microsoft Store apps..."
+    param($TaskName)
     
-    # List of apps to keep (essential Windows apps)
+    Update-Progress "Working: $TaskName..."
+    
+    # Essential Windows apps that should not be removed
     $keepApps = @(
-        "Microsoft.WindowsStore",              # Microsoft Store itself
+        "Microsoft.WindowsStore",              # Microsoft Store
         "Microsoft.WindowsCalculator",         # Calculator
         "Microsoft.Windows.Photos",            # Photos
-        "Microsoft.ScreenSketch",             # Snipping Tool
-        "Microsoft.WindowsNotepad"            # Notepad
+        "Microsoft.ScreenSketch",              # Snipping Tool
+        "Microsoft.WindowsNotepad",            # Notepad
+        "Microsoft.DesktopAppInstaller",       # App Installer
+        "Microsoft.SecHealthUI",               # Windows Security
+        "Microsoft.WindowsTerminal",           # Windows Terminal
+        "Microsoft.WindowsCamera",             # Camera
+        "Microsoft.HEIFImageExtension",        # HEIF Image Extensions
+        "Microsoft.WebpImageExtension",        # Webp Image Extensions
+        "Microsoft.VP9VideoExtensions",        # VP9 Video Extensions
+        "Microsoft.WebMediaExtensions",        # Web Media Extensions
+        "Microsoft.RawImageExtension",         # Raw Image Extension
+        "Microsoft.MicrosoftEdge",             # Edge Browser Components
+        "Microsoft.UI.Xaml",                   # UI Framework
+        "Microsoft.VCLibs",                    # Visual C++ Libraries
+        "Microsoft.Services.Store.Engagement", # Store Services
+        "Microsoft.XboxIdentityProvider"       # Xbox Identity (required by Store)
+    )
+
+    # Pattern matches for system apps that should be kept
+    $keepPatterns = @(
+        "Microsoft.WindowsStore",
+        "Microsoft.Windows.Shell",
+        "Microsoft.SecHealth",
+        "Microsoft.Windows.Cloud",
+        "Microsoft.AAD.Broker",
+        "Microsoft.AccountsControl",
+        "Microsoft.AsyncTextService",
+        "Microsoft.CredDialogHost",
+        "Microsoft.ECApp",
+        "Microsoft.LockApp",
+        "Microsoft.Win32WebViewHost",
+        "Microsoft.Windows.Apprep",
+        "Microsoft.Windows.AssignedAccessLockApp",
+        "Microsoft.Windows.CallingShellApp",
+        "Microsoft.Windows.CapturePicker",
+        "Microsoft.Windows.ContentDeliveryManager",
+        "Microsoft.Windows.NarratorQuickStart",
+        "Microsoft.Windows.OOBENetworkCaptivePortal",
+        "Microsoft.Windows.OOBENetworkConnectionFlow",
+        "Microsoft.Windows.ParentalControls",
+        "Microsoft.Windows.PeopleExperienceHost",
+        "Microsoft.Windows.PinningConfirmationDialog",
+        "Microsoft.Windows.SecHealthUI",
+        "Microsoft.Windows.SecureAssessmentBrowser",
+        "Microsoft.Windows.ShellExperienceHost",
+        "Microsoft.Windows.StartMenuExperienceHost",
+        "Microsoft.Windows.System"
     )
     
     # Get all installed apps for the current user
-    $installedApps = Get-AppxPackage -AllUsers | Where-Object { $_.Name -notlike "Windows.Client.WebExperience" }
+    $installedApps = Get-AppxPackage -AllUsers | Where-Object { 
+        $app = $_
+        $isSystemApp = $false
+        
+        # Check if app matches any keep pattern
+        foreach ($pattern in $keepPatterns) {
+            if ($app.Name -like "$pattern*") {
+                $isSystemApp = $true
+                break
+            }
+        }
+        
+        # Keep if not system app and not in keepApps list
+        -not $isSystemApp -and
+        $_.Name -notlike "Windows.Client.WebExperience*" -and
+        $keepApps -notcontains $_.Name.Split('_')[0]
+    }
     
     foreach ($app in $installedApps) {
-        if ($keepApps -notcontains $app.Name) {
-            try {
-                Update-Progress "Removing app: $($app.Name)"
-                Remove-AppxPackage -Package $app.PackageFullName -ErrorAction SilentlyContinue
-                Remove-AppxProvisionedPackage -Online -PackageName $app.Name -ErrorAction SilentlyContinue
-            }
-            catch {
-                Update-Progress "Failed to remove $($app.Name)"
-            }
+        try {
+            Write-Host "Removing package: $($app.PackageFullName)"
+            Remove-AppxPackage -Package $app.PackageFullName -ErrorAction SilentlyContinue
+        }
+        catch {
+            Write-Warning "Failed to remove package: $($app.PackageFullName)"
         }
     }
     
-    # Remove provisioned packages
-    $provisionedApps = Get-AppxProvisionedPackage -Online
+    # Get all provisioned packages
+    $provisionedApps = Get-AppxProvisionedPackage -Online | Where-Object {
+        $app = $_
+        $isSystemApp = $false
+        
+        # Check if app matches any keep pattern
+        foreach ($pattern in $keepPatterns) {
+            if ($app.DisplayName -like "$pattern*") {
+                $isSystemApp = $true
+                break
+            }
+        }
+        
+        # Keep if not system app and not in keepApps list
+        -not $isSystemApp -and
+        $app.DisplayName -notlike "Windows.Client.WebExperience*" -and
+        $keepApps -notcontains $app.DisplayName.Split('_')[0]
+    }
+    
     foreach ($app in $provisionedApps) {
-        if ($keepApps -notcontains $app.DisplayName) {
-            try {
-                Update-Progress "Removing provisioned app: $($app.DisplayName)"
-                Remove-AppxProvisionedPackage -Online -PackageName $app.PackageName -ErrorAction SilentlyContinue
-            }
-            catch {
-                Update-Progress "Failed to remove provisioned package $($app.DisplayName)"
-            }
+        try {
+            Write-Host "Removing provisioned package: $($app.PackageName)"
+            Remove-AppxProvisionedPackage -PackageName $app.PackageName -Online -AllUsers -ErrorAction SilentlyContinue
+        }
+        catch {
+            Write-Warning "Failed to remove provisioned package: $($app.PackageName)"
         }
     }
 }
@@ -491,29 +528,207 @@ function Remove-StoreApps {
 # Main optimization function
 function Start-Optimization {
     try {
-        Create-RestorePoint
-        Clean-TempFiles
-        Disable-ConsumerFeatures
-        Disable-Telemetry
-        Disable-ActivityHistory
-        Disable-AutomaticFolderDiscovery
-        Disable-GameDVR
-        Disable-Hibernation
-        Disable-HomeGroup
-        Disable-LocationTracking
-        Disable-StorageSense
-        Disable-WiFiSense
-        Enable-EndTaskRightClick
-        Run-DiskCleanup
-        Disable-PS7Telemetry
-        Set-ServicesToManual
-        Disable-Recall
-        Remove-StoreApps
+        # Disable button during optimization
+        $optimizeButton.Enabled = $false
+        $optimizeButton.Text = "Optimizing..."
 
+        # Run optimization tasks
+        $tasks = @(
+            @{ 
+                Name = "Creating System Restore Point"
+                Action = {
+                    # Create registry key to allow more frequent restore points
+                    if (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore")) {
+                        New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" -Name "SystemRestorePointCreationFrequency" -Value 0 -Type DWord -Force
+                    Enable-ComputerRestore -Drive "C:\"
+                    Checkpoint-Computer -Description "Before Windows Optimization" -RestorePointType "MODIFY_SETTINGS"
+                }
+            },
+            @{ 
+                Name = "Cleaning Temporary Files"
+                Action = {
+                    Remove-Item -Path "C:\Windows\Temp\*" -Force -Recurse -ErrorAction SilentlyContinue
+                    Remove-Item -Path "$env:TEMP\*" -Force -Recurse -ErrorAction SilentlyContinue
+                }
+            },
+            @{ 
+                Name = "Running Disk Cleanup"
+                Action = { Run-DiskCleanup -TaskName "Running Disk Cleanup" }
+            },
+            @{
+                Name = "Disabling Consumer Features"
+                Action = {
+                    if (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent")) {
+                        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" -Name "DisableWindowsConsumerFeatures" -Value 1 -Type DWord -Force
+                }
+            },
+            @{
+                Name = "Disabling Telemetry"
+                Action = {
+                    foreach ($path in @(
+                        "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+                        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection"
+                    )) {
+                        if (!(Test-Path $path)) {
+                            New-Item -Path $path -Force | Out-Null
+                        }
+                        Set-ItemProperty -Path $path -Name "AllowTelemetry" -Value 0 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Activity History"
+                Action = {
+                    if (!(Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System")) {
+                        New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "EnableActivityFeed" -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name "PublishUserActivities" -Value 0 -Type DWord -Force
+                }
+            },
+            @{
+                Name = "Disabling Automatic Folder Discovery"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Automatic Folder Discovery" -Action {
+                        Ensure-RegistryPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+                        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "NavPaneExpandToCurrentFolder" -Value 0 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Game DVR"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Game DVR" -Action {
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR"
+                        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Value 0 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Hibernation"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Hibernation" -Action {
+                        powercfg /hibernate off
+                    }
+                }
+            },
+            @{
+                Name = "Disabling HomeGroup"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling HomeGroup" -Action {
+                        if (Get-Service "HomeGroupProvider" -ErrorAction SilentlyContinue) {
+                            Stop-Service "HomeGroupProvider" -Force -ErrorAction SilentlyContinue
+                            Set-Service "HomeGroupProvider" -StartupType Disabled -ErrorAction SilentlyContinue
+                        }
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Location Tracking"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Location Tracking" -Action {
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location"
+                        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location" -Name "Value" -Value "Deny" -Force
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Storage Sense"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Storage Sense" -Action {
+                        Remove-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy" -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Wi-Fi Sense"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Wi-Fi Sense" -Action {
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi"
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting"
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots"
+                        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting" -Name "Value" -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots" -Name "Value" -Value 0 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Enabling End Task Right Click"
+                Action = {
+                    Invoke-WithProgress -TaskName "Enabling End Task Right Click" -Action {
+                        Ensure-RegistryPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+                        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarRightClickMenu" -Value 1 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Disabling PowerShell 7 Telemetry"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling PowerShell 7 Telemetry" -Action {
+                        [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')
+                    }
+                }
+            },
+            @{
+                Name = "Configuring Services"
+                Action = {
+                    Invoke-WithProgress -TaskName "Configuring Services" -Action {
+                        $services = @(
+                            "DiagTrack",
+                            "dmwappushservice",
+                            "RetailDemo",
+                            "diagnosticshub.standardcollector.service"
+                        )
+                        foreach ($service in $services) {
+                            if (Get-Service $service -ErrorAction SilentlyContinue) {
+                                Set-Service -Name $service -StartupType Disabled -ErrorAction SilentlyContinue
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                            }
+                        }
+                    }
+                }
+            },
+            @{
+                Name = "Disabling Recall Feature"
+                Action = {
+                    Invoke-WithProgress -TaskName "Disabling Recall Feature" -Action {
+                        Ensure-RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat"
+                        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat" -Name "DisableUAR" -Value 1 -Type DWord -Force
+                    }
+                }
+            },
+            @{
+                Name = "Removing Store Apps"
+                Action = { Remove-StoreApps -TaskName "Removing Store Apps" }
+            }
+        )
+
+        foreach ($task in $tasks) {
+            try {
+                Update-Progress "Working: $($task.Name)..."
+                & $task.Action
+                [System.Windows.Forms.Application]::DoEvents()
+            }
+            catch {
+                Write-Warning "Task '$($task.Name)' encountered an error: $_"
+                # Continue with next task
+            }
+        }
+
+        # Update status
         Update-Progress "Optimization completed successfully!`n`nPlease restart your computer for all changes to take effect."
         $optimizeButton.Enabled = $false
+        $optimizeButton.Text = "Optimization Complete"
+        $optimizeButton.BackColor = [System.Drawing.Color]::FromArgb(180, 40, 167, 69)
     }
     catch {
+        # Show error
+        $optimizeButton.Enabled = $true
+        $optimizeButton.Text = "Start Optimization"
         Update-Progress "An error occurred during optimization:`n$($_.Exception.Message)"
     }
 }
@@ -529,6 +744,13 @@ $optimizeButton.Add_Click({
     
     if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
         Start-Optimization
+    }
+})
+
+# Clean up when form closes
+$form.Add_FormClosing({
+    if ($progressWheel -ne $null) {
+        $progressWheel.StopSpinning()
     }
 })
 
