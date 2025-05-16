@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using System.Net.Http;
 using System.IO;
 using System.Security.Cryptography;
+using System.Windows.Input;
 
 namespace ClearGlass
 {
@@ -32,6 +33,13 @@ namespace ClearGlass
                 "wallpaper.hash");
                 
             LoadCurrentSettings();
+
+            // Enable window dragging
+            this.MouseLeftButtonDown += (s, e) =>
+            {
+                if (e.ChangedButton == MouseButton.Left)
+                    this.DragMove();
+            };
         }
 
         private void LoadCurrentSettings()
@@ -231,6 +239,11 @@ namespace ClearGlass
         {
             // Placeholder for Clear Glass functionality
             MessageBox.Show("Clear Glass button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void OnCloseButtonClick(object sender, RoutedEventArgs e)
+        {
+            this.Close();
         }
     }
 } 

@@ -3,6 +3,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <!-- Glass Background Brush -->
+        <SolidColorBrush x:Key="GlassBackground" Color="#20FFFFFF"/>
+        <SolidColorBrush x:Key="GlassBorder" Color="#40FFFFFF"/>
+        
+        <!-- Blue Theme Colors -->
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#2196F3"/>
+        <SolidColorBrush x:Key="LightBlue" Color="#64B5F6"/>
+        <SolidColorBrush x:Key="DarkBlue" Color="#1976D2"/>
+        <SolidColorBrush x:Key="AccentBlue" Color="#90CAF9"/>
+        
+        <!-- Text Colors -->
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#B3FFFFFF"/>
     </Application.Resources>
 </Application> 

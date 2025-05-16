@@ -38,3 +38,4 @@ C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\refint\ClearGlass.
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.pdb
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.genruntimeconfig.cache
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ref\ClearGlass.dll
+C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\App.baml
