@@ -1,0 +1,179 @@
+<Window x:Class="ClearGlass.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Clear Glass" Height="400" Width="500"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style TargetType="ToggleButton">
+            <Setter Property="Width" Value="50"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid>
+                            <Border x:Name="BackgroundBorder"
+                                    Background="#FFE0E0E0"
+                                    CornerRadius="13"
+                                    BorderThickness="0">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.3"/>
+                                </Border.Effect>
+                            </Border>
+                            <Border x:Name="Slider"
+                                    Width="20" Height="20"
+                                    CornerRadius="10"
+                                    Background="White"
+                                    HorizontalAlignment="Left"
+                                    Margin="3,0,0,0">
+                                <Border.Effect>
+                                    <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.3"/>
+                                </Border.Effect>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation 
+                                                Storyboard.TargetName="BackgroundBorder"
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="#4CAF50"
+                                                Duration="0:0:0.2"/>
+                                            <ThicknessAnimation 
+                                                Storyboard.TargetName="Slider"
+                                                Storyboard.TargetProperty="Margin"
+                                                To="27,0,0,0"
+                                                Duration="0:0:0.2">
+                                                <ThicknessAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </ThicknessAnimation.EasingFunction>
+                                            </ThicknessAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation 
+                                                Storyboard.TargetName="BackgroundBorder"
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="#FF4444"
+                                                Duration="0:0:0.2"/>
+                                            <ThicknessAnimation 
+                                                Storyboard.TargetName="Slider"
+                                                Storyboard.TargetProperty="Margin"
+                                                To="3,0,0,0"
+                                                Duration="0:0:0.2">
+                                                <ThicknessAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </ThicknessAnimation.EasingFunction>
+                                            </ThicknessAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="#FF4444"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#333333"/>
+        </Style>
+        <Style TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,20"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Clear Glass"
+                   FontSize="24"
+                   FontWeight="Bold"
+                   Foreground="#1976D2"
+                   Margin="0,0,0,30"/>
+
+        <StackPanel Grid.Row="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Taskbar: Left" Grid.Column="0" MinWidth="100"/>
+                <ToggleButton x:Name="TaskbarAlignmentToggle"
+                            Grid.Column="1"
+                            Margin="10,0"
+                            Click="OnTaskbarAlignmentToggle"/>
+                <TextBlock Text="Center" Grid.Column="2" MinWidth="100"/>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Task View: Hide" Grid.Column="0" MinWidth="100"/>
+                <ToggleButton x:Name="TaskViewToggle"
+                            Grid.Column="1"
+                            Margin="10,0"
+                            Click="OnTaskViewToggle"/>
+                <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Widgets (Currently Unavailable)" Grid.Column="0" MinWidth="150" Foreground="#999999"/>
+                <ToggleButton x:Name="WidgetsToggle"
+                            Grid.Column="1"
+                            Margin="10,0"
+                            Click="OnWidgetsToggle"
+                            IsEnabled="False"/>
+                <TextBlock Text="Show" Grid.Column="2" MinWidth="100" Foreground="#999999"/>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Search: Hide" Grid.Column="0" MinWidth="100"/>
+                <ToggleButton x:Name="SearchToggle"
+                            Grid.Column="1"
+                            Margin="10,0"
+                            Click="OnSearchToggle"/>
+                <TextBlock Text="Show icon" Grid.Column="2" MinWidth="100"/>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Desktop Icons: Hide" Grid.Column="0" MinWidth="100"/>
+                <ToggleButton x:Name="DesktopIconsToggle"
+                            Grid.Column="1"
+                            Margin="10,0"
+                            Click="OnDesktopIconsToggle"/>
+                <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window> 
