@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 namespace ClearGlass
 {
@@ -17,6 +18,8 @@ namespace ClearGlass
         private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
         private readonly string _hashPath;
+        private Storyboard _showAddonsOverlay;
+        private Storyboard _hideAddonsOverlay;
 
         public MainWindow()
         {
@@ -40,6 +43,14 @@ namespace ClearGlass
                 if (e.ChangedButton == MouseButton.Left)
                     this.DragMove();
             };
+
+            // Initialize storyboards
+            _showAddonsOverlay = (Storyboard)FindResource("ShowAddonsOverlay");
+            _hideAddonsOverlay = (Storyboard)FindResource("HideAddonsOverlay");
+            
+            // Ensure overlay is hidden initially
+            AddonsOverlay.Opacity = 0;
+            AddonsOverlay.Margin = new Thickness(0, 600, 0, -600);
         }
 
         private void LoadCurrentSettings()
@@ -239,6 +250,21 @@ namespace ClearGlass
         {
             // Placeholder for Clear Glass functionality
             MessageBox.Show("Clear Glass button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void OnRecommendedAddonsClick(object sender, RoutedEventArgs e)
+        {
+            AddonsOverlay.Visibility = Visibility.Visible;
+            _showAddonsOverlay.Begin(this);
+        }
+
+        private void OnCloseAddonsClick(object sender, RoutedEventArgs e)
+        {
+            _hideAddonsOverlay.Begin(this, isControllable: false);
+            _hideAddonsOverlay.Completed += (s, _) =>
+            {
+                AddonsOverlay.Visibility = Visibility.Collapsed;
+            };
         }
 
         private void OnCloseButtonClick(object sender, RoutedEventArgs e)

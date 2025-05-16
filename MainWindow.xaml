@@ -124,178 +124,289 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        
+        <Storyboard x:Key="ShowAddonsOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="AddonsOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="AddonsOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="0,600,0,-600" To="10,10,10,10" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+        
+        <Storyboard x:Key="HideAddonsOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="AddonsOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="1" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="AddonsOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="10,10,10,10" To="0,600,0,-600" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
     </Window.Resources>
 
-    <Border CornerRadius="10" 
-            Background="#80000000" 
-            BorderThickness="1" 
-            BorderBrush="{StaticResource GlassBorder}"
-            Margin="10">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
-        </Border.Effect>
-        
-        <Grid Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <TextBlock Text="Clear Glass"
-                           Grid.Column="1"
-                           FontSize="28"
-                           FontWeight="Normal"
-                           FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
-                           Foreground="{StaticResource PrimaryBlue}"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Center">
-                    <TextBlock.Effect>
-                        <DropShadowEffect ShadowDepth="0" 
-                                          BlurRadius="15" 
-                                          Color="#40000000" 
-                                          Opacity="0.3"/>
-                    </TextBlock.Effect>
-                </TextBlock>
-                
-                <Button x:Name="CloseButton"
-                        Grid.Column="2"
-                        Content="✕"
-                        Width="30"
-                        Height="30"
-                        Background="Transparent"
-                        BorderThickness="0"
-                        Foreground="{StaticResource TextPrimary}"
-                        Click="OnCloseButtonClick"/>
-            </Grid>
-
-            <StackPanel Grid.Row="1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Taskbar: Left" Grid.Column="0" MinWidth="100"/>
-                    <ToggleButton x:Name="TaskbarAlignmentToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnTaskbarAlignmentToggle"/>
-                    <TextBlock Text="Center" Grid.Column="2" MinWidth="100"/>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Task View: Hide" Grid.Column="0" MinWidth="100"/>
-                    <ToggleButton x:Name="TaskViewToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnTaskViewToggle"/>
-                    <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Widgets (Currently Unavailable)" Grid.Column="0" MinWidth="150" Foreground="#999999"/>
-                    <ToggleButton x:Name="WidgetsToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnWidgetsToggle"
-                                IsEnabled="False"/>
-                    <TextBlock Text="Show" Grid.Column="2" MinWidth="100" Foreground="#999999"/>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Search: Hide" Grid.Column="0" MinWidth="100"/>
-                    <ToggleButton x:Name="SearchToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnSearchToggle"/>
-                    <TextBlock Text="Show icon" Grid.Column="2" MinWidth="100"/>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Desktop Icons: Hide" Grid.Column="0" MinWidth="100"/>
-                    <ToggleButton x:Name="DesktopIconsToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnDesktopIconsToggle"/>
-                    <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
-                </Grid>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Theme: Light" Grid.Column="0" MinWidth="100"/>
-                    <ToggleButton x:Name="ThemeToggle"
-                                Grid.Column="1"
-                                Margin="10,0"
-                                Click="OnThemeToggle"/>
-                    <TextBlock Text="Dark" Grid.Column="2" MinWidth="100"/>
-                </Grid>
-            </StackPanel>
-
-            <Grid Grid.Row="2" Margin="0,40,0,10">
+    <Grid>
+        <Border CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="10">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
 
-                <Button Content="Clear Glass Theme" 
-                        Grid.Column="0"
-                        Style="{StaticResource ActionButton}"
-                        Margin="0,0,10,15"
-                        x:Name="ClearGlassThemeButton"
-                        Click="OnClearGlassThemeClick"/>
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Clear Glass"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseButtonClick"/>
+                </Grid>
 
-                <Button Content="Windows Optimization" 
-                        Grid.Column="1"
-                        Style="{StaticResource ActionButton}"
-                        Margin="10,0,0,15"
-                        x:Name="WindowsOptimizationButton"
-                        Click="OnWindowsOptimizationClick"/>
+                <StackPanel Grid.Row="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Taskbar: Left" Grid.Column="0" MinWidth="100"/>
+                        <ToggleButton x:Name="TaskbarAlignmentToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnTaskbarAlignmentToggle"/>
+                        <TextBlock Text="Center" Grid.Column="2" MinWidth="100"/>
+                    </Grid>
 
-                <Button Content="Clear Glass" 
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Task View: Hide" Grid.Column="0" MinWidth="100"/>
+                        <ToggleButton x:Name="TaskViewToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnTaskViewToggle"/>
+                        <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Widgets (Currently Unavailable)" Grid.Column="0" MinWidth="150" Foreground="#999999"/>
+                        <ToggleButton x:Name="WidgetsToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnWidgetsToggle"
+                                    IsEnabled="False"/>
+                        <TextBlock Text="Show" Grid.Column="2" MinWidth="100" Foreground="#999999"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Search: Hide" Grid.Column="0" MinWidth="100"/>
+                        <ToggleButton x:Name="SearchToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnSearchToggle"/>
+                        <TextBlock Text="Show icon" Grid.Column="2" MinWidth="100"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Desktop Icons: Hide" Grid.Column="0" MinWidth="100"/>
+                        <ToggleButton x:Name="DesktopIconsToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnDesktopIconsToggle"/>
+                        <TextBlock Text="Show" Grid.Column="2" MinWidth="100"/>
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Theme: Light" Grid.Column="0" MinWidth="100"/>
+                        <ToggleButton x:Name="ThemeToggle"
+                                    Grid.Column="1"
+                                    Margin="10,0"
+                                    Click="OnThemeToggle"/>
+                        <TextBlock Text="Dark" Grid.Column="2" MinWidth="100"/>
+                    </Grid>
+                </StackPanel>
+
+                <Button Content="Recommended Addons" 
                         Grid.Row="1"
-                        Grid.ColumnSpan="2"
                         Style="{StaticResource ActionButton}"
                         Width="200"
-                        Margin="0,0,0,10"
-                        x:Name="ClearGlassButton"
-                        Click="OnClearGlassClick"/>
+                        Margin="0,20,0,0"
+                        x:Name="RecommendedAddonsButton"
+                        Click="OnRecommendedAddonsClick"
+                        VerticalAlignment="Bottom"/>
+
+                <Grid Grid.Row="2" Margin="0,40,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Content="Clear Glass Theme" 
+                            Grid.Column="0"
+                            Style="{StaticResource ActionButton}"
+                            Margin="0,0,10,15"
+                            x:Name="ClearGlassThemeButton"
+                            Click="OnClearGlassThemeClick"/>
+
+                    <Button Content="Windows Optimization" 
+                            Grid.Column="1"
+                            Style="{StaticResource ActionButton}"
+                            Margin="10,0,0,15"
+                            x:Name="WindowsOptimizationButton"
+                            Click="OnWindowsOptimizationClick"/>
+
+                    <Button Content="Clear Glass" 
+                            Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Style="{StaticResource ActionButton}"
+                            Width="200"
+                            Margin="0,0,0,10"
+                            x:Name="ClearGlassButton"
+                            Click="OnClearGlassClick"/>
+                </Grid>
             </Grid>
-        </Grid>
-    </Border>
+        </Border>
+
+        <!-- Addons Overlay -->
+        <Border x:Name="AddonsOverlay"
+                CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="0,600,0,-600"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Recommended Addons"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseAddonsButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseAddonsClick"/>
+                </Grid>
+
+                <TextBlock Grid.Row="1" 
+                          Text="Coming Soon!"
+                          FontSize="18"
+                          Foreground="{StaticResource TextPrimary}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
 </Window> 
