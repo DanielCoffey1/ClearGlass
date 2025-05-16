@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Daniel\\Documents\\ClearGlassTheme\\ClearGlass.csproj",
+      "projectUniqueName": "C:\\Users\\Daniel\\Documents\\ClearGlass\\ClearGlass.csproj",
       "projectName": "ClearGlass",
-      "projectPath": "C:\\Users\\Daniel\\Documents\\ClearGlassTheme\\ClearGlass.csproj",
+      "projectPath": "C:\\Users\\Daniel\\Documents\\ClearGlass\\ClearGlass.csproj",
       "packagesPath": "C:\\Users\\Daniel\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Daniel\\Documents\\ClearGlassTheme\\obj\\",
+      "outputPath": "C:\\Users\\Daniel\\Documents\\ClearGlass\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Daniel\\AppData\\Roaming\\NuGet\\NuGet.Config"

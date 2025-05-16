@@ -17,6 +17,9 @@ namespace ClearGlass.Services
         private const string WebWidgetsPath = @"SOFTWARE\Policies\Microsoft\Dsh";
         private const string WidgetsGPOPath = @"SOFTWARE\Policies\Microsoft\Windows\Windows Feeds";
         private const string DesktopIconsPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+        private const string PersonalizePath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+        private const string AccentColorPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\History";
+        private const string AccentColorSettingsPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize";
 
         private bool IsAdministrator()
         {
@@ -375,11 +378,125 @@ namespace ClearGlass.Services
             }
         }
 
+        public bool IsDarkMode
+        {
+            get
+            {
+                try
+                {
+                    using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath);
+                    var value = key?.GetValue("SystemUsesLightTheme");
+                    return value != null && (int)value == 0;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error getting theme state: {ex.Message}");
+                    return false;
+                }
+            }
+            set
+            {
+                try
+                {
+                    // Set accent color to automatic first
+                    using (var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true))
+                    {
+                        if (key != null)
+                        {
+                            key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
+                            key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
+                            key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
+                            key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
+                        }
+                    }
+
+                    // Set system theme
+                    using (var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true))
+                    {
+                        if (key != null)
+                        {
+                            key.SetValue("SystemUsesLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
+                            key.SetValue("AppsUseLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
+                        }
+                    }
+
+                    // Broadcast theme change using a different method
+                    BroadcastThemeChange();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error setting theme: {ex.Message}");
+                    throw; // Rethrow to be handled by the UI
+                }
+            }
+        }
+
+        private void BroadcastThemeChange()
+        {
+            const int HWND_BROADCAST = 0xFFFF;
+            const int WM_SETTINGCHANGE = 0x001A;
+            const int WM_SYSCOLORCHANGE = 0x0015;
+            const int WM_THEMECHANGE = 0x031A;
+
+            try
+            {
+                // Send all messages in quick succession
+                NativeMethods.SendMessageTimeout(
+                    new IntPtr(HWND_BROADCAST),
+                    WM_SYSCOLORCHANGE,
+                    IntPtr.Zero,
+                    null,
+                    NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                    300,
+                    out _);
+
+                NativeMethods.SendMessageTimeout(
+                    new IntPtr(HWND_BROADCAST),
+                    WM_THEMECHANGE,
+                    IntPtr.Zero,
+                    null,
+                    NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                    300,
+                    out _);
+
+                // Notify Windows Shell about the change
+                var shell = NativeMethods.FindWindow("Shell_TrayWnd", null);
+                if (shell != IntPtr.Zero)
+                {
+                    NativeMethods.SendMessageTimeout(
+                        shell,
+                        WM_THEMECHANGE,
+                        IntPtr.Zero,
+                        null,
+                        NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                        300,
+                        out _);
+                }
+
+                // Send the final immersive color set change
+                NativeMethods.SendMessageTimeout(
+                    new IntPtr(HWND_BROADCAST),
+                    WM_SETTINGCHANGE,
+                    IntPtr.Zero,
+                    "ImmersiveColorSet",
+                    NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                    300,
+                    out _);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error broadcasting theme change: {ex.Message}");
+            }
+        }
+
         private const int SW_HIDE = 0;
         private const int SW_SHOW = 5;
 
         private static class NativeMethods
         {
+            public const int SMTO_ABORTIFHUNG = 0x0002;
+            public const int SMTO_NORMAL = 0x0000;
+
             [DllImport("user32.dll", SetLastError = true)]
             public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
@@ -391,6 +508,19 @@ namespace ClearGlass.Services
 
             [DllImport("user32.dll")]
             public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+            [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+            public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
+
+            [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+            public static extern IntPtr SendMessageTimeout(
+                IntPtr hWnd,
+                int Msg,
+                IntPtr wParam,
+                string lParam,
+                int fuFlags,
+                int uTimeout,
+                out IntPtr lpdwResult);
         }
     }
 } 
