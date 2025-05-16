@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.IO;
+using System.ComponentModel;
 
 namespace ClearGlass.Services
 {
@@ -20,6 +22,16 @@ namespace ClearGlass.Services
         private const string PersonalizePath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize";
         private const string AccentColorPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\History";
         private const string AccentColorSettingsPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+        private const string ThemePath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes";
+        private const string CurrentThemePath = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes";
+
+        // Add wallpaper paths
+        private readonly string _windowsWallpaperPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+            "Web\\Wallpaper\\Windows");
+
+        private string LightWallpaperPath => Path.Combine(_windowsWallpaperPath, "img19.jpg"); // Light Bloom
+        private string DarkWallpaperPath => Path.Combine(_windowsWallpaperPath, "img20.jpg");  // Dark Bloom
 
         private bool IsAdministrator()
         {
@@ -378,56 +390,78 @@ namespace ClearGlass.Services
             }
         }
 
-        public bool IsDarkMode
+        private string GetWallpaperPath(bool isDarkMode)
         {
-            get
+            try
             {
-                try
+                string wallpaperBasePath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                    "Web", "Wallpaper", "Windows");
+
+                // Use the correct filenames
+                string fileName = isDarkMode ? "img19_1920x1200.jpg" : "img0_1920x1200.jpg";
+                string wallpaperPath = Path.Combine(wallpaperBasePath, fileName);
+
+                Debug.WriteLine($"Trying wallpaper path: {wallpaperPath}");
+
+                if (File.Exists(wallpaperPath))
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath);
-                    var value = key?.GetValue("SystemUsesLightTheme");
-                    return value != null && (int)value == 0;
+                    return wallpaperPath;
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error getting theme state: {ex.Message}");
-                    return false;
-                }
+
+                Debug.WriteLine("Wallpaper file not found");
+                return null;
             }
-            set
+            catch (Exception ex)
             {
-                try
-                {
-                    // Set accent color to automatic first
-                    using (var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true))
-                    {
-                        if (key != null)
-                        {
-                            key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
-                            key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
-                            key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
-                            key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
-                        }
-                    }
+                Debug.WriteLine($"Error finding wallpaper path: {ex.Message}");
+                return null;
+            }
+        }
 
-                    // Set system theme
-                    using (var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true))
-                    {
-                        if (key != null)
-                        {
-                            key.SetValue("SystemUsesLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
-                            key.SetValue("AppsUseLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
-                        }
-                    }
+        private void SetWallpaper(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                Debug.WriteLine("Cannot set wallpaper: path is null or empty");
+                return;
+            }
 
-                    // Broadcast theme change using a different method
-                    BroadcastThemeChange();
-                }
-                catch (Exception ex)
+            const int SPI_SETDESKWALLPAPER = 0x0014;
+            const int SPIF_UPDATEINIFILE = 0x01;
+            const int SPIF_SENDCHANGE = 0x02;
+
+            try
+            {
+                Debug.WriteLine($"Attempting to set wallpaper: {path}");
+
+                // First try to set the wallpaper style to Fill
+                using (var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
                 {
-                    Debug.WriteLine($"Error setting theme: {ex.Message}");
-                    throw; // Rethrow to be handled by the UI
+                    if (key != null)
+                    {
+                        key.SetValue("WallpaperStyle", "10"); // 10 = Fill
+                        key.SetValue("TileWallpaper", "0");
+                    }
                 }
+
+                // Set the wallpaper
+                if (!NativeMethods.SystemParametersInfo(
+                    (uint)SPI_SETDESKWALLPAPER,
+                    0,
+                    path,
+                    (uint)(SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)))
+                {
+                    int error = Marshal.GetLastWin32Error();
+                    throw new Win32Exception(error);
+                }
+
+                Debug.WriteLine("Wallpaper set successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error setting wallpaper: {ex.Message}");
+                throw;
             }
         }
 
@@ -489,6 +523,83 @@ namespace ClearGlass.Services
             }
         }
 
+        public bool IsDarkMode
+        {
+            get
+            {
+                try
+                {
+                    using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath);
+                    var value = key?.GetValue("SystemUsesLightTheme");
+                    return value != null && (int)value == 0;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error getting theme state: {ex.Message}");
+                    return false;
+                }
+            }
+            set
+            {
+                try
+                {
+                    Debug.WriteLine($"Setting theme to: {(value ? "Dark" : "Light")}");
+
+                    // Set accent color to automatic first
+                    using (var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true))
+                    {
+                        if (key != null)
+                        {
+                            key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
+                            key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
+                            key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
+                            key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
+                        }
+                    }
+
+                    // Set system theme
+                    using (var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true))
+                    {
+                        if (key != null)
+                        {
+                            key.SetValue("SystemUsesLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
+                            key.SetValue("AppsUseLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
+                        }
+                    }
+
+                    // Apply the appropriate Windows theme
+                    string themesPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                        "Resources", "Themes");
+
+                    string themeFile = value ? "dark.theme" : "aero.theme";
+                    string themePath = Path.Combine(themesPath, themeFile);
+
+                    if (File.Exists(themePath))
+                    {
+                        Debug.WriteLine($"Applying theme: {themePath}");
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = themePath,
+                            UseShellExecute = true
+                        });
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"Theme file not found: {themePath}");
+                    }
+
+                    // Broadcast theme change
+                    BroadcastThemeChange();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error setting theme: {ex.Message}");
+                    throw;
+                }
+            }
+        }
+
         private const int SW_HIDE = 0;
         private const int SW_SHOW = 5;
 
@@ -521,6 +632,14 @@ namespace ClearGlass.Services
                 int fuFlags,
                 int uTimeout,
                 out IntPtr lpdwResult);
+
+            [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            public static extern bool SystemParametersInfo(
+                uint uiAction,
+                uint uiParam,
+                string pvParam,
+                uint fWinIni);
         }
     }
 } 
