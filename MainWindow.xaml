@@ -162,6 +162,44 @@
                 </ThicknessAnimation.EasingFunction>
             </ThicknessAnimation>
         </Storyboard>
+
+        <Storyboard x:Key="ShowOptimizationOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="OptimizationOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="OptimizationOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="0,600,0,-600" To="10,10,10,10" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+        
+        <Storyboard x:Key="HideOptimizationOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="OptimizationOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="1" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="OptimizationOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="10,10,10,10" To="0,600,0,-600" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
     </Window.Resources>
 
     <Grid>
@@ -406,6 +444,82 @@
                           Foreground="{StaticResource TextPrimary}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Optimization Overlay -->
+        <Border x:Name="OptimizationOverlay"
+                CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="0,600,0,-600"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Windows Optimization"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseOptimizationButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseOptimizationClick"/>
+                </Grid>
+
+                <StackPanel Grid.Row="1" 
+                           VerticalAlignment="Center" 
+                           HorizontalAlignment="Center">
+                    <Button Content="Tweak Windows Settings" 
+                            Style="{StaticResource ActionButton}"
+                            Width="250"
+                            Margin="0,0,0,20"
+                            Click="OnTweakSettingsClick"/>
+                            
+                    <Button Content="Remove Windows Bloatware" 
+                            Style="{StaticResource ActionButton}"
+                            Width="250"
+                            Margin="0,0,0,20"
+                            Click="OnRemoveBloatwareClick"/>
+                            
+                    <Button Content="Run Optimization" 
+                            Style="{StaticResource ActionButton}"
+                            Width="250"
+                            Click="OnRunOptimizationClick"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

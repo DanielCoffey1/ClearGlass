@@ -20,6 +20,8 @@ namespace ClearGlass
         private readonly string _hashPath;
         private Storyboard _showAddonsOverlay;
         private Storyboard _hideAddonsOverlay;
+        private Storyboard _showOptimizationOverlay;
+        private Storyboard _hideOptimizationOverlay;
 
         public MainWindow()
         {
@@ -47,10 +49,14 @@ namespace ClearGlass
             // Initialize storyboards
             _showAddonsOverlay = (Storyboard)FindResource("ShowAddonsOverlay");
             _hideAddonsOverlay = (Storyboard)FindResource("HideAddonsOverlay");
+            _showOptimizationOverlay = (Storyboard)FindResource("ShowOptimizationOverlay");
+            _hideOptimizationOverlay = (Storyboard)FindResource("HideOptimizationOverlay");
             
-            // Ensure overlay is hidden initially
+            // Ensure overlays are hidden initially
             AddonsOverlay.Opacity = 0;
             AddonsOverlay.Margin = new Thickness(0, 600, 0, -600);
+            OptimizationOverlay.Opacity = 0;
+            OptimizationOverlay.Margin = new Thickness(0, 600, 0, -600);
         }
 
         private void LoadCurrentSettings()
@@ -242,8 +248,44 @@ namespace ClearGlass
 
         private void OnWindowsOptimizationClick(object sender, RoutedEventArgs e)
         {
-            // Placeholder for Windows Optimization functionality
-            MessageBox.Show("Windows Optimization button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+            OptimizationOverlay.Visibility = Visibility.Visible;
+            _showOptimizationOverlay.Begin(this);
+        }
+
+        private void OnCloseOptimizationClick(object sender, RoutedEventArgs e)
+        {
+            _hideOptimizationOverlay.Begin(this, isControllable: false);
+            _hideOptimizationOverlay.Completed += (s, _) =>
+            {
+                OptimizationOverlay.Visibility = Visibility.Collapsed;
+            };
+        }
+
+        private void OnTweakSettingsClick(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Windows Settings Tweaks feature coming soon!\n\nThis will allow you to customize various Windows settings for optimal performance and user experience.",
+                "Clear Glass",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        private void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Windows Bloatware Removal feature coming soon!\n\nThis will help you remove unnecessary Windows applications and services to improve system performance.",
+                "Clear Glass",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        private void OnRunOptimizationClick(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Windows Optimization feature coming soon!\n\nThis will run a series of optimizations to improve your Windows performance and experience.",
+                "Clear Glass",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private void OnClearGlassClick(object sender, RoutedEventArgs e)
