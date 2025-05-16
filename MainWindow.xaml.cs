@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 using ClearGlass.Services;
 using System;
 using System.Windows.Threading;
+using System.Net.Http;
+using System.IO;
+using System.Security.Cryptography;
 
 namespace ClearGlass
 {
@@ -10,11 +13,24 @@ namespace ClearGlass
     {
         private readonly ThemeService _themeService;
         private bool _isThemeChanging = false;
+        private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
+        private readonly string _wallpaperPath;
+        private readonly string _hashPath;
 
         public MainWindow()
         {
             InitializeComponent();
             _themeService = new ThemeService();
+            
+            // Store in Windows' Wallpaper cache directory
+            _wallpaperPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Microsoft\\Windows\\Themes\\ClearGlass",
+                "wallpaper.png");
+            _hashPath = Path.Combine(
+                Path.GetDirectoryName(_wallpaperPath),
+                "wallpaper.hash");
+                
             LoadCurrentSettings();
         }
 
@@ -99,6 +115,122 @@ namespace ClearGlass
                 ThemeToggle.IsEnabled = true;
                 _isThemeChanging = false;
             }
+        }
+
+        private async Task EnsureWallpaperAsync()
+        {
+            try
+            {
+                // Create directory if it doesn't exist
+                Directory.CreateDirectory(Path.GetDirectoryName(_wallpaperPath));
+
+                bool needsDownload = true;
+                string currentHash = null;
+
+                // Check if wallpaper exists and get its hash
+                if (File.Exists(_wallpaperPath) && File.Exists(_hashPath))
+                {
+                    currentHash = await File.ReadAllTextAsync(_hashPath);
+                    using var client = new HttpClient();
+                    var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, _wallpaperUrl));
+                    var etag = response.Headers.ETag?.Tag;
+                    
+                    if (!string.IsNullOrEmpty(etag) && etag == currentHash)
+                    {
+                        needsDownload = false;
+                    }
+                }
+
+                if (needsDownload)
+                {
+                    using (var client = new HttpClient())
+                    {
+                        var response = await client.GetAsync(_wallpaperUrl);
+                        response.EnsureSuccessStatusCode();
+
+                        // Save the ETag
+                        var etag = response.Headers.ETag?.Tag;
+                        if (!string.IsNullOrEmpty(etag))
+                        {
+                            await File.WriteAllTextAsync(_hashPath, etag);
+                        }
+
+                        // Save the wallpaper
+                        using (var fs = new FileStream(_wallpaperPath, FileMode.Create))
+                        {
+                            await response.Content.CopyToAsync(fs);
+                        }
+                    }
+                }
+
+                // Set the wallpaper
+                _themeService.SetWallpaper(_wallpaperPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error setting wallpaper: {ex.Message}",
+                    "Wallpaper Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private async void OnClearGlassThemeClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ClearGlassThemeButton.IsEnabled = false;
+
+                // Ensure wallpaper is available and set it
+                await EnsureWallpaperAsync();
+
+                // Apply Clear Glass theme settings
+                TaskbarAlignmentToggle.IsChecked = false; // Left alignment
+                _themeService.IsTaskbarCentered = false;
+
+                TaskViewToggle.IsChecked = false; // Hide
+                _themeService.IsTaskViewEnabled = false;
+
+                SearchToggle.IsChecked = false; // Hide
+                _themeService.IsSearchVisible = false;
+
+                DesktopIconsToggle.IsChecked = false; // Hide
+                _themeService.AreDesktopIconsVisible = false;
+
+                ThemeToggle.IsChecked = true; // Dark theme
+                await Task.Run(() => _themeService.IsDarkMode = true);
+
+                MessageBox.Show(
+                    "Clear Glass Theme applied successfully!",
+                    "Clear Glass",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error applying Clear Glass Theme: {ex.Message}",
+                    "Theme Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            finally
+            {
+                ClearGlassThemeButton.IsEnabled = true;
+            }
+        }
+
+        private void OnWindowsOptimizationClick(object sender, RoutedEventArgs e)
+        {
+            // Placeholder for Windows Optimization functionality
+            MessageBox.Show("Windows Optimization button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void OnClearGlassClick(object sender, RoutedEventArgs e)
+        {
+            // Placeholder for Clear Glass functionality
+            MessageBox.Show("Clear Glass button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 } 

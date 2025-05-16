@@ -419,7 +419,7 @@ namespace ClearGlass.Services
             }
         }
 
-        private void SetWallpaper(string path)
+        public void SetWallpaper(string path)
         {
             if (string.IsNullOrEmpty(path))
             {
