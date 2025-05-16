@@ -15,6 +15,7 @@ namespace ClearGlass
     {
         private readonly ThemeService _themeService;
         private readonly OptimizationService _optimizationService;
+        private readonly BloatwareService _bloatwareService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
@@ -29,6 +30,7 @@ namespace ClearGlass
             InitializeComponent();
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
+            _bloatwareService = new BloatwareService();
             
             // Store in Windows' Wallpaper cache directory
             _wallpaperPath = Path.Combine(
@@ -209,28 +211,38 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Ensure wallpaper is available and set it
+                // Apply Clear Glass theme
                 await EnsureWallpaperAsync();
+                await Task.Delay(100); // Give Windows time to process the wallpaper change
 
                 // Apply Clear Glass theme settings
                 TaskbarAlignmentToggle.IsChecked = false; // Left alignment
                 _themeService.IsTaskbarCentered = false;
+                await Task.Delay(100); // Wait for taskbar change
 
                 TaskViewToggle.IsChecked = false; // Hide
                 _themeService.IsTaskViewEnabled = false;
+                await Task.Delay(100); // Wait for task view change
 
                 SearchToggle.IsChecked = false; // Hide
                 _themeService.IsSearchVisible = false;
+                await Task.Delay(100); // Wait for search change
 
                 DesktopIconsToggle.IsChecked = false; // Hide
                 _themeService.AreDesktopIconsVisible = false;
+                await Task.Delay(100); // Wait for desktop icons change
 
                 ThemeToggle.IsChecked = true; // Dark theme
                 await Task.Run(() => _themeService.IsDarkMode = true);
+                await Task.Delay(400); // Give more time for theme change
+
+                // Force a Windows shell refresh
+                _themeService.RefreshWindows();
 
                 MessageBox.Show(
-                    "Clear Glass Theme applied successfully!",
-                    "Clear Glass",
+                    "Clear Glass Theme applied successfully!\n\n" +
+                    "Some changes may take a few seconds to fully apply.",
+                    "Success",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
@@ -238,13 +250,79 @@ namespace ClearGlass
             {
                 MessageBox.Show(
                     $"Error applying Clear Glass Theme: {ex.Message}",
-                    "Theme Error",
+                    "Error",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.Error);
             }
             finally
             {
                 ClearGlassThemeButton.IsEnabled = true;
+            }
+        }
+
+        private async void OnClearGlassClick(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will apply the complete Clear Glass experience:\n\n" +
+                "1. Optimize Windows settings (privacy, performance, services)\n" +
+                "2. Remove unnecessary Windows bloatware\n" +
+                "3. Apply the Clear Glass theme (dark mode, centered taskbar, etc.)\n\n" +
+                "A system restore point will be created before making changes.\n\n" +
+                "Do you want to continue?",
+                "Apply Complete Clear Glass Experience",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    ClearGlassButton.IsEnabled = false;
+
+                    // Run Windows settings optimization
+                    await _optimizationService.TweakWindowsSettings();
+                    
+                    // Run bloatware removal
+                    await _bloatwareService.RemoveWindowsBloatware();
+
+                    // Apply Clear Glass theme
+                    await EnsureWallpaperAsync();
+
+                    // Apply Clear Glass theme settings
+                    TaskbarAlignmentToggle.IsChecked = false; // Left alignment
+                    _themeService.IsTaskbarCentered = false;
+
+                    TaskViewToggle.IsChecked = false; // Hide
+                    _themeService.IsTaskViewEnabled = false;
+
+                    SearchToggle.IsChecked = false; // Hide
+                    _themeService.IsSearchVisible = false;
+
+                    DesktopIconsToggle.IsChecked = false; // Hide
+                    _themeService.AreDesktopIconsVisible = false;
+
+                    ThemeToggle.IsChecked = true; // Dark theme
+                    await Task.Run(() => _themeService.IsDarkMode = true);
+
+                    MessageBox.Show(
+                        "Clear Glass experience has been fully applied!\n\n" +
+                        "Some changes may require a system restart to take full effect.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Error applying Clear Glass experience: {ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                finally
+                {
+                    ClearGlassButton.IsEnabled = true;
+                }
             }
         }
 
@@ -277,28 +355,60 @@ namespace ClearGlass
             }
         }
 
-        private void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
+        private async void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Windows Bloatware Removal feature coming soon!\n\nThis will help you remove unnecessary Windows applications and services to improve system performance.",
-                "Clear Glass",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            var result = MessageBox.Show(
+                "This will remove unnecessary Windows apps while keeping essential system components and useful applications.\n\n" +
+                "A system restore point will be created before making changes.\n\n" +
+                "Do you want to continue?",
+                "Confirm Windows Bloatware Removal",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                await _bloatwareService.RemoveWindowsBloatware();
+            }
         }
 
-        private void OnRunOptimizationClick(object sender, RoutedEventArgs e)
+        private async void OnRunOptimizationClick(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Windows Optimization feature coming soon!\n\nThis will run a series of optimizations to improve your Windows performance and experience.",
-                "Clear Glass",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
+            var result = MessageBox.Show(
+                "This will:\n\n" +
+                "1. Optimize Windows settings (privacy, performance, services)\n" +
+                "2. Remove unnecessary Windows bloatware\n\n" +
+                "A system restore point will be created before making changes.\n\n" +
+                "Do you want to continue?",
+                "Confirm Full Windows Optimization",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
 
-        private void OnClearGlassClick(object sender, RoutedEventArgs e)
-        {
-            // Placeholder for Clear Glass functionality
-            MessageBox.Show("Clear Glass button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    // Run Windows settings optimization
+                    await _optimizationService.TweakWindowsSettings();
+                    
+                    // Run bloatware removal
+                    await _bloatwareService.RemoveWindowsBloatware();
+
+                    MessageBox.Show(
+                        "Full Windows optimization completed successfully!\n\n" +
+                        "Some changes may require a system restart to take full effect.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Error during optimization: {ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
         }
 
         private void OnRecommendedAddonsClick(object sender, RoutedEventArgs e)
