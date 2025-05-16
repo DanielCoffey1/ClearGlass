@@ -14,17 +14,21 @@ namespace ClearGlass
     public partial class MainWindow : Window
     {
         private readonly ThemeService _themeService;
+        private readonly OptimizationService _optimizationService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
         private readonly string _hashPath;
         private Storyboard _showAddonsOverlay;
         private Storyboard _hideAddonsOverlay;
+        private Storyboard _showOptimizationOverlay;
+        private Storyboard _hideOptimizationOverlay;
 
         public MainWindow()
         {
             InitializeComponent();
             _themeService = new ThemeService();
+            _optimizationService = new OptimizationService();
             
             // Store in Windows' Wallpaper cache directory
             _wallpaperPath = Path.Combine(
@@ -47,10 +51,14 @@ namespace ClearGlass
             // Initialize storyboards
             _showAddonsOverlay = (Storyboard)FindResource("ShowAddonsOverlay");
             _hideAddonsOverlay = (Storyboard)FindResource("HideAddonsOverlay");
+            _showOptimizationOverlay = (Storyboard)FindResource("ShowOptimizationOverlay");
+            _hideOptimizationOverlay = (Storyboard)FindResource("HideOptimizationOverlay");
             
-            // Ensure overlay is hidden initially
+            // Ensure overlays are hidden initially
             AddonsOverlay.Opacity = 0;
             AddonsOverlay.Margin = new Thickness(0, 600, 0, -600);
+            OptimizationOverlay.Opacity = 0;
+            OptimizationOverlay.Margin = new Thickness(0, 600, 0, -600);
         }
 
         private void LoadCurrentSettings()
@@ -242,8 +250,49 @@ namespace ClearGlass
 
         private void OnWindowsOptimizationClick(object sender, RoutedEventArgs e)
         {
-            // Placeholder for Windows Optimization functionality
-            MessageBox.Show("Windows Optimization button clicked. Functionality coming soon!", "Clear Glass", MessageBoxButton.OK, MessageBoxImage.Information);
+            OptimizationOverlay.Visibility = Visibility.Visible;
+            _showOptimizationOverlay.Begin(this);
+        }
+
+        private void OnCloseOptimizationClick(object sender, RoutedEventArgs e)
+        {
+            _hideOptimizationOverlay.Begin(this, isControllable: false);
+            _hideOptimizationOverlay.Completed += (s, _) =>
+            {
+                OptimizationOverlay.Visibility = Visibility.Collapsed;
+            };
+        }
+
+        private async void OnTweakSettingsClick(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will modify various Windows settings to optimize your system. A restore point will be created before making changes. Do you want to continue?",
+                "Confirm Windows Settings Optimization",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                await _optimizationService.TweakWindowsSettings();
+            }
+        }
+
+        private void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Windows Bloatware Removal feature coming soon!\n\nThis will help you remove unnecessary Windows applications and services to improve system performance.",
+                "Clear Glass",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        private void OnRunOptimizationClick(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Windows Optimization feature coming soon!\n\nThis will run a series of optimizations to improve your Windows performance and experience.",
+                "Clear Glass",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private void OnClearGlassClick(object sender, RoutedEventArgs e)
