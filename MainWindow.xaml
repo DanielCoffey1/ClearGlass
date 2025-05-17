@@ -549,12 +549,102 @@
                             Click="OnCloseAddonsClick"/>
                 </Grid>
 
-                <TextBlock Grid.Row="1" 
-                          Text="Coming Soon!"
-                          FontSize="18"
-                          Foreground="{StaticResource TextPrimary}"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center"/>
+                <Grid Grid.Row="1" 
+                      Margin="0,10,0,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- LibreWolf -->
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Icon -->
+                                    <Image Source="pack://application:,,,/Images/librewolf.png"
+                                           Width="40"
+                                           Height="40"
+                                           VerticalAlignment="Top"/>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="1"
+                                              Margin="15,0,0,0">
+                                        <TextBlock Text="LibreWolf"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="LibreWolf is a privacy-focused web browser built from the Firefox source code. It aims to provide a more secure and private browsing experience by removing telemetry (data collection) and other non-essential features that could compromise user privacy."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Download"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="80"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnLibreWolfDownloadClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Revo Uninstaller -->
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Icon -->
+                                    <Image Source="pack://application:,,,/Images/revo.png"
+                                           Width="40"
+                                           Height="40"
+                                           VerticalAlignment="Top"/>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="1"
+                                              Margin="15,0,0,0">
+                                        <TextBlock Text="Revo Uninstaller"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Revo Uninstaller is a software tool designed to help users completely uninstall applications from Windows systems. Ideal for: Users who frequently install and remove software, or who need to cleanly get rid of problematic programs."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Download"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="80"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnRevoDownloadClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Download Bundle Button -->
+                    <Button Content="Download Bundle"
+                            Grid.Row="1"
+                            Style="{StaticResource ActionButton}"
+                            Width="200"
+                            Height="36"
+                            Margin="0,20,0,0"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            x:Name="DownloadBundleButton"
+                            Click="OnDownloadBundleClick"/>
+                </Grid>
             </Grid>
         </Border>
 

@@ -19,6 +19,7 @@ namespace ClearGlass
         private readonly ThemeService _themeService;
         private readonly OptimizationService _optimizationService;
         private readonly BloatwareService _bloatwareService;
+        private readonly WingetService _wingetService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
@@ -38,6 +39,7 @@ namespace ClearGlass
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
             _bloatwareService = new BloatwareService();
+            _wingetService = new WingetService();
             
             // Store in Windows' tools directory
             string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -228,11 +230,7 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Apply Clear Glass theme
-                await EnsureWallpaperAsync();
-                await Task.Delay(100); // Give Windows time to process the wallpaper change
-
-                // Apply Clear Glass theme settings
+                // Apply Clear Glass theme settings first
                 TaskbarAlignmentToggle.IsChecked = false; // Left alignment
                 _themeService.IsTaskbarCentered = false;
                 await Task.Delay(100); // Wait for taskbar change
@@ -255,6 +253,10 @@ namespace ClearGlass
 
                 // Force a Windows shell refresh
                 _themeService.RefreshWindows();
+                await Task.Delay(200); // Wait for refresh
+
+                // Apply Clear Glass wallpaper last
+                await EnsureWallpaperAsync();
 
                 MessageBox.Show(
                     "Clear Glass Theme applied successfully!\n\n" +
@@ -641,6 +643,143 @@ namespace ClearGlass
             finally
             {
                 SupportUsButton.IsEnabled = true;
+            }
+        }
+
+        private async void OnLibreWolfDownloadClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "Would you like to install LibreWolf using winget?\n\n" +
+                    "Click Yes to install automatically using winget.\n" +
+                    "Click No to open the LibreWolf website instead.",
+                    "Install LibreWolf",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    await _wingetService.InstallApp("LibreWolf.LibreWolf", "LibreWolf");
+                    MessageBox.Show(
+                        "LibreWolf has been installed successfully!",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "https://librewolf.net/",
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnRevoDownloadClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "Would you like to install Revo Uninstaller using winget?\n\n" +
+                    "Click Yes to install automatically using winget.\n" +
+                    "Click No to open the Revo Uninstaller website instead.",
+                    "Install Revo Uninstaller",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    await _wingetService.InstallApp("RevoUninstaller.RevoUninstaller", "Revo Uninstaller");
+                    MessageBox.Show(
+                        "Revo Uninstaller has been installed successfully!",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "https://www.revouninstaller.com/products/revo-uninstaller-free/",
+                        UseShellExecute = true
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnDownloadBundleClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Disable the button during installation
+                DownloadBundleButton.IsEnabled = false;
+                DownloadBundleButton.Content = "Installing...";
+
+                var result = MessageBox.Show(
+                    "This will install all recommended applications using winget:\n\n" +
+                    "• LibreWolf Browser\n" +
+                    "• Revo Uninstaller\n\n" +
+                    "Do you want to continue?",
+                    "Install All Applications",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Check if winget is installed first
+                    if (!await _wingetService.IsWingetInstalled())
+                    {
+                        await _wingetService.InstallWinget();
+                        return;
+                    }
+
+                    // Install LibreWolf
+                    DownloadBundleButton.Content = "Installing LibreWolf...";
+                    await _wingetService.InstallApp("LibreWolf.LibreWolf", "LibreWolf");
+
+                    // Install Revo Uninstaller
+                    DownloadBundleButton.Content = "Installing Revo Uninstaller...";
+                    await _wingetService.InstallApp("RevoUninstaller.RevoUninstaller", "Revo Uninstaller");
+
+                    MessageBox.Show(
+                        "All applications have been installed successfully!",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    ex.Message,
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Reset button state
+                DownloadBundleButton.IsEnabled = true;
+                DownloadBundleButton.Content = "Download Bundle";
             }
         }
     }
