@@ -14,7 +14,7 @@
         <SolidColorBrush x:Key="AccentBlue" Color="#90CAF9"/>
         
         <!-- Text Colors -->
-        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="TextSecondary" Color="#B3FFFFFF"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#E6FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#CCFFFFFF"/>
     </Application.Resources>
 </Application> 

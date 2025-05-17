@@ -9,6 +9,8 @@ using System.Security.Cryptography;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Diagnostics;
+using System.Collections.ObjectModel;
+using ClearGlass.Models;
 
 namespace ClearGlass
 {
@@ -22,10 +24,13 @@ namespace ClearGlass
         private readonly string _wallpaperPath;
         private readonly string _hashPath;
         private readonly string _autologonPath;
-        private Storyboard _showAddonsOverlay;
-        private Storyboard _hideAddonsOverlay;
-        private Storyboard _showOptimizationOverlay;
-        private Storyboard _hideOptimizationOverlay;
+        private Storyboard _showAddonsOverlay = null!;
+        private Storyboard _hideAddonsOverlay = null!;
+        private Storyboard _showOptimizationOverlay = null!;
+        private Storyboard _hideOptimizationOverlay = null!;
+        private Storyboard _showKeepAppsOverlay = null!;
+        private Storyboard _hideKeepAppsOverlay = null!;
+        private ObservableCollection<WindowsApp>? _installedApps;
 
         public MainWindow()
         {
@@ -35,18 +40,19 @@ namespace ClearGlass
             _bloatwareService = new BloatwareService();
             
             // Store in Windows' tools directory
-            _autologonPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "ClearGlass\\Tools\\Autologon.exe");
+            string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            _autologonPath = Path.Combine(commonAppData, "ClearGlass", "Tools", "Autologon.exe");
                 
             // Store in Windows' Wallpaper cache directory
-            _wallpaperPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Microsoft\\Windows\\Themes\\ClearGlass",
-                "wallpaper.png");
-            _hashPath = Path.Combine(
-                Path.GetDirectoryName(_wallpaperPath),
-                "wallpaper.hash");
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            _wallpaperPath = Path.Combine(appData, "Microsoft", "Windows", "Themes", "ClearGlass", "wallpaper.png");
+            
+            string? wallpaperDir = Path.GetDirectoryName(_wallpaperPath);
+            if (wallpaperDir == null)
+            {
+                throw new InvalidOperationException("Invalid wallpaper path");
+            }
+            _hashPath = Path.Combine(wallpaperDir, "wallpaper.hash");
                 
             LoadCurrentSettings();
 
@@ -62,12 +68,16 @@ namespace ClearGlass
             _hideAddonsOverlay = (Storyboard)FindResource("HideAddonsOverlay");
             _showOptimizationOverlay = (Storyboard)FindResource("ShowOptimizationOverlay");
             _hideOptimizationOverlay = (Storyboard)FindResource("HideOptimizationOverlay");
+            _showKeepAppsOverlay = (Storyboard)FindResource("ShowKeepAppsOverlay");
+            _hideKeepAppsOverlay = (Storyboard)FindResource("HideKeepAppsOverlay");
             
             // Ensure overlays are hidden initially
             AddonsOverlay.Opacity = 0;
             AddonsOverlay.Margin = new Thickness(0, 600, 0, -600);
             OptimizationOverlay.Opacity = 0;
             OptimizationOverlay.Margin = new Thickness(0, 600, 0, -600);
+            KeepAppsOverlay.Opacity = 0;
+            KeepAppsOverlay.Margin = new Thickness(0, 600, 0, -600);
         }
 
         private void LoadCurrentSettings()
@@ -515,30 +525,23 @@ namespace ClearGlass
             }
         }
 
-        private void OnKeepAppsClick(object sender, RoutedEventArgs e)
+        private async void OnKeepAppsClick(object sender, RoutedEventArgs e)
         {
             try
             {
                 // Disable the button during operation
                 KeepAppsButton.IsEnabled = false;
 
-                // Show a confirmation dialog
-                var result = MessageBox.Show(
-                    "This will allow you to select which Windows apps to keep during optimization.\n\n" +
-                    "Are you sure you want to continue?",
-                    "Keep Apps Configuration",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
+                // Load installed apps if not already loaded
+                if (_installedApps == null)
                 {
-                    // TODO: Implement keep apps selection
-                    MessageBox.Show(
-                        "App selection feature will be implemented in a future update.",
-                        "Coming Soon",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    _installedApps = await _bloatwareService.GetInstalledApps();
+                    AppsListView.ItemsSource = _installedApps;
                 }
+
+                // Show the overlay
+                KeepAppsOverlay.Visibility = Visibility.Visible;
+                _showKeepAppsOverlay.Begin();
             }
             catch (Exception ex)
             {
@@ -551,6 +554,64 @@ namespace ClearGlass
             finally
             {
                 KeepAppsButton.IsEnabled = true;
+            }
+        }
+
+        private void OnCloseKeepAppsClick(object sender, RoutedEventArgs e)
+        {
+            _hideKeepAppsOverlay.Begin(this, isControllable: false);
+            _hideKeepAppsOverlay.Completed += (s, _) =>
+            {
+                KeepAppsOverlay.Visibility = Visibility.Collapsed;
+            };
+        }
+
+        private async void OnApplyKeepAppsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Disable the button during operation
+                ApplyKeepAppsButton.IsEnabled = false;
+
+                var result = MessageBox.Show(
+                    "This will update the list of protected apps for this session.\n\n" +
+                    "Protected apps will be kept when using:\n" +
+                    "- Remove Windows Bloatware\n" +
+                    "- Run Optimization\n" +
+                    "- Clear Glass button\n\n" +
+                    "Note: Protected apps will reset to defaults when you restart the application.\n\n" +
+                    "Do you want to continue?",
+                    "Update Protected Apps",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Update the essential apps list with selected apps
+                    _bloatwareService.UpdateSessionEssentialApps(_installedApps);
+
+                    MessageBox.Show(
+                        "Protected apps list has been updated successfully!\n\n" +
+                        "These apps will be kept when removing bloatware.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    
+                    // Close the overlay after successful operation
+                    OnCloseKeepAppsClick(sender, e);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error updating protected apps list: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                ApplyKeepAppsButton.IsEnabled = true;
             }
         }
 
