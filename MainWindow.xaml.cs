@@ -8,6 +8,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using System.Diagnostics;
 
 namespace ClearGlass
 {
@@ -20,6 +21,7 @@ namespace ClearGlass
         private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
         private readonly string _hashPath;
+        private readonly string _autologonPath;
         private Storyboard _showAddonsOverlay;
         private Storyboard _hideAddonsOverlay;
         private Storyboard _showOptimizationOverlay;
@@ -32,6 +34,11 @@ namespace ClearGlass
             _optimizationService = new OptimizationService();
             _bloatwareService = new BloatwareService();
             
+            // Store in Windows' tools directory
+            _autologonPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "ClearGlass\\Tools\\Autologon.exe");
+                
             // Store in Windows' Wallpaper cache directory
             _wallpaperPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -413,8 +420,7 @@ namespace ClearGlass
 
         private void OnRecommendedAddonsClick(object sender, RoutedEventArgs e)
         {
-            AddonsOverlay.Visibility = Visibility.Visible;
-            _showAddonsOverlay.Begin(this);
+            _showAddonsOverlay.Begin();
         }
 
         private void OnCloseAddonsClick(object sender, RoutedEventArgs e)
@@ -428,7 +434,153 @@ namespace ClearGlass
 
         private void OnCloseButtonClick(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Application.Current.Shutdown();
+        }
+
+        private async void OnAutoLoginClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Disable the button during operation
+                AutoLoginButton.IsEnabled = false;
+
+                // Show a confirmation dialog
+                var result = MessageBox.Show(
+                    "This will launch Microsoft's Autologon tool to configure automatic login.\n\n" +
+                    "Are you sure you want to continue?",
+                    "Auto Login Configuration",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        // Create directory if it doesn't exist
+                        Directory.CreateDirectory(Path.GetDirectoryName(_autologonPath));
+
+                        // Download Autologon if it doesn't exist
+                        if (!File.Exists(_autologonPath))
+                        {
+                            using (var client = new HttpClient())
+                            {
+                                var response = await client.GetAsync("https://download.sysinternals.com/files/AutoLogon.zip");
+                                response.EnsureSuccessStatusCode();
+
+                                var zipPath = Path.Combine(Path.GetDirectoryName(_autologonPath), "Autologon.zip");
+                                using (var fs = new FileStream(zipPath, FileMode.Create))
+                                {
+                                    await response.Content.CopyToAsync(fs);
+                                }
+
+                                // Extract the zip
+                                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, Path.GetDirectoryName(_autologonPath), true);
+                                
+                                // Clean up zip file
+                                File.Delete(zipPath);
+                            }
+                        }
+
+                        // Launch Autologon
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = _autologonPath,
+                            UseShellExecute = true,
+                            Verb = "runas" // Run as administrator
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Error downloading or launching Autologon: {ex.Message}\n\n" +
+                            "Please download and run Autologon manually from:\n" +
+                            "https://learn.microsoft.com/en-us/sysinternals/downloads/autologon",
+                            "Error",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error configuring auto login: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                AutoLoginButton.IsEnabled = true;
+            }
+        }
+
+        private void OnKeepAppsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Disable the button during operation
+                KeepAppsButton.IsEnabled = false;
+
+                // Show a confirmation dialog
+                var result = MessageBox.Show(
+                    "This will allow you to select which Windows apps to keep during optimization.\n\n" +
+                    "Are you sure you want to continue?",
+                    "Keep Apps Configuration",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // TODO: Implement keep apps selection
+                    MessageBox.Show(
+                        "App selection feature will be implemented in a future update.",
+                        "Coming Soon",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error configuring apps to keep: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                KeepAppsButton.IsEnabled = true;
+            }
+        }
+
+        private void OnSupportUsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Disable the button during operation
+                SupportUsButton.IsEnabled = false;
+
+                // TODO: Implement support options
+                MessageBox.Show(
+                    "Thank you for considering supporting Clear Glass!\n\n" +
+                    "Support options will be available in a future update.",
+                    "Support Clear Glass",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error showing support options: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                SupportUsButton.IsEnabled = true;
+            }
         }
     }
 } 

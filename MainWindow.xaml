@@ -1,7 +1,7 @@
 <Window x:Class="ClearGlass.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Clear Glass" Height="600" Width="500"
+        Title="Clear Glass" Height="650" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
         AllowsTransparency="True"
@@ -125,6 +125,40 @@
             </Setter>
         </Style>
         
+        <!-- New style for tiny transparent buttons -->
+        <Style x:Key="TinyButton" TargetType="Button">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AAFFFFFF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="14"
+                                BorderThickness="1"
+                                BorderBrush="#40FFFFFF"
+                                Padding="0,2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Margin="8,2"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#20FFFFFF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="BorderBrush" Value="#60FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#30FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
         <Storyboard x:Key="ShowAddonsOverlay">
             <DoubleAnimation 
                 Storyboard.TargetName="AddonsOverlay"
@@ -212,14 +246,15 @@
                 <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
             </Border.Effect>
             
-            <Grid Margin="20">
+            <Grid Margin="20,20,20,35">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                <Grid Grid.Row="0" Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -340,17 +375,11 @@
                     </Grid>
                 </StackPanel>
 
-                <Button Content="Recommended Addons" 
-                        Grid.Row="1"
-                        Style="{StaticResource ActionButton}"
-                        Width="200"
-                        Margin="0,20,0,0"
-                        x:Name="RecommendedAddonsButton"
-                        Click="OnRecommendedAddonsClick"
-                        VerticalAlignment="Bottom"/>
-
-                <Grid Grid.Row="2" Margin="0,40,0,10">
+                <!-- Action buttons section -->
+                <Grid Grid.Row="2" Margin="0,10,0,10">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
@@ -359,7 +388,20 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- Recommended Addons Button -->
+                    <Button Grid.Row="0"
+                            Grid.ColumnSpan="2"
+                            Content="Recommended Addons" 
+                            Style="{StaticResource ActionButton}"
+                            Width="200"
+                            Height="36"
+                            x:Name="RecommendedAddonsButton"
+                            Click="OnRecommendedAddonsClick"
+                            Margin="0,0,0,15"
+                            HorizontalAlignment="Center"/>
+
                     <Button Content="Clear Glass Theme" 
+                            Grid.Row="1"
                             Grid.Column="0"
                             Style="{StaticResource ActionButton}"
                             Margin="0,0,10,15"
@@ -367,6 +409,7 @@
                             Click="OnClearGlassThemeClick"/>
 
                     <Button Content="Windows Optimization" 
+                            Grid.Row="1"
                             Grid.Column="1"
                             Style="{StaticResource ActionButton}"
                             Margin="10,0,0,15"
@@ -374,13 +417,43 @@
                             Click="OnWindowsOptimizationClick"/>
 
                     <Button Content="Clear Glass" 
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Grid.ColumnSpan="2"
                             Style="{StaticResource ActionButton}"
                             Width="200"
-                            Margin="0,0,0,10"
+                            Margin="0,0,0,20"
                             x:Name="ClearGlassButton"
                             Click="OnClearGlassClick"/>
+
+                    <!-- Tiny buttons -->
+                    <StackPanel Grid.Row="3" 
+                              Grid.ColumnSpan="2"
+                              Orientation="Horizontal" 
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Margin="0,5,0,10">
+                        <Button Content="Auto Login" 
+                                Style="{StaticResource TinyButton}"
+                                Width="75"
+                                Height="28"
+                                Margin="0,0,5,0"
+                                x:Name="AutoLoginButton"
+                                Click="OnAutoLoginClick"/>
+                        <Button Content="Keep Apps" 
+                                Style="{StaticResource TinyButton}"
+                                Width="75"
+                                Height="28"
+                                Margin="5,0"
+                                x:Name="KeepAppsButton"
+                                Click="OnKeepAppsClick"/>
+                        <Button Content="Support Us" 
+                                Style="{StaticResource TinyButton}"
+                                Width="75"
+                                Height="28"
+                                Margin="5,0,0,0"
+                                x:Name="SupportUsButton"
+                                Click="OnSupportUsClick"/>
+                    </StackPanel>
                 </Grid>
             </Grid>
         </Border>
