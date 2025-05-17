@@ -621,25 +621,40 @@ namespace ClearGlass.Services
             public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
             [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-            public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, string lParam);
+            public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
 
             [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-            public static extern IntPtr SendMessageTimeout(
-                IntPtr hWnd,
-                int Msg,
-                IntPtr wParam,
-                string lParam,
-                int fuFlags,
-                int uTimeout,
-                out IntPtr lpdwResult);
+            public static extern IntPtr SendMessageTimeout(IntPtr hWnd, int msg, IntPtr wParam, string lParam,
+                int fuFlags, int uTimeout, out IntPtr lpdwResult);
 
-            [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+            [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
-            public static extern bool SystemParametersInfo(
-                uint uiAction,
-                uint uiParam,
-                string pvParam,
-                uint fWinIni);
+            public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
+        }
+
+        public void RefreshWindows()
+        {
+            try
+            {
+                // Restart Explorer to ensure all UI changes take effect
+                RestartExplorer();
+                
+                // Broadcast theme change to all windows
+                BroadcastThemeChange();
+                
+                // Additional registry flush to ensure changes are committed
+                using (var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath, true))
+                {
+                    if (key != null)
+                    {
+                        key.Flush();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error refreshing Windows: {ex.Message}");
+            }
         }
     }
 } 
