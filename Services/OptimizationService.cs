@@ -177,6 +177,11 @@ namespace ClearGlass.Services
 
                 using (Process process = Process.Start(startInfo))
                 {
+                    if (process == null)
+                    {
+                        throw new InvalidOperationException("Failed to start PowerShell process");
+                    }
+
                     await process.WaitForExitAsync();
                     
                     if (process.ExitCode == 0)

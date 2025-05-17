@@ -234,6 +234,44 @@
                 </ThicknessAnimation.EasingFunction>
             </ThicknessAnimation>
         </Storyboard>
+
+        <Storyboard x:Key="ShowKeepAppsOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="KeepAppsOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="KeepAppsOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="0,600,0,-600" To="10,10,10,10" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+        
+        <Storyboard x:Key="HideKeepAppsOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="KeepAppsOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="1" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="KeepAppsOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="10,10,10,10" To="0,600,0,-600" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
     </Window.Resources>
 
     <Grid>
@@ -593,6 +631,97 @@
                             Width="250"
                             Click="OnRunOptimizationClick"/>
                 </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Keep Apps Overlay -->
+        <Border x:Name="KeepAppsOverlay"
+                CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="0,600,0,-600"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Keep Apps"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseKeepAppsButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseKeepAppsClick"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" 
+                            Margin="0,0,0,20"
+                            VerticalScrollBarVisibility="Auto">
+                    <ItemsControl x:Name="AppsListView">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox IsChecked="{Binding IsSelected}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding DisplayName}"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            TextWrapping="Wrap"
+                                            Foreground="#E6FFFFFF"
+                                            FontWeight="Normal"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Button Grid.Row="2"
+                        Content="Apply Changes"
+                        Style="{StaticResource ActionButton}"
+                        Width="200"
+                        Height="36"
+                        x:Name="ApplyKeepAppsButton"
+                        Click="OnApplyKeepAppsClick"
+                        HorizontalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>
