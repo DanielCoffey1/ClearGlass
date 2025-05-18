@@ -230,33 +230,49 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Apply Clear Glass theme settings first
-                TaskbarAlignmentToggle.IsChecked = false; // Left alignment
-                _themeService.IsTaskbarCentered = false;
-                await Task.Delay(100); // Wait for taskbar change
+                // Show desktop icons first
+                DesktopIconsToggle.IsChecked = true;
+                _themeService.AreDesktopIconsVisible = true;
+                await Task.Delay(200);
 
-                TaskViewToggle.IsChecked = false; // Hide
-                _themeService.IsTaskViewEnabled = false;
-                await Task.Delay(100); // Wait for task view change
-
-                SearchToggle.IsChecked = false; // Hide
-                _themeService.IsSearchVisible = false;
-                await Task.Delay(100); // Wait for search change
-
-                DesktopIconsToggle.IsChecked = false; // Hide
-                _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(100); // Wait for desktop icons change
-
-                ThemeToggle.IsChecked = true; // Dark theme
+                // Apply dark theme first as it's a major change
+                ThemeToggle.IsChecked = true;
                 await Task.Run(() => _themeService.IsDarkMode = true);
-                await Task.Delay(400); // Give more time for theme change
+                await Task.Delay(500);
 
-                // Force a Windows shell refresh
+                // First shell refresh after theme change
                 _themeService.RefreshWindows();
-                await Task.Delay(200); // Wait for refresh
+                await Task.Delay(500);
 
-                // Apply Clear Glass wallpaper last
+                // Apply taskbar settings
+                TaskbarAlignmentToggle.IsChecked = false;
+                _themeService.IsTaskbarCentered = false;
+                await Task.Delay(200);
+
+                // Apply task view and search settings
+                TaskViewToggle.IsChecked = false;
+                _themeService.IsTaskViewEnabled = false;
+                await Task.Delay(100);
+
+                SearchToggle.IsChecked = false;
+                _themeService.IsSearchVisible = false;
+                await Task.Delay(100);
+
+                // Second shell refresh after UI changes
+                _themeService.RefreshWindows();
+                await Task.Delay(500);
+
+                // Apply Clear Glass wallpaper
                 await EnsureWallpaperAsync();
+                await Task.Delay(500);
+
+                // Wait for everything to stabilize
+                await Task.Delay(500);
+
+                // Finally hide desktop icons
+                DesktopIconsToggle.IsChecked = false;
+                _themeService.AreDesktopIconsVisible = false;
+                await Task.Delay(200);
 
                 MessageBox.Show(
                     "Clear Glass Theme applied successfully!\n\n" +
@@ -304,24 +320,49 @@ namespace ClearGlass
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatware();
 
-                    // Apply Clear Glass theme
-                    await EnsureWallpaperAsync();
+                    // Show desktop icons first
+                    DesktopIconsToggle.IsChecked = true;
+                    _themeService.AreDesktopIconsVisible = true;
+                    await Task.Delay(200);
 
-                    // Apply Clear Glass theme settings
-                    TaskbarAlignmentToggle.IsChecked = false; // Left alignment
-                    _themeService.IsTaskbarCentered = false;
-
-                    TaskViewToggle.IsChecked = false; // Hide
-                    _themeService.IsTaskViewEnabled = false;
-
-                    SearchToggle.IsChecked = false; // Hide
-                    _themeService.IsSearchVisible = false;
-
-                    DesktopIconsToggle.IsChecked = false; // Hide
-                    _themeService.AreDesktopIconsVisible = false;
-
-                    ThemeToggle.IsChecked = true; // Dark theme
+                    // Apply dark theme first as it's a major change
+                    ThemeToggle.IsChecked = true;
                     await Task.Run(() => _themeService.IsDarkMode = true);
+                    await Task.Delay(500);
+
+                    // First shell refresh after theme change
+                    _themeService.RefreshWindows();
+                    await Task.Delay(500);
+
+                    // Apply taskbar settings
+                    TaskbarAlignmentToggle.IsChecked = false;
+                    _themeService.IsTaskbarCentered = false;
+                    await Task.Delay(200);
+
+                    // Apply task view and search settings
+                    TaskViewToggle.IsChecked = false;
+                    _themeService.IsTaskViewEnabled = false;
+                    await Task.Delay(100);
+
+                    SearchToggle.IsChecked = false;
+                    _themeService.IsSearchVisible = false;
+                    await Task.Delay(100);
+
+                    // Second shell refresh after UI changes
+                    _themeService.RefreshWindows();
+                    await Task.Delay(500);
+
+                    // Apply Clear Glass wallpaper
+                    await EnsureWallpaperAsync();
+                    await Task.Delay(500);
+
+                    // Wait for everything to stabilize
+                    await Task.Delay(500);
+
+                    // Finally hide desktop icons
+                    DesktopIconsToggle.IsChecked = false;
+                    _themeService.AreDesktopIconsVisible = false;
+                    await Task.Delay(200);
 
                     MessageBox.Show(
                         "Clear Glass experience has been fully applied!\n\n" +
