@@ -339,6 +339,15 @@ namespace ClearGlass.Services
             {
                 try
                 {
+                    // First check registry for persisted state
+                    using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced");
+                    var value = key?.GetValue("HideIcons");
+                    if (value != null)
+                    {
+                        return (int)value == 0;
+                    }
+
+                    // Fallback to checking window state
                     var toggleHandle = NativeMethods.FindWindowEx(
                         NativeMethods.FindWindowEx(
                             NativeMethods.FindWindow("Progman", null),
@@ -361,6 +370,11 @@ namespace ClearGlass.Services
             {
                 try
                 {
+                    // Persist the state in registry
+                    using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", true);
+                    key?.SetValue("HideIcons", value ? 0 : 1, RegistryValueKind.DWord);
+
+                    // Apply the change to the desktop window
                     var toggleHandle = NativeMethods.FindWindowEx(
                         NativeMethods.FindWindowEx(
                             NativeMethods.FindWindow("Progman", null),

@@ -86,7 +86,6 @@ namespace ClearGlass
         {
             TaskbarAlignmentToggle.IsChecked = _themeService.IsTaskbarCentered;
             TaskViewToggle.IsChecked = _themeService.IsTaskViewEnabled;
-            WidgetsToggle.IsChecked = _themeService.AreWidgetsEnabled;
             SearchToggle.IsChecked = _themeService.IsSearchVisible;
             DesktopIconsToggle.IsChecked = _themeService.AreDesktopIconsVisible;
             ThemeToggle.IsChecked = _themeService.IsDarkMode;
@@ -100,11 +99,6 @@ namespace ClearGlass
         private void OnTaskViewToggle(object sender, RoutedEventArgs e)
         {
             _themeService.IsTaskViewEnabled = TaskViewToggle.IsChecked ?? false;
-        }
-
-        private void OnWidgetsToggle(object sender, RoutedEventArgs e)
-        {
-            _themeService.AreWidgetsEnabled = WidgetsToggle.IsChecked ?? false;
         }
 
         private void OnSearchToggle(object sender, RoutedEventArgs e)

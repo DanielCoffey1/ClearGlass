@@ -4,11 +4,11 @@
 winexe
 C#
 .cs
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\
 ClearGlass
 none
 false
-TRACE;DEBUG;NET;NET6_0;NETCOREAPP
+TRACE;RELEASE;NET;NET6_0;NETCOREAPP
 C:\Users\Daniel\Documents\GitHub\ClearGlass\App.xaml
 11407045341
 
