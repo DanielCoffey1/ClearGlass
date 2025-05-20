@@ -39,10 +39,12 @@ C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.pdb
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.genruntimeconfig.cache
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\ref\ClearGlass.dll
 C:\Users\Daniel\Documents\ClearGlass\obj\Debug\net6.0-windows\App.baml
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Clear Glass Icon.ico
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.exe
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.deps.json
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.runtimeconfig.json
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.dll
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ref\ClearGlass.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.pdb
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.AssemblyReference.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\MainWindow.baml
@@ -56,7 +58,6 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.AssemblyInfo.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.CoreCompileInputs.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.dll
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ref\ClearGlass.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.pdb
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.genruntimeconfig.cache
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ref\ClearGlass.dll
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ref\ClearGlass.dll

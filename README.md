@@ -2,6 +2,30 @@
 
 ClearGlass is a modern Windows optimization application designed to enhance system performance and privacy. Built with a sleek glass-effect UI, it provides powerful tools for Windows system optimization and customization.
 
+## Installation
+
+### Pre-built Installer
+
+1. Download the latest `Setup.msi` from the releases page
+2. Run the installer with administrator privileges
+3. Follow the installation wizard
+4. Launch ClearGlass from the Start menu
+
+### Building from Source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/ClearGlass.git
+   cd ClearGlass
+   ```
+2. Ensure you have the following prerequisites:
+   - Visual Studio 2022 or later
+   - .NET 6.0 SDK
+   - Windows SDK
+3. Open the solution in Visual Studio
+4. Build the solution (Release configuration recommended)
+5. Run the application with administrator privileges
+
 ## Features
 
 ### Windows Optimization
@@ -172,3 +196,98 @@ The application is built using:
 - Some optimizations may need to be re-applied after major Windows updates
 - Use the "Keep Apps" feature to protect essential applications
 - Protected apps list resets to defaults on application restart for safety
+
+## Technical Details
+
+### Project Structure
+
+- `MainWindow.xaml` - Main UI layout and styling
+- `MainWindow.xaml.cs` - Core application logic
+- `Services/` - Service layer for system operations
+- `Models/` - Data models and business logic
+- `Images/` - Application resources and icons
+
+### Dependencies
+
+- .NET 6.0 Windows Runtime
+- Windows Presentation Foundation (WPF)
+- Windows Management Instrumentation (WMI)
+- PowerShell Core
+- Windows Registry API
+
+### Build Configuration
+
+The project uses the following build settings:
+
+- Target Framework: .NET 6.0-windows
+- Output Type: Windows Executable
+- Nullable Reference Types: Enabled
+- Application Manifest: Required for admin privileges
+- Application Icon: Custom ClearGlass icon
+
+### Development Environment Setup
+
+1. Install Visual Studio 2022 with:
+   - .NET Desktop Development workload
+   - Windows SDK
+   - C# development tools
+2. Install .NET 6.0 SDK
+3. Clone the repository
+4. Open the solution in Visual Studio
+5. Restore NuGet packages
+6. Build the solution
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+### Building the Installer
+
+The installer is built using WiX Toolset:
+
+1. Install WiX Toolset v4
+2. Build the solution in Release mode
+3. Run the WiX build command:
+   ```bash
+   candle Setup.wxs
+   light Setup.wixobj
+   ```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Application requires admin rights**
+
+   - Right-click the application and select "Run as administrator"
+   - Ensure UAC is not blocking the application
+
+2. **Optimization fails**
+
+   - Check if Windows Defender or antivirus is blocking the application
+   - Ensure all Windows services are running
+   - Create a system restore point manually before running
+
+3. **Theme not applying correctly**
+   - Ensure Windows is up to date
+   - Check if any third-party themes are installed
+   - Restart Windows Explorer
+
+### Support
+
+For issues and feature requests, please:
+
+1. Check the existing issues
+2. Create a new issue with:
+   - Windows version
+   - ClearGlass version
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Screenshots if applicable
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
