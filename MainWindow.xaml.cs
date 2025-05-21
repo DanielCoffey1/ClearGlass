@@ -955,5 +955,78 @@ namespace ClearGlass
                 DownloadBundleButton.Content = "Download Bundle";
             }
         }
+
+        private void OnDisableSearchSuggestionsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "This will disable web search suggestions and Bing integration in the Windows search box.\n\n" +
+                    "Do you want to continue?",
+                    "Disable Search Suggestions",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Run PowerShell commands with elevated privileges
+                    string script = @"
+                        Write-Host 'Disabling search suggestions...'
+                        
+                        # Disable web search in Windows Search
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'BingSearchEnabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'CortanaConsent' -Value 0 -Type DWord -Force
+                        
+                        # Disable search suggestions
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force
+                        
+                        # Disable web results in search
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowSearchToUseLocation' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowCortana' -Value 0 -Type DWord -Force
+                        
+                        Write-Host 'Search suggestions have been disabled successfully!'
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "ClearGlassDisableSearch.ps1");
+                    File.WriteAllText(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    ProcessStartInfo startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false,
+                        RedirectStandardOutput = false
+                    };
+
+                    using (Process process = Process.Start(startInfo))
+                    {
+                        if (process == null)
+                        {
+                            throw new InvalidOperationException("Failed to start PowerShell process");
+                        }
+                        process.WaitForExit();
+                    }
+
+                    MessageBox.Show(
+                        "Search suggestions have been disabled successfully!\n\n" +
+                        "You may need to restart your computer for all changes to take effect.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error disabling search suggestions: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
     }
 } 
