@@ -665,18 +665,16 @@ namespace ClearGlass
                 // Disable the button during operation
                 SupportUsButton.IsEnabled = false;
 
-                // TODO: Implement support options
-                MessageBox.Show(
-                    "Thank you for considering supporting Clear Glass!\n\n" +
-                    "Support options will be available in a future update.",
-                    "Support Clear Glass",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "https://ko-fi.com/daniel1017",
+                    UseShellExecute = true
+                });
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Error showing support options: {ex.Message}",
+                    $"Error opening Ko-fi page: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
