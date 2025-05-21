@@ -1,5 +1,7 @@
 # ClearGlass
 
+[![License: Custom Non-Commercial](https://img.shields.io/badge/License-Custom%20Non--Commercial-blue.svg)](LICENSE)
+
 ClearGlass is a modern Windows optimization application designed to enhance system performance and privacy. Built with a sleek glass-effect UI, it provides powerful tools for Windows system optimization and customization.
 
 ## Installation
@@ -290,4 +292,21 @@ For issues and feature requests, please:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Custom Non-Commercial License v1.1 - see the [LICENSE](LICENSE) file for details.
+
+### License Overview
+
+- **Free for:** Personal use, educational purposes, and non-commercial projects
+- **Not Allowed:** Commercial use, distribution, or modification without explicit permission
+- **Contributions:** Welcome through pull requests (will be licensed under the same terms)
+- **Protection:** Includes safeguards against misuse, AI training, and harmful applications
+
+### Key Points
+
+- The software is free for personal and educational use
+- Commercial use requires explicit permission from the author
+- Contributions are welcome but must follow the same license terms
+- The author retains all rights to commercial use and distribution
+- The license is non-transferable and may be updated
+
+For licensing inquiries, please contact daniel.coffey11@gmail.com

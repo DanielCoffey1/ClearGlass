@@ -1,21 +1,47 @@
-MIT License
+Custom Non-Commercial License v1.1  
+Copyright (c) 2025 Daniel Coffey
 
-Copyright (c) 2024 ClearGlass
+Permission is hereby granted to any individual to view, download, and use this codebase for **personal, educational, or non-commercial** purposes only.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Commercial use of this code, or any modified versions of it, is **strictly prohibited** without prior written permission from the original author.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+You may not:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. 
+- Use this software or any derivatives in a product or service that generates revenue
+- Sell, license, or distribute this software or modified versions of it
+- Use the software as part of any commercial SaaS, website, or mobile application
+- Use it in part or in full for client work or contract development
+- Use this software, in whole or in part, to train machine learning models, AI systems, or large language models
+- Use this software in any context that contributes to or facilitates:
+  - Surveillance
+  - Discrimination
+  - Harassment
+  - Exploitation
+  - Harm to individuals or communities
+- Remove or alter the license notice from any part of the software
+- Claim ownership or authorship of the software
+- Use the software in any way that violates applicable laws or regulations
+
+You may:
+
+- Fork this repository for personal or educational learning
+- Modify the code locally for personal or non-commercial experimentation
+- Share your personal fork publicly as long as it is clearly marked "Non-Commercial Use Only"
+- Use the software for academic research and teaching
+- Use the software for personal projects and experimentation
+- Contribute to the project through pull requests (contributions will be licensed under the same terms)
+
+Additional Terms:
+
+- This license is non-transferable
+- The license automatically terminates if you violate any of its terms
+- The author reserves the right to update these terms at any time
+- Previous versions of the software may be licensed under different terms
+- The author makes no warranties about the software's functionality or security
+- The author is not liable for any damages arising from the use of this software
+
+The original author, Daniel Coffey, retains full rights to use, license, or commercialize this software.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+For commercial licensing or special-use inquiries, contact: daniel.coffey11@gmail.com
