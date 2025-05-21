@@ -621,7 +621,7 @@ namespace ClearGlass
                     "Protected apps will be kept when using:\n" +
                     "- Remove Windows Bloatware\n" +
                     "- Run Optimization\n" +
-                    "- Clear Glass button\n\n" +
+                    "- Run Clear Glass\n\n" +
                     "Note: Protected apps will reset to defaults when you restart the application.\n\n" +
                     "Do you want to continue?",
                     "Update Protected Apps",
