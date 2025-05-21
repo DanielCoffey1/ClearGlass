@@ -31,6 +31,8 @@ namespace ClearGlass
         private Storyboard _hideOptimizationOverlay = null!;
         private Storyboard _showKeepAppsOverlay = null!;
         private Storyboard _hideKeepAppsOverlay = null!;
+        private Storyboard _showTweaksOverlay = null!;
+        private Storyboard _hideTweaksOverlay = null!;
         private ObservableCollection<WindowsApp>? _installedApps;
 
         public MainWindow()
@@ -72,6 +74,8 @@ namespace ClearGlass
             _hideOptimizationOverlay = (Storyboard)FindResource("HideOptimizationOverlay");
             _showKeepAppsOverlay = (Storyboard)FindResource("ShowKeepAppsOverlay");
             _hideKeepAppsOverlay = (Storyboard)FindResource("HideKeepAppsOverlay");
+            _showTweaksOverlay = (Storyboard)FindResource("ShowTweaksOverlay");
+            _hideTweaksOverlay = (Storyboard)FindResource("HideTweaksOverlay");
             
             // Ensure overlays are hidden initially
             AddonsOverlay.Opacity = 0;
@@ -80,6 +84,8 @@ namespace ClearGlass
             OptimizationOverlay.Margin = new Thickness(0, 600, 0, -600);
             KeepAppsOverlay.Opacity = 0;
             KeepAppsOverlay.Margin = new Thickness(0, 600, 0, -600);
+            TweaksOverlay.Opacity = 0;
+            TweaksOverlay.Margin = new Thickness(0, 600, 0, -600);
         }
 
         private void LoadCurrentSettings()
@@ -678,6 +684,138 @@ namespace ClearGlass
             finally
             {
                 SupportUsButton.IsEnabled = true;
+            }
+        }
+
+        private void OnTweaksClick(object sender, RoutedEventArgs e)
+        {
+            TweaksOverlay.Visibility = Visibility.Visible;
+            _showTweaksOverlay.Begin();
+        }
+
+        private void OnCloseTweaksClick(object sender, RoutedEventArgs e)
+        {
+            _hideTweaksOverlay.Begin(this, isControllable: false);
+            _hideTweaksOverlay.Completed += (s, _) =>
+            {
+                TweaksOverlay.Visibility = Visibility.Collapsed;
+            };
+        }
+
+        private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "ms-settings:",
+                UseShellExecute = true
+            });
+        }
+
+        private void OnOpenControlPanelClick(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "control.exe",
+                UseShellExecute = true
+            });
+        }
+
+        private void OnOpenRegistryClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "regedit.exe",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open Registry Editor: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OnOpenUserAccountsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "control.exe",
+                    Arguments = "nusrmgr.cpl",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open User Accounts: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnRemoveOneDriveClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    "This will remove Microsoft OneDrive from your system using winget.\n\n" +
+                    "Do you want to continue?",
+                    "Remove OneDrive",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Check if winget is installed first
+                    if (!await _wingetService.IsWingetInstalled())
+                    {
+                        var installResult = MessageBox.Show(
+                            "Winget is not installed. Would you like to install it now?\n\n" +
+                            "Winget is required to remove OneDrive.",
+                            "Install Winget",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+
+                        if (installResult == MessageBoxResult.Yes)
+                        {
+                            await _wingetService.InstallWinget();
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+
+                    // Run winget uninstall command
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "winget",
+                        Arguments = "uninstall \"Microsoft OneDrive\" --silent",
+                        UseShellExecute = true,
+                        Verb = "runas" // Run as administrator
+                    };
+
+                    using (var process = Process.Start(startInfo))
+                    {
+                        if (process != null)
+                        {
+                            await process.WaitForExitAsync();
+                            MessageBox.Show(
+                                "OneDrive has been successfully removed from your system.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error removing OneDrive: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 

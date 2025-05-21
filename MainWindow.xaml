@@ -159,6 +159,78 @@
             </Setter>
         </Style>
         
+        <!-- Custom ScrollViewer Style -->
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <ScrollContentPresenter Grid.Column="0" 
+                                                  Margin="{TemplateBinding Padding}"/>
+                            
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                     Grid.Column="1"
+                                     Orientation="Vertical"
+                                     ViewportSize="{TemplateBinding ViewportHeight}"
+                                     Maximum="{TemplateBinding ScrollableHeight}"
+                                     Value="{TemplateBinding VerticalOffset}"
+                                     Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}">
+                                <ScrollBar.Style>
+                                    <Style TargetType="ScrollBar">
+                                        <Setter Property="Width" Value="8"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ScrollBar">
+                                                    <Grid>
+                                                        <Track x:Name="PART_Track" 
+                                                               IsDirectionReversed="True">
+                                                            <Track.Thumb>
+                                                                <Thumb x:Name="Thumb" 
+                                                                       Background="#40FFFFFF"
+                                                                       BorderThickness="0">
+                                                                    <Thumb.Style>
+                                                                        <Style TargetType="Thumb">
+                                                                            <Setter Property="Template">
+                                                                                <Setter.Value>
+                                                                                    <ControlTemplate TargetType="Thumb">
+                                                                                        <Border Background="{TemplateBinding Background}"
+                                                                                                CornerRadius="4"/>
+                                                                                    </ControlTemplate>
+                                                                                </Setter.Value>
+                                                                            </Setter>
+                                                                            <Style.Triggers>
+                                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                                    <Setter Property="Background" Value="#60FFFFFF"/>
+                                                                                </Trigger>
+                                                                                <Trigger Property="IsDragging" Value="True">
+                                                                                    <Setter Property="Background" Value="#80FFFFFF"/>
+                                                                                </Trigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Thumb.Style>
+                                                                </Thumb>
+                                                            </Track.Thumb>
+                                                        </Track>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ScrollBar.Style>
+                            </ScrollBar>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
         <Storyboard x:Key="ShowAddonsOverlay">
             <DoubleAnimation 
                 Storyboard.TargetName="AddonsOverlay"
@@ -265,6 +337,44 @@
             </DoubleAnimation>
             <ThicknessAnimation 
                 Storyboard.TargetName="KeepAppsOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="10,10,10,10" To="0,600,0,-600" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="ShowTweaksOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="TweaksOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="TweaksOverlay"
+                Storyboard.TargetProperty="Margin"
+                From="0,600,0,-600" To="10,10,10,10" Duration="0:0:0.4">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+        
+        <Storyboard x:Key="HideTweaksOverlay">
+            <DoubleAnimation 
+                Storyboard.TargetName="TweaksOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="1" To="0" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation 
+                Storyboard.TargetName="TweaksOverlay"
                 Storyboard.TargetProperty="Margin"
                 From="10,10,10,10" To="0,600,0,-600" Duration="0:0:0.4">
                 <ThicknessAnimation.EasingFunction>
@@ -539,6 +649,13 @@
                                 Margin="5,0"
                                 x:Name="KeepAppsButton"
                                 Click="OnKeepAppsClick"/>
+                        <Button Content="Tweaks" 
+                                Style="{StaticResource TinyButton}"
+                                Width="75"
+                                Height="28"
+                                Margin="5,0"
+                                x:Name="TweaksButton"
+                                Click="OnTweaksClick"/>
                         <Button Content="Support Us" 
                                 Style="{StaticResource TinyButton}"
                                 Width="75"
@@ -606,7 +723,15 @@
 
                 <Grid Grid.Row="1" 
                       Margin="0,10,0,0">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled"
+                                Padding="0,0,5,0">
                         <StackPanel>
                             <!-- LibreWolf -->
                             <Border Background="#20FFFFFF"
@@ -689,14 +814,13 @@
                     </ScrollViewer>
 
                     <!-- Download Bundle Button -->
-                    <Button Content="Download Bundle"
-                            Grid.Row="1"
+                    <Button Grid.Row="1"
+                            Content="Download Bundle"
                             Style="{StaticResource ActionButton}"
                             Width="200"
                             Height="36"
                             Margin="0,20,0,0"
                             HorizontalAlignment="Center"
-                            VerticalAlignment="Bottom"
                             x:Name="DownloadBundleButton"
                             Click="OnDownloadBundleClick"/>
                 </Grid>
@@ -867,6 +991,220 @@
                         x:Name="ApplyKeepAppsButton"
                         Click="OnApplyKeepAppsClick"
                         HorizontalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Tweaks Overlay -->
+        <Border x:Name="TweaksOverlay"
+                CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="0,600,0,-600"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Windows Tweaks"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseTweaksButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseTweaksClick"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" 
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Padding="0,0,5,0">
+                    <StackPanel VerticalAlignment="Top" 
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,10">
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Remove OneDrive"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="This will completely remove Microsoft OneDrive from your system using winget. This is a safe operation that will not affect your system's functionality."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Remove OneDrive"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRemoveOneDriveClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Sign Out of Microsoft Account"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open the User Accounts section in Control Panel to manage your Microsoft account settings. To sign out, click 'Make changes to my account in PC settings' and then select 'Sign out'."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open User Accounts"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenUserAccountsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Windows Settings"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open the modern Windows Settings app to configure your system preferences and options."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Settings"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenSettingsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Control Panel"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open the classic Windows Control Panel for advanced system configuration options."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Control Panel"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenControlPanelClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Registry Editor"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open the Windows Registry Editor for advanced system configuration. Use with caution as incorrect changes can affect system stability."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Registry"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenRegistryClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Border>
     </Grid>
