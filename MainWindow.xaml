@@ -1297,6 +1297,36 @@
 
                                 <!-- App Info -->
                                 <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Windows Image Backup"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open Windows Image Backup to create a complete system image backup of your computer. This is useful for creating a full backup before making system changes."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Backup"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenImageBackupClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
                                     <TextBlock Text="Registry Editor"
                                              FontSize="16"
                                              FontWeight="SemiBold"

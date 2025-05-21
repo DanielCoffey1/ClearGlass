@@ -720,6 +720,27 @@ namespace ClearGlass
             });
         }
 
+        private void OnOpenImageBackupClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "control.exe",
+                    Arguments = "/name Microsoft.BackupAndRestore",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to open Backup and Restore: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private void OnOpenRegistryClick(object sender, RoutedEventArgs e)
         {
             try
