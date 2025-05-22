@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "bozqYR1h3FRcQa2cTNuNn4XZ1S0127axa+Z0qpF7FwpfYHG4WrRH/epEf2llq3hCcWq/xDm2CS9dyKBRhVZ/YA==",
+  "dgSpecHash": "LgNsD+xeHskvNCb0oINJ5aBkjoQ1J040gAd2vF7VzrjlskLJ1sxPgWOXkafgVzEaZuCC7nxsZyOj+ZuKPmtfCQ==",
   "success": true,
   "projectFilePath": "C:\\Users\\Daniel\\Documents\\GitHub\\ClearGlass\\ClearGlass.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\6.0.0\\microsoft.netcore.app.runtime.win-x64.6.0.0.nupkg.sha512",
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\6.0.0\\microsoft.windowsdesktop.app.runtime.win-x64.6.0.0.nupkg.sha512",
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\6.0.0\\microsoft.aspnetcore.app.runtime.win-x64.6.0.0.nupkg.sha512"
+  ],
   "logs": []
 }

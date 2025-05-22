@@ -1,8 +1,9 @@
-# ClearGlass
+# Clear Glass
 
 [![License: Custom Non-Commercial](https://img.shields.io/badge/License-Custom%20Non--Commercial-blue.svg)](LICENSE)
+[![Download Latest](https://img.shields.io/github/downloads/daniel1017/ClearGlass/latest/total?label=Download%20Latest)](https://github.com/daniel1017/ClearGlass/releases/latest)
 
-ClearGlass is a modern Windows optimization application designed to enhance system performance and privacy. Built with a sleek glass-effect UI, it provides powerful tools for Windows system optimization and customization.
+Clear Glass is a modern Windows optimization application designed to enhance system performance and privacy. Built with a sleek glass-effect UI, it provides powerful tools for Windows system optimization and customization.
 
 ## Installation
 
@@ -11,14 +12,14 @@ ClearGlass is a modern Windows optimization application designed to enhance syst
 1. Download the latest `Setup.msi` from the releases page
 2. Run the installer with administrator privileges
 3. Follow the installation wizard
-4. Launch ClearGlass from the Start menu
+4. Launch Clear Glass from the Start menu
 
 ### Building from Source
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ClearGlass.git
-   cd ClearGlass
+   git clone https://github.com/yourusername/Clear-Glass.git
+   cd Clear-Glass
    ```
 2. Ensure you have the following prerequisites:
    - Visual Studio 2022 or later
@@ -143,7 +144,7 @@ The application is built using:
 
 ## Support
 
-If you find ClearGlass useful, consider supporting its development:
+If you find Clear Glass useful, consider supporting its development:
 
 - [Support on Ko-fi](https://ko-fi.com/daniel1017)
 
