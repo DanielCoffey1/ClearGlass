@@ -158,6 +158,7 @@ namespace ClearGlass.Services
             {
                 MessageBox.Show(
                     "Starting Windows bloatware removal. This will remove unnecessary Windows apps while keeping selected ones.\n\n" +
+                    "McAfee will also be removed if it is installed.\n\n" +
                     "A system restore point will be created before making changes.",
                     "Starting Bloatware Removal",
                     MessageBoxButton.OK,
@@ -178,6 +179,149 @@ namespace ClearGlass.Services
                         Write-Host 'Restore point created successfully' -ForegroundColor Green
                     } catch {
                         Write-Host 'Could not create restore point. Continuing with bloatware removal...' -ForegroundColor Yellow
+                    }
+
+                    # Check for McAfee and remove it
+                    Write-Host 'Checking for McAfee products...' -ForegroundColor Cyan
+                    
+                    # Method 1: Check using WMI
+                    $mcafeeProducts = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like '*McAfee*' }
+                    
+                    # Method 2: Check Program Files directories
+                    $programFiles = [Environment]::GetFolderPath('ProgramFiles')
+                    $programFilesX86 = [Environment]::GetFolderPath('ProgramFilesX86')
+                    
+                    $mcafeePaths = @(
+                        ""$programFiles\McAfee"",
+                        ""$programFilesX86\McAfee"",
+                        ""$programFiles\Common Files\McAfee"",
+                        ""$programFilesX86\Common Files\McAfee""
+                    )
+                    
+                    # Method 3: Check registry uninstall keys
+                    $uninstallKeys = @(
+                        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
+                    )
+                    
+                    $mcafeeFound = $false
+                    
+                    # Check WMI results
+                    if ($mcafeeProducts) {
+                        $mcafeeFound = $true
+                        Write-Host 'McAfee products found via WMI. Attempting removal...' -ForegroundColor Yellow
+                        foreach ($product in $mcafeeProducts) {
+                            try {
+                                Write-Host ""Removing $($product.Name)..."" -ForegroundColor Cyan
+                                $product.Uninstall()
+                                Write-Host ""Successfully removed $($product.Name)"" -ForegroundColor Green
+                            } catch {
+                                Write-Host ""Failed to remove $($product.Name): $($_.Exception.Message)"" -ForegroundColor Red
+                            }
+                        }
+                    }
+                    
+                    # Check Program Files
+                    foreach ($path in $mcafeePaths) {
+                        if (Test-Path $path) {
+                            $mcafeeFound = $true
+                            Write-Host ""Found McAfee installation at: $path"" -ForegroundColor Yellow
+                            
+                            # Look for uninstaller executables
+                            $uninstallers = Get-ChildItem -Path $path -Recurse -Include @('uninst.exe', 'uninstall.exe', 'mcuninstall.exe', 'FWUninstaller.exe') -ErrorAction SilentlyContinue
+                            foreach ($uninstaller in $uninstallers) {
+                                try {
+                                    Write-Host ""Running uninstaller: $($uninstaller.FullName)"" -ForegroundColor Cyan
+                                    Start-Process -FilePath $uninstaller.FullName -ArgumentList '/SILENT' -Wait
+                                    Write-Host 'Uninstaller completed' -ForegroundColor Green
+                                } catch {
+                                    Write-Host ""Failed to run uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                }
+                            }
+                        }
+                    }
+                    
+                    # Check registry uninstall keys
+                    foreach ($key in $uninstallKeys) {
+                        if (Test-Path $key) {
+                            Get-ChildItem $key | ForEach-Object {
+                                $uninstallString = $null
+                                try {
+                                    $uninstallString = (Get-ItemProperty -Path $_.PSPath).UninstallString
+                                    $displayName = (Get-ItemProperty -Path $_.PSPath).DisplayName
+                                    
+                                    if ($displayName -like '*McAfee*' -and $uninstallString) {
+                                        $mcafeeFound = $true
+                                        Write-Host ""Found McAfee product in registry: $displayName"" -ForegroundColor Yellow
+                                        
+                                        # Extract the executable path and any arguments
+                                        if ($uninstallString -match '^""([^""]+)""(.*)') {
+                                            $exePath = $matches[1]
+                                            $args = $matches[2]
+                                        } else {
+                                            $exePath = $uninstallString
+                                            $args = ''
+                                        }
+                                        
+                                        if (Test-Path $exePath) {
+                                            try {
+                                                Write-Host ""Running uninstaller: $exePath"" -ForegroundColor Cyan
+                                                if ($args) {
+                                                    Start-Process -FilePath $exePath -ArgumentList ""$args /SILENT"" -Wait
+                                                } else {
+                                                    Start-Process -FilePath $exePath -ArgumentList '/SILENT' -Wait
+                                                }
+                                                Write-Host 'Uninstaller completed' -ForegroundColor Green
+                                            } catch {
+                                                Write-Host ""Failed to run uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    # Continue to next registry key if there's an error
+                                    continue
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ($mcafeeFound) {
+                        # Additional cleanup for McAfee services
+                        Write-Host 'Cleaning up McAfee services...' -ForegroundColor Cyan
+                        $mcafeeServices = Get-Service | Where-Object { $_.Name -like '*McAfee*' -or $_.DisplayName -like '*McAfee*' }
+                        foreach ($service in $mcafeeServices) {
+                            try {
+                                Stop-Service -Name $service.Name -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service.Name -StartupType Disabled -ErrorAction SilentlyContinue
+                                Write-Host ""Disabled service: $($service.DisplayName)"" -ForegroundColor Green
+                            } catch {
+                                Write-Host ""Failed to disable service $($service.DisplayName)"" -ForegroundColor Red
+                            }
+                        }
+
+                        # Remove McAfee registry entries
+                        Write-Host 'Cleaning up McAfee registry entries...' -ForegroundColor Cyan
+                        $registryPaths = @(
+                            'HKLM:\SOFTWARE\McAfee',
+                            'HKLM:\SOFTWARE\Wow6432Node\McAfee',
+                            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\McAfee*',
+                            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\McAfee*'
+                        )
+
+                        foreach ($path in $registryPaths) {
+                            if (Test-Path $path) {
+                                try {
+                                    Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+                                    Write-Host ""Removed registry entries: $path"" -ForegroundColor Green
+                                } catch {
+                                    Write-Host ""Failed to remove registry entries: $path"" -ForegroundColor Red
+                                }
+                            }
+                        }
+                        
+                        Write-Host 'McAfee removal process completed. A system restart may be required.' -ForegroundColor Green
+                    } else {
+                        Write-Host 'No McAfee products were detected on the system.' -ForegroundColor Green
                     }
 
                     Write-Host 'Starting bloatware removal...' -ForegroundColor Cyan

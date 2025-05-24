@@ -9,11 +9,11 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>ClearGlass</AssemblyName>
     <RootNamespace>ClearGlass</RootNamespace>
-    <ApplicationIcon>Clear Glass Icon.ico</ApplicationIcon>
+    <ApplicationIcon>clearglass.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="Clear Glass Icon.ico">
+    <None Update="clearglass.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
