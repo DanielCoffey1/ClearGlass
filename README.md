@@ -9,7 +9,7 @@ Clear Glass is a modern Windows optimization application designed to enhance sys
 
 ### Pre-built Installer
 
-1. Download the latest `Setup.msi` from the releases page
+1. Download the latest `ClearGlassSetup.exe` from the releases page
 2. Run the installer with administrator privileges
 3. Follow the installation wizard
 4. Launch Clear Glass from the Start menu
