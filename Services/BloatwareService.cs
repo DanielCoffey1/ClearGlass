@@ -158,7 +158,7 @@ namespace ClearGlass.Services
             {
                 MessageBox.Show(
                     "Starting Windows bloatware removal. This will remove unnecessary Windows apps while keeping selected ones.\n\n" +
-                    "McAfee will also be removed if it is installed.\n\n" +
+                    "McAfee and Norton products will also be removed if they are installed.\n\n" +
                     "A system restore point will be created before making changes.",
                     "Starting Bloatware Removal",
                     MessageBoxButton.OK,
@@ -322,6 +322,148 @@ namespace ClearGlass.Services
                         Write-Host 'McAfee removal process completed. A system restart may be required.' -ForegroundColor Green
                     } else {
                         Write-Host 'No McAfee products were detected on the system.' -ForegroundColor Green
+                    }
+
+                    # Check for Norton and Norton 360 and remove them
+                    Write-Host 'Checking for Norton products...' -ForegroundColor Cyan
+                    
+                    # Method 1: Check using WMI
+                    $nortonProducts = Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like '*Norton*' }
+                    
+                    # Method 2: Check Program Files directories
+                    $nortonPaths = @(
+                        ""$programFiles\Norton"",
+                        ""$programFilesX86\Norton"",
+                        ""$programFiles\NortonInstaller"",
+                        ""$programFilesX86\NortonInstaller"",
+                        ""$programFiles\Norton 360"",
+                        ""$programFilesX86\Norton 360"",
+                        ""$programFiles\Common Files\Symantec Shared"",
+                        ""$programFilesX86\Common Files\Symantec Shared""
+                    )
+                    
+                    $nortonFound = $false
+                    
+                    # Check WMI results
+                    if ($nortonProducts) {
+                        $nortonFound = $true
+                        Write-Host 'Norton products found via WMI. Attempting removal...' -ForegroundColor Yellow
+                        foreach ($product in $nortonProducts) {
+                            try {
+                                Write-Host ""Removing $($product.Name)..."" -ForegroundColor Cyan
+                                $product.Uninstall()
+                                Write-Host ""Successfully removed $($product.Name)"" -ForegroundColor Green
+                            } catch {
+                                Write-Host ""Failed to remove $($product.Name): $($_.Exception.Message)"" -ForegroundColor Red
+                            }
+                        }
+                    }
+                    
+                    # Check Program Files
+                    foreach ($path in $nortonPaths) {
+                        if (Test-Path $path) {
+                            $nortonFound = $true
+                            Write-Host ""Found Norton installation at: $path"" -ForegroundColor Yellow
+                            
+                            # Look for uninstaller executables
+                            $uninstallers = Get-ChildItem -Path $path -Recurse -Include @('Uninstall.exe', 'InstallWizard.exe', 'Remove.exe', 'SymSetup.exe') -ErrorAction SilentlyContinue
+                            foreach ($uninstaller in $uninstallers) {
+                                try {
+                                    Write-Host ""Running uninstaller: $($uninstaller.FullName)"" -ForegroundColor Cyan
+                                    Start-Process -FilePath $uninstaller.FullName -ArgumentList '/SILENT' -Wait
+                                    Write-Host 'Uninstaller completed' -ForegroundColor Green
+                                } catch {
+                                    Write-Host ""Failed to run uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                }
+                            }
+                        }
+                    }
+                    
+                    # Check registry uninstall keys
+                    foreach ($key in $uninstallKeys) {
+                        if (Test-Path $key) {
+                            Get-ChildItem $key | ForEach-Object {
+                                $uninstallString = $null
+                                try {
+                                    $uninstallString = (Get-ItemProperty -Path $_.PSPath).UninstallString
+                                    $displayName = (Get-ItemProperty -Path $_.PSPath).DisplayName
+                                    
+                                    if (($displayName -like '*Norton*' -or $displayName -like '*Symantec*') -and $uninstallString) {
+                                        $nortonFound = $true
+                                        Write-Host ""Found Norton product in registry: $displayName"" -ForegroundColor Yellow
+                                        
+                                        # Extract the executable path and any arguments
+                                        if ($uninstallString -match '^""([^""]+)""(.*)') {
+                                            $exePath = $matches[1]
+                                            $args = $matches[2]
+                                        } else {
+                                            $exePath = $uninstallString
+                                            $args = ''
+                                        }
+                                        
+                                        if (Test-Path $exePath) {
+                                            try {
+                                                Write-Host ""Running uninstaller: $exePath"" -ForegroundColor Cyan
+                                                if ($args) {
+                                                    Start-Process -FilePath $exePath -ArgumentList ""$args /SILENT"" -Wait
+                                                } else {
+                                                    Start-Process -FilePath $exePath -ArgumentList '/SILENT' -Wait
+                                                }
+                                                Write-Host 'Uninstaller completed' -ForegroundColor Green
+                                            } catch {
+                                                Write-Host ""Failed to run uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    # Continue to next registry key if there's an error
+                                    continue
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ($nortonFound) {
+                        # Additional cleanup for Norton services
+                        Write-Host 'Cleaning up Norton services...' -ForegroundColor Cyan
+                        $nortonServices = Get-Service | Where-Object { $_.Name -like '*Norton*' -or $_.DisplayName -like '*Norton*' -or $_.Name -like '*Symantec*' -or $_.DisplayName -like '*Symantec*' }
+                        foreach ($service in $nortonServices) {
+                            try {
+                                Stop-Service -Name $service.Name -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service.Name -StartupType Disabled -ErrorAction SilentlyContinue
+                                Write-Host ""Disabled service: $($service.DisplayName)"" -ForegroundColor Green
+                            } catch {
+                                Write-Host ""Failed to disable service $($service.DisplayName)"" -ForegroundColor Red
+                            }
+                        }
+
+                        # Remove Norton registry entries
+                        Write-Host 'Cleaning up Norton registry entries...' -ForegroundColor Cyan
+                        $registryPaths = @(
+                            'HKLM:\SOFTWARE\Norton',
+                            'HKLM:\SOFTWARE\Wow6432Node\Norton',
+                            'HKLM:\SOFTWARE\Symantec',
+                            'HKLM:\SOFTWARE\Wow6432Node\Symantec',
+                            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Norton*',
+                            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Symantec*',
+                            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Norton*',
+                            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Symantec*'
+                        )
+
+                        foreach ($path in $registryPaths) {
+                            if (Test-Path $path) {
+                                try {
+                                    Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+                                    Write-Host ""Removed registry entries: $path"" -ForegroundColor Green
+                                } catch {
+                                    Write-Host ""Failed to remove registry entries: $path"" -ForegroundColor Red
+                                }
+                            }
+                        }
+                        
+                        Write-Host 'Norton removal process completed. A system restart may be required.' -ForegroundColor Green
+                    } else {
+                        Write-Host 'No Norton products were detected on the system.' -ForegroundColor Green
                     }
 
                     Write-Host 'Starting bloatware removal...' -ForegroundColor Cyan

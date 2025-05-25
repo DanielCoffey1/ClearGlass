@@ -41,6 +41,10 @@ Comprehensive system optimization tools that:
 - Enhance privacy settings
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
+- Safely remove pre-installed antivirus software:
+  - McAfee products and services
+  - Norton and Norton 360 products
+  - Thorough cleanup of related services and registry entries
 
 ### Keep Apps Feature
 
