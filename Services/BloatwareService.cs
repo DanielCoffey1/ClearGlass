@@ -468,6 +468,53 @@ namespace ClearGlass.Services
 
                     Write-Host 'Starting bloatware removal...' -ForegroundColor Cyan
                     
+                    # Check for Windows Copilot and its preview feature
+                    Write-Host 'Checking for Windows Copilot and Preview...' -ForegroundColor Cyan
+                    
+                    # Remove Copilot app package
+                    $copilotApp = Get-AppxPackage -Name ""Microsoft.Windows.Copilot"" -AllUsers -ErrorAction SilentlyContinue
+                    if ($copilotApp) {
+                        try {
+                            Write-Host ""Found Windows Copilot app. Attempting to remove..."" -ForegroundColor Yellow
+                            Remove-AppxPackage -Package $copilotApp.PackageFullName -AllUsers -ErrorAction Stop
+                            Write-Host ""Successfully removed Windows Copilot app"" -ForegroundColor Green
+                            $removed++
+                        } catch {
+                            Write-Host ""Failed to remove Windows Copilot app: $($_.Exception.Message)"" -ForegroundColor Red
+                            $skipped++
+                        }
+                    } else {
+                        Write-Host ""Windows Copilot app not found on the system"" -ForegroundColor Green
+                    }
+
+                    # Disable Copilot Preview in taskbar
+                    Write-Host ""Disabling Windows Copilot Preview in taskbar..."" -ForegroundColor Cyan
+                    try {
+                        # Create/modify registry keys to disable Copilot
+                        $registryPaths = @(
+                            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced',
+                            'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot'
+                        )
+
+                        foreach ($path in $registryPaths) {
+                            if (-not (Test-Path $path)) {
+                                New-Item -Path $path -Force | Out-Null
+                            }
+                        }
+
+                        # Disable Copilot button in taskbar
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force
+                        
+                        # Disable Copilot via policy
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot' -Name 'TurnOffWindowsCopilot' -Value 1 -Type DWord -Force
+
+                        # Restart Explorer to apply changes
+                        Get-Process -Name explorer | Stop-Process -Force
+                        Write-Host ""Successfully disabled Windows Copilot Preview in taskbar"" -ForegroundColor Green
+                    } catch {
+                        Write-Host ""Failed to disable Windows Copilot Preview: $($_.Exception.Message)"" -ForegroundColor Red
+                    }
+
                     # Get all installed UWP apps for all users
                     $apps = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object {
                         $app = $_.Name
