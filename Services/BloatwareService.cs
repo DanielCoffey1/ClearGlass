@@ -468,6 +468,151 @@ namespace ClearGlass.Services
 
                     Write-Host 'Starting bloatware removal...' -ForegroundColor Cyan
                     
+                    # Check for Microsoft 365/OneNote
+                    Write-Host 'Checking for Microsoft 365/Office/OneNote...' -ForegroundColor Cyan
+                    
+                    # Check Program Files location
+                    $officePath = ""C:\Program Files\Microsoft Office""
+                    if (Test-Path $officePath) {
+                        Write-Host ""Found Microsoft Office installation in Program Files. Attempting to remove..."" -ForegroundColor Yellow
+                        
+                        # Try using Office Setup for both Office and OneNote
+                        $setupPath = Join-Path $officePath ""Office16\setup.exe""
+                        if (Test-Path $setupPath) {
+                            try {
+                                Write-Host ""Running Office setup.exe uninstaller for Office..."" -ForegroundColor Cyan
+                                Start-Process -FilePath $setupPath -ArgumentList ""/uninstall ProPlus /config C:\Windows\Temp\uninstall.xml"" -Wait -NoNewWindow
+                                Write-Host ""Successfully initiated Office uninstallation"" -ForegroundColor Green
+                                
+                                Write-Host ""Running Office setup.exe uninstaller for OneNote..."" -ForegroundColor Cyan
+                                Start-Process -FilePath $setupPath -ArgumentList ""/uninstall OneNote /config C:\Windows\Temp\uninstall.xml"" -Wait -NoNewWindow
+                                Write-Host ""Successfully initiated OneNote uninstallation"" -ForegroundColor Green
+                                $removed++
+                            } catch {
+                                Write-Host ""Failed to run Office/OneNote uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                $skipped++
+                            }
+                        }
+
+                        # Also try using the Office Deployment Tool
+                        $odtPath = Join-Path $officePath ""deployment\setup.exe""
+                        if (Test-Path $odtPath) {
+                            try {
+                                Write-Host ""Running Office Deployment Tool uninstaller..."" -ForegroundColor Cyan
+                                Start-Process -FilePath $odtPath -ArgumentList ""/configure"", ""C:\Windows\Temp\uninstall.xml"" -Wait -NoNewWindow
+                                Write-Host ""Successfully initiated ODT uninstallation"" -ForegroundColor Green
+                                $removed++
+                            } catch {
+                                Write-Host ""Failed to run ODT: $($_.Exception.Message)"" -ForegroundColor Red
+                                $skipped++
+                            }
+                        }
+                    }
+
+                    # Check for Store versions
+                    $microsoft365 = Get-AppxPackage -Name ""*Microsoft.Office.Desktop*"" -AllUsers -ErrorAction SilentlyContinue
+                    $oneNote = Get-AppxPackage -Name ""*Microsoft.Office.OneNote*"" -AllUsers -ErrorAction SilentlyContinue
+                    
+                    if ($microsoft365) {
+                        try {
+                            Write-Host ""Found Microsoft 365 Store version. Attempting to remove..."" -ForegroundColor Yellow
+                            Remove-AppxPackage -Package $microsoft365.PackageFullName -AllUsers -ErrorAction Stop
+                            Write-Host ""Successfully removed Microsoft 365 Store version"" -ForegroundColor Green
+                            $removed++
+                        } catch {
+                            Write-Host ""Failed to remove Microsoft 365 Store version: $($_.Exception.Message)"" -ForegroundColor Red
+                            $skipped++
+                        }
+                    }
+
+                    if ($oneNote) {
+                        try {
+                            Write-Host ""Found OneNote Store version. Attempting to remove..."" -ForegroundColor Yellow
+                            Remove-AppxPackage -Package $oneNote.PackageFullName -AllUsers -ErrorAction Stop
+                            Write-Host ""Successfully removed OneNote Store version"" -ForegroundColor Green
+                            $removed++
+                        } catch {
+                            Write-Host ""Failed to remove OneNote Store version: $($_.Exception.Message)"" -ForegroundColor Red
+                            $skipped++
+                        }
+                    }
+
+                    # Try registry uninstall strings
+                    Write-Host ""Checking registry for Office/OneNote uninstall strings..."" -ForegroundColor Cyan
+                    $uninstallKeys = @(
+                        ""HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"",
+                        ""HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall""
+                    )
+
+                    foreach ($key in $uninstallKeys) {
+                        if (Test-Path $key) {
+                            Get-ChildItem $key | ForEach-Object {
+                                try {
+                                    $displayName = (Get-ItemProperty -Path $_.PSPath).DisplayName
+                                    if ($displayName -like ""*Microsoft 365*"" -or $displayName -like ""*Office*"" -or $displayName -like ""*OneNote*"") {
+                                        $uninstallString = (Get-ItemProperty -Path $_.PSPath).UninstallString
+                                        if ($uninstallString) {
+                                            Write-Host ""Found product in registry: $displayName"" -ForegroundColor Yellow
+                                            
+                                            if ($uninstallString -match '^""([^""]+)""(.*)') {
+                                                $exePath = $matches[1]
+                                                $args = $matches[2]
+                                            } else {
+                                                $exePath = $uninstallString
+                                                $args = """"
+                                            }
+                                            
+                                            if (Test-Path $exePath) {
+                                                try {
+                                                    Write-Host ""Running uninstaller: $exePath"" -ForegroundColor Cyan
+                                                    Start-Process -FilePath $exePath -ArgumentList $args -Wait -NoNewWindow
+                                                    Write-Host ""Successfully ran uninstaller"" -ForegroundColor Green
+                                                    $removed++
+                                                } catch {
+                                                    Write-Host ""Failed to run uninstaller: $($_.Exception.Message)"" -ForegroundColor Red
+                                                    $skipped++
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    continue
+                                }
+                            }
+                        }
+                    }
+
+                    # Also try to remove via winget as a last resort
+                    Write-Host ""Checking for Microsoft 365/OneNote via winget..."" -ForegroundColor Cyan
+                    
+                    # Check for Office
+                    $wingetCheck = winget list --id ""Microsoft.Office"" --exact --accept-source-agreements 2>&1
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host ""Found Microsoft 365 via winget. Attempting to remove..."" -ForegroundColor Yellow
+                        winget uninstall --id ""Microsoft.Office"" --silent --accept-source-agreements 2>&1
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host ""Successfully removed Microsoft 365 via winget"" -ForegroundColor Green
+                            $removed++
+                        } else {
+                            Write-Host ""Failed to remove Microsoft 365 via winget"" -ForegroundColor Red
+                            $skipped++
+                        }
+                    }
+
+                    # Check for OneNote
+                    $wingetCheck = winget list --id ""Microsoft.Office.OneNote"" --exact --accept-source-agreements 2>&1
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-Host ""Found OneNote via winget. Attempting to remove..."" -ForegroundColor Yellow
+                        winget uninstall --id ""Microsoft.Office.OneNote"" --silent --accept-source-agreements 2>&1
+                        if ($LASTEXITCODE -eq 0) {
+                            Write-Host ""Successfully removed OneNote via winget"" -ForegroundColor Green
+                            $removed++
+                        } else {
+                            Write-Host ""Failed to remove OneNote via winget"" -ForegroundColor Red
+                            $skipped++
+                        }
+                    }
+
                     # Check for Windows Copilot and its preview feature
                     Write-Host 'Checking for Windows Copilot and Preview...' -ForegroundColor Cyan
                     
