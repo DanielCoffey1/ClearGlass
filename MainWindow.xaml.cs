@@ -10,7 +10,9 @@ using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Diagnostics;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using ClearGlass.Models;
+using System.Windows.Controls;
 
 namespace ClearGlass
 {
@@ -838,83 +840,208 @@ namespace ClearGlass
             }
         }
 
-        private async void OnLibreWolfDownloadClick(object sender, RoutedEventArgs e)
+        private async Task<string> GetLibreWolfDownloadUrl()
         {
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "ClearGlass");
+                
+                // Get the latest release from GitHub
+                var response = await client.GetAsync("https://api.github.com/repos/librewolf-community/browser-windows/releases/latest");
+                response.EnsureSuccessStatusCode();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                
+                // Find the Windows installer asset
+                var startIndex = jsonResponse.IndexOf("browser_download_url") + "browser_download_url".Length + 3;
+                var endIndex = jsonResponse.IndexOf(".exe", startIndex) + 4;
+                if (startIndex <= "browser_download_url".Length + 3 || endIndex <= 4)
+                {
+                    throw new Exception("Could not find LibreWolf download URL in the release information.");
+                }
+                var downloadUrl = jsonResponse.Substring(startIndex, endIndex - startIndex);
+                return downloadUrl;
+            }
+        }
+
+        private async Task InstallAppWithWinget(string packageId, string appName, Button? button = null)
+        {
+            // First check if the app is installed
+            var checkInfo = new ProcessStartInfo
+            {
+                FileName = "winget",
+                Arguments = $"list {packageId} --exact --accept-source-agreements",
+                UseShellExecute = true,
+                RedirectStandardOutput = false,
+                Verb = "runas"
+            };
+
+            bool isInstalled = false;
             try
             {
-                var result = MessageBox.Show(
-                    "Would you like to install LibreWolf using winget?\n\n" +
-                    "Click Yes to install automatically using winget.\n" +
-                    "Click No to open the LibreWolf website instead.",
-                    "Install LibreWolf",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
+                using (var process = Process.Start(checkInfo))
                 {
-                    await _wingetService.InstallApp("LibreWolf.LibreWolf", "LibreWolf");
-                    MessageBox.Show(
-                        "LibreWolf has been installed successfully!",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
-                else
-                {
-                    Process.Start(new ProcessStartInfo
+                    if (process != null)
                     {
-                        FileName = "https://librewolf.net/",
-                        UseShellExecute = true
-                    });
+                        await process.WaitForExitAsync();
+                        isInstalled = process.ExitCode == 0;
+                    }
                 }
+            }
+            catch { } // Ignore errors in check, proceed with install/upgrade
+
+            if (isInstalled)
+            {
+                if (button != null)
+                {
+                    button.Content = $"Checking for {appName} updates...";
+                }
+
+                // Try to upgrade if installed
+                var upgradeInfo = new ProcessStartInfo
+                {
+                    FileName = "winget",
+                    Arguments = $"upgrade {packageId} --source winget --silent --accept-source-agreements --accept-package-agreements",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+
+                using (var process = Process.Start(upgradeInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        // Exit code 0 means upgrade successful
+                        // Exit code -1978335189 means no upgrade available
+                        if (process.ExitCode != 0 && process.ExitCode != -1978335189)
+                        {
+                            throw new Exception($"Winget upgrade failed with exit code: {process.ExitCode}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Install if not present
+                if (button != null)
+                {
+                    button.Content = $"Installing {appName}...";
+                }
+
+                var installInfo = new ProcessStartInfo
+                {
+                    FileName = "winget",
+                    Arguments = $"install {packageId} --source winget --silent --accept-source-agreements --accept-package-agreements",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+
+                using (var process = Process.Start(installInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        if (process.ExitCode != 0)
+                        {
+                            throw new Exception($"Winget installation failed with exit code: {process.ExitCode}");
+                        }
+                    }
+                }
+            }
+        }
+
+        private async void OnLibreWolfDownloadClick(object sender, RoutedEventArgs e)
+        {
+            Button? button = null;
+            try
+            {
+                // Disable button during installation
+                button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = false;
+                    button.Content = "Checking installation...";
+                }
+
+                // Check and install winget if needed
+                if (!await _wingetService.IsWingetInstalled())
+                {
+                    button.Content = "Installing Winget...";
+                    await _wingetService.InstallWinget();
+                }
+
+                // Install/Update LibreWolf
+                await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", button);
+
+                MessageBox.Show(
+                    "LibreWolf has been installed/updated successfully!",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    ex.Message,
+                    $"Error installing LibreWolf: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Reset button state
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "Download";
+                }
             }
         }
 
         private async void OnRevoDownloadClick(object sender, RoutedEventArgs e)
         {
+            Button? button = null;
             try
             {
-                var result = MessageBox.Show(
-                    "Would you like to install Revo Uninstaller using winget?\n\n" +
-                    "Click Yes to install automatically using winget.\n" +
-                    "Click No to open the Revo Uninstaller website instead.",
-                    "Install Revo Uninstaller",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                // Disable button during installation
+                button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = false;
+                    button.Content = "Checking installation...";
+                }
 
-                if (result == MessageBoxResult.Yes)
+                // Check and install winget if needed
+                if (!await _wingetService.IsWingetInstalled())
                 {
-                    await _wingetService.InstallApp("RevoUninstaller.RevoUninstaller", "Revo Uninstaller");
-                    MessageBox.Show(
-                        "Revo Uninstaller has been installed successfully!",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    button.Content = "Installing Winget...";
+                    await _wingetService.InstallWinget();
                 }
-                else
-                {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "https://www.revouninstaller.com/products/revo-uninstaller-free/",
-                        UseShellExecute = true
-                    });
-                }
+
+                // Install/Update Revo Uninstaller
+                await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", button);
+
+                MessageBox.Show(
+                    "Revo Uninstaller has been installed/updated successfully!",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    ex.Message,
+                    $"Error installing Revo Uninstaller: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Reset button state
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "Download";
+                }
             }
         }
 
@@ -924,10 +1051,10 @@ namespace ClearGlass
             {
                 // Disable the button during installation
                 DownloadBundleButton.IsEnabled = false;
-                DownloadBundleButton.Content = "Installing...";
+                DownloadBundleButton.Content = "Checking installations...";
 
                 var result = MessageBox.Show(
-                    "This will install all recommended applications using winget:\n\n" +
+                    "This will install or update all recommended applications:\n\n" +
                     "• LibreWolf Browser\n" +
                     "• Revo Uninstaller\n\n" +
                     "Do you want to continue?",
@@ -937,32 +1064,56 @@ namespace ClearGlass
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Check if winget is installed first
+                    // Check and install winget if needed
                     if (!await _wingetService.IsWingetInstalled())
                     {
+                        DownloadBundleButton.Content = "Installing Winget...";
                         await _wingetService.InstallWinget();
-                        return;
                     }
 
-                    // Install LibreWolf
-                    DownloadBundleButton.Content = "Installing LibreWolf...";
-                    await _wingetService.InstallApp("LibreWolf.LibreWolf", "LibreWolf");
+                    // Install/Update all apps, continue even if some fail
+                    List<string> failedApps = new List<string>();
 
-                    // Install Revo Uninstaller
-                    DownloadBundleButton.Content = "Installing Revo Uninstaller...";
-                    await _wingetService.InstallApp("RevoUninstaller.RevoUninstaller", "Revo Uninstaller");
+                    try
+                    {
+                        await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", DownloadBundleButton);
+                    }
+                    catch (Exception ex)
+                    {
+                        failedApps.Add($"LibreWolf: {ex.Message}");
+                    }
 
-                    MessageBox.Show(
-                        "All applications have been installed successfully!",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    try
+                    {
+                        await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", DownloadBundleButton);
+                    }
+                    catch (Exception ex)
+                    {
+                        failedApps.Add($"Revo Uninstaller: {ex.Message}");
+                    }
+
+                    if (failedApps.Count > 0)
+                    {
+                        MessageBox.Show(
+                            $"Installation completed with some errors:\n\n{string.Join("\n", failedApps)}",
+                            "Installation Warning",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "All applications have been installed/updated successfully!",
+                            "Success",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    ex.Message,
+                    $"Error during installation: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

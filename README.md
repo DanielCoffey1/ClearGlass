@@ -18,8 +18,8 @@ Clear Glass is a modern Windows optimization application designed to enhance sys
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/Clear-Glass.git
-   cd Clear-Glass
+   git clone https://github.com/DanielCoffey1/ClearGlass.git
+   cd ClearGlass
    ```
 2. Ensure you have the following prerequisites:
    - Visual Studio 2022 or later
@@ -52,6 +52,8 @@ Comprehensive system optimization tools that:
 - Temporarily store protected apps list during the session
 - Reset to defaults when application restarts
 - Easy-to-use interface with checkboxes for selection
+- Automatically detects and lists installed Windows apps
+- Remembers essential system apps by default
 
 ### Clear Glass Theme
 
@@ -64,6 +66,7 @@ A modern, minimalist theme that includes:
 - Desktop icons visibility toggle
 - Custom wallpaper that complements the glass effect
 - Proper theme application sequencing for reliability
+- Automatic wallpaper download and caching
 
 ### Recommended Addons
 
@@ -71,7 +74,9 @@ Curated selection of privacy-focused and performance-enhancing applications:
 
 - LibreWolf Browser (privacy-focused web browser)
 - Revo Uninstaller (thorough application removal)
-- Easy installation through winget or direct download links
+- Automatic installation and updates through winget
+- Silent installation without user interaction
+- Bundle installation option for all recommended apps
 
 ### Windows Tweaks
 
@@ -109,7 +114,8 @@ Additional system customization options:
 - Windows 10/11
 - Administrator privileges (required for system modifications)
 - .NET 6.0 or later
-- Winget package manager (optional, for automatic addon installation)
+- Internet connection for addon installations and updates
+- Winget package manager (automatically installed if needed)
 
 ## Usage
 
@@ -130,11 +136,28 @@ You can install recommended applications in two ways:
 
    - Click "Recommended Addons"
    - Choose an application
-   - Click "Download" to install via winget or visit the website
+   - Click "Download" to install/update via winget
+   - The application will automatically:
+     - Install winget if not present
+     - Check if the app is already installed
+     - Update existing installations
+     - Install new applications silently
 
 2. **Bundle Installation**:
    - Click "Recommended Addons"
-   - Click "Download Bundle" to install all apps via winget
+   - Click "Download Bundle" to install all apps
+   - The process continues even if individual apps fail
+   - Provides detailed feedback for any failed installations
+
+### Automatic Updates
+
+Clear Glass includes automatic update checking for:
+
+- Installed recommended applications
+- Winget package manager
+- Application installations and updates run silently without user interaction
+- Progress indication through button text updates
+- Detailed success/error messaging for all operations
 
 ## Development
 
