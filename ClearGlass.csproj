@@ -13,9 +13,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="clearglass.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Content Include="clearglass.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Wallpapers\glassbackground.png" />
   </ItemGroup>
 
 </Project> 

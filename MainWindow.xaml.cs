@@ -13,6 +13,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using ClearGlass.Models;
 using System.Windows.Controls;
+using System.Reflection;
 
 namespace ClearGlass
 {
@@ -23,9 +24,7 @@ namespace ClearGlass
         private readonly BloatwareService _bloatwareService;
         private readonly WingetService _wingetService;
         private bool _isThemeChanging = false;
-        private readonly string _wallpaperUrl = "https://raw.githubusercontent.com/DanielCoffey1/ClearGlassWallpapers/main/glassbackground.png";
         private readonly string _wallpaperPath;
-        private readonly string _hashPath;
         private readonly string _autologonPath;
         private Storyboard _showAddonsOverlay = null!;
         private Storyboard _hideAddonsOverlay = null!;
@@ -49,18 +48,18 @@ namespace ClearGlass
             string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             _autologonPath = Path.Combine(commonAppData, "ClearGlass", "Tools", "Autologon.exe");
                 
-            // Store in Windows' Wallpaper cache directory
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            _wallpaperPath = Path.Combine(appData, "Microsoft", "Windows", "Themes", "ClearGlass", "wallpaper.png");
+            // Store wallpaper in application's local data
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _wallpaperPath = Path.Combine(localAppData, "ClearGlass", "Wallpapers", "glassbackground.png");
             
-            string? wallpaperDir = Path.GetDirectoryName(_wallpaperPath);
-            if (wallpaperDir == null)
+            // Ensure wallpaper directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(_wallpaperPath));
+            
+            // Extract wallpaper from resources if it doesn't exist
+            if (!File.Exists(_wallpaperPath))
             {
-                throw new InvalidOperationException("Invalid wallpaper path");
+                ExtractWallpaperFromResources();
             }
-            _hashPath = Path.Combine(wallpaperDir, "wallpaper.hash");
-                
-            LoadCurrentSettings();
 
             // Enable window dragging
             this.MouseLeftButtonDown += (s, e) =>
@@ -88,6 +87,34 @@ namespace ClearGlass
             KeepAppsOverlay.Margin = new Thickness(0, 600, 0, -600);
             TweaksOverlay.Opacity = 0;
             TweaksOverlay.Margin = new Thickness(0, 600, 0, -600);
+        }
+
+        private void ExtractWallpaperFromResources()
+        {
+            try
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                using (var stream = assembly.GetManifestResourceStream("ClearGlass.Resources.Wallpapers.glassbackground.png"))
+                {
+                    if (stream == null)
+                    {
+                        throw new InvalidOperationException("Wallpaper resource not found in assembly");
+                    }
+                    
+                    using (var fileStream = new FileStream(_wallpaperPath, FileMode.Create))
+                    {
+                        stream.CopyTo(fileStream);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error extracting wallpaper: {ex.Message}",
+                    "Wallpaper Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private void LoadCurrentSettings()
@@ -169,61 +196,65 @@ namespace ClearGlass
 
         private async Task EnsureWallpaperAsync()
         {
-            try
+            const int maxRetries = 3;
+            const int retryDelayMs = 1000;
+            Exception? lastException = null;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                // Create directory if it doesn't exist
-                Directory.CreateDirectory(Path.GetDirectoryName(_wallpaperPath));
-
-                bool needsDownload = true;
-                string currentHash = null;
-
-                // Check if wallpaper exists and get its hash
-                if (File.Exists(_wallpaperPath) && File.Exists(_hashPath))
+                try
                 {
-                    currentHash = await File.ReadAllTextAsync(_hashPath);
-                    using var client = new HttpClient();
-                    var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, _wallpaperUrl));
-                    var etag = response.Headers.ETag?.Tag;
+                    // Ensure the wallpaper file exists
+                    if (!File.Exists(_wallpaperPath))
+                    {
+                        ExtractWallpaperFromResources();
+                        await Task.Delay(200); // Short delay after extraction
+                    }
+
+                    // Double-check the file exists after potential extraction
+                    if (!File.Exists(_wallpaperPath))
+                    {
+                        throw new FileNotFoundException("Wallpaper file not found even after extraction attempt");
+                    }
+
+                    // Set the wallpaper
+                    _themeService.SetWallpaper(_wallpaperPath);
                     
-                    if (!string.IsNullOrEmpty(etag) && etag == currentHash)
+                    // Verify the wallpaper was set by checking the registry
+                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop"))
                     {
-                        needsDownload = false;
+                        string? currentWallpaper = key?.GetValue("WallPaper") as string;
+                        if (string.IsNullOrEmpty(currentWallpaper) || !currentWallpaper.Equals(_wallpaperPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new Exception("Wallpaper verification failed - registry value not updated");
+                        }
                     }
-                }
 
-                if (needsDownload)
+                    // If we get here, wallpaper was successfully set
+                    Debug.WriteLine($"Wallpaper successfully set on attempt {attempt}");
+                    return;
+                }
+                catch (Exception ex)
                 {
-                    using (var client = new HttpClient())
+                    lastException = ex;
+                    Debug.WriteLine($"Attempt {attempt} failed: {ex.Message}");
+                    
+                    if (attempt < maxRetries)
                     {
-                        var response = await client.GetAsync(_wallpaperUrl);
-                        response.EnsureSuccessStatusCode();
-
-                        // Save the ETag
-                        var etag = response.Headers.ETag?.Tag;
-                        if (!string.IsNullOrEmpty(etag))
-                        {
-                            await File.WriteAllTextAsync(_hashPath, etag);
-                        }
-
-                        // Save the wallpaper
-                        using (var fs = new FileStream(_wallpaperPath, FileMode.Create))
-                        {
-                            await response.Content.CopyToAsync(fs);
-                        }
+                        await Task.Delay(retryDelayMs * attempt); // Exponential backoff
+                        Debug.WriteLine($"Retrying wallpaper set... (Attempt {attempt + 1}/{maxRetries})");
                     }
                 }
+            }
 
-                // Set the wallpaper
-                _themeService.SetWallpaper(_wallpaperPath);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Error setting wallpaper: {ex.Message}",
-                    "Wallpaper Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
+            // If we get here, all attempts failed
+            MessageBox.Show(
+                $"Failed to set wallpaper after {maxRetries} attempts: {lastException?.Message}\n\n" +
+                "You can try manually setting the wallpaper from:\n" +
+                _wallpaperPath,
+                "Wallpaper Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
 
         private async void OnClearGlassThemeClick(object sender, RoutedEventArgs e)
@@ -244,7 +275,7 @@ namespace ClearGlass
 
                 // First shell refresh after theme change
                 _themeService.RefreshWindows();
-                await Task.Delay(500);
+                await Task.Delay(1000); // Increased delay after major theme change
 
                 // Apply taskbar settings
                 TaskbarAlignmentToggle.IsChecked = false;
@@ -262,19 +293,15 @@ namespace ClearGlass
 
                 // Second shell refresh after UI changes
                 _themeService.RefreshWindows();
-                await Task.Delay(500);
+                await Task.Delay(1000); // Increased delay before wallpaper
 
-                // Apply Clear Glass wallpaper
-                await EnsureWallpaperAsync();
-                await Task.Delay(500);
-
-                // Wait for everything to stabilize
-                await Task.Delay(500);
-
-                // Finally hide desktop icons
+                // Hide desktop icons
                 DesktopIconsToggle.IsChecked = false;
                 _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(200);
+                await Task.Delay(500); // Increased delay after hiding icons
+
+                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                await EnsureWallpaperAsync();
 
                 MessageBox.Show(
                     "Clear Glass Theme applied successfully!\n\n" +
@@ -354,17 +381,15 @@ namespace ClearGlass
                     _themeService.RefreshWindows();
                     await Task.Delay(500);
 
-                    // Apply Clear Glass wallpaper
-                    await EnsureWallpaperAsync();
-                    await Task.Delay(500);
-
-                    // Wait for everything to stabilize
-                    await Task.Delay(500);
-
-                    // Finally hide desktop icons
+                    // Hide desktop icons
                     DesktopIconsToggle.IsChecked = false;
                     _themeService.AreDesktopIconsVisible = false;
                     await Task.Delay(200);
+
+                    // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                    await Task.Delay(300); // Give UI a moment to fully settle
+                    await EnsureWallpaperAsync();
+                    await Task.Delay(200); // Short delay after wallpaper change
 
                     MessageBox.Show(
                         "Clear Glass experience has been fully applied!\n\n" +
