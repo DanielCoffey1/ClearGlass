@@ -49,6 +49,23 @@ Comprehensive system optimization tools that:
   - Thorough cleanup of related services and registry entries
   - Multiple removal methods (setup.exe, ODT, registry, winget)
 
+### Application Uninstaller
+
+Built-in application management that allows you to:
+
+- List all installed applications on your system
+- Select multiple applications for batch uninstallation
+- View detailed information about each application:
+  - Application name
+  - Package ID
+  - Version number
+- Uninstall applications using Windows Package Manager (winget)
+- Modern glass-effect interface matching Clear Glass design
+- Easy-to-use checkbox selection system
+- Confirmation dialogs to prevent accidental uninstallation
+- Progress feedback during uninstallation process
+- Note: For thorough removal including registry cleanup, use Revo Uninstaller from Recommended Addons
+
 ### Keep Apps Feature
 
 - Select which apps to protect during bloatware removal

@@ -382,6 +382,44 @@
                 </ThicknessAnimation.EasingFunction>
             </ThicknessAnimation>
         </Storyboard>
+
+        <Storyboard x:Key="ShowRemoveAppsOverlay">
+            <DoubleAnimation Storyboard.TargetName="RemoveAppsOverlay"
+                           Storyboard.TargetProperty="Opacity"
+                           From="0" To="1"
+                           Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation Storyboard.TargetName="RemoveAppsOverlay"
+                              Storyboard.TargetProperty="Margin"
+                              From="0,600,0,-600" To="0"
+                              Duration="0:0:0.3">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="HideRemoveAppsOverlay">
+            <DoubleAnimation Storyboard.TargetName="RemoveAppsOverlay"
+                           Storyboard.TargetProperty="Opacity"
+                           From="1" To="0"
+                           Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ThicknessAnimation Storyboard.TargetName="RemoveAppsOverlay"
+                              Storyboard.TargetProperty="Margin"
+                              From="0" To="0,600,0,-600"
+                              Duration="0:0:0.3">
+                <ThicknessAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </ThicknessAnimation.EasingFunction>
+            </ThicknessAnimation>
+        </Storyboard>
     </Window.Resources>
 
     <Grid>
@@ -656,6 +694,13 @@
                                 Margin="5,0"
                                 x:Name="TweaksButton"
                                 Click="OnTweaksClick"/>
+                        <Button Content="Uninstaller"
+                                Style="{StaticResource TinyButton}"
+                                Width="75"
+                                Height="28"
+                                Margin="5,0"
+                                x:Name="RemoveAppsButton"
+                                Click="OnRemoveAppsClick"/>
                         <Button Content="Support Us" 
                                 Style="{StaticResource TinyButton}"
                                 Width="75"
@@ -1347,6 +1392,116 @@
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Remove Applications Overlay -->
+        <Border x:Name="RemoveAppsOverlay"
+                CornerRadius="10" 
+                Background="#80000000" 
+                BorderThickness="1" 
+                BorderBrush="{StaticResource GlassBorder}"
+                Margin="0,600,0,-600"
+                Opacity="0"
+                Panel.ZIndex="1000">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+            </Border.Effect>
+            
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Height="30" VerticalAlignment="Top" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Text="Uninstall Applications"
+                               Grid.Column="1"
+                               FontSize="28"
+                               FontWeight="Normal"
+                               FontFamily="Gabriola, 'Segoe Script', 'Brush Script MT', Cursive"
+                               Foreground="{StaticResource PrimaryBlue}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="0" 
+                                              BlurRadius="15" 
+                                              Color="#40000000" 
+                                              Opacity="0.3"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    
+                    <Button x:Name="CloseRemoveAppsButton"
+                            Grid.Column="2"
+                            Content="✕"
+                            Width="30"
+                            Height="30"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="{StaticResource TextPrimary}"
+                            Click="OnCloseRemoveAppsClick"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Padding="0,0,5,0"
+                            Margin="0,0,0,20">
+                    <ItemsControl x:Name="InstalledAppsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#20FFFFFF"
+                                        CornerRadius="10"
+                                        Margin="0,0,0,10"
+                                        Padding="15">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <CheckBox Grid.Column="0"
+                                                 IsChecked="{Binding IsSelected}"
+                                                 VerticalAlignment="Center"
+                                                 Margin="0,0,15,0"/>
+
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Name}"
+                                                     FontSize="16"
+                                                     FontWeight="SemiBold"
+                                                     Foreground="{StaticResource TextPrimary}"
+                                                     Margin="0,0,0,5"/>
+                                            <TextBlock Text="{Binding Id}"
+                                                     TextWrapping="Wrap"
+                                                     Foreground="{StaticResource TextSecondary}"
+                                                     LineHeight="20"/>
+                                            <TextBlock Text="{Binding Version}"
+                                                     Opacity="0.7"
+                                                     FontSize="12"
+                                                     Margin="0,5,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Button Grid.Row="2"
+                        x:Name="UninstallAppsButton"
+                        Content="Uninstall Selected"
+                        Style="{StaticResource ActionButton}"
+                        Width="200"
+                        Height="36"
+                        Click="OnUninstallAppsClick"
+                        HorizontalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

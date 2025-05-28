@@ -2,6 +2,9 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using ClearGlass.Models;
+using System.Text;
 
 namespace ClearGlass.Services
 {
@@ -183,6 +186,151 @@ namespace ClearGlass.Services
             }
             
             Console.WriteLine($"{appName} has been successfully installed!");
+        }
+
+        public async Task<List<InstalledApp>> GetInstalledApps()
+        {
+            if (!await IsWingetInstalled())
+            {
+                await InstallWinget();
+                return new List<InstalledApp>();
+            }
+
+            var installedApps = new List<InstalledApp>();
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "winget",
+                    Arguments = "list --accept-source-agreements",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = Encoding.UTF8
+                }
+            };
+
+            var output = new StringBuilder();
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    output.AppendLine(e.Data);
+                }
+            };
+
+            process.Start();
+            process.BeginOutputReadLine();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception($"Failed to list installed applications. Error:\n{output}");
+            }
+
+            // Parse the output
+            var lines = output.ToString().Split('\n');
+            bool headerPassed = false;
+            foreach (var line in lines)
+            {
+                if (!headerPassed)
+                {
+                    if (line.Contains("Name") && line.Contains("Id") && line.Contains("Version"))
+                    {
+                        headerPassed = true;
+                    }
+                    continue;
+                }
+
+                // Skip separator line and empty lines
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("--"))
+                {
+                    continue;
+                }
+
+                // Split the line by multiple spaces
+                var parts = Regex.Split(line.Trim(), @"\s{2,}");
+                if (parts.Length >= 3)
+                {
+                    installedApps.Add(new InstalledApp(
+                        name: parts[0].Trim(),
+                        id: parts[1].Trim(),
+                        version: parts[2].Trim()
+                    ));
+                }
+            }
+
+            return installedApps;
+        }
+
+        public async Task UninstallApp(string packageId)
+        {
+            if (!await IsWingetInstalled())
+            {
+                await InstallWinget();
+                return;
+            }
+
+            // Check if this is a Steam game (Steam App IDs are typically numeric)
+            if (packageId.StartsWith("Steam") && long.TryParse(packageId.Replace("Steam App ", ""), out long steamAppId))
+            {
+                Console.WriteLine($"Uninstalling Steam game (AppID: {steamAppId})...");
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "steam://uninstall/" + steamAppId,
+                        UseShellExecute = true
+                    }
+                };
+
+                process.Start();
+                // We can't wait for exit here as it opens Steam client
+                return;
+            }
+
+            Console.WriteLine($"Uninstalling package {packageId}...");
+            var uninstallProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "winget",
+                    Arguments = $"uninstall --id {packageId} --exact --accept-source-agreements",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            var output = new StringBuilder();
+            uninstallProcess.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    output.AppendLine(e.Data);
+                    Console.WriteLine(e.Data);
+                }
+            };
+            uninstallProcess.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data != null)
+                {
+                    output.AppendLine(e.Data);
+                    Console.WriteLine(e.Data);
+                }
+            };
+
+            uninstallProcess.Start();
+            uninstallProcess.BeginOutputReadLine();
+            uninstallProcess.BeginErrorReadLine();
+            await uninstallProcess.WaitForExitAsync();
+
+            if (uninstallProcess.ExitCode != 0)
+            {
+                throw new Exception($"Failed to uninstall {packageId}. Error:\n{output}");
+            }
         }
     }
 } 

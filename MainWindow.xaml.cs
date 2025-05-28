@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using ClearGlass.Models;
 using System.Windows.Controls;
 using System.Reflection;
+using System.Linq;
 
 namespace ClearGlass
 {
@@ -34,7 +35,10 @@ namespace ClearGlass
         private Storyboard _hideKeepAppsOverlay = null!;
         private Storyboard _showTweaksOverlay = null!;
         private Storyboard _hideTweaksOverlay = null!;
+        private Storyboard _showRemoveAppsOverlay = null!;
+        private Storyboard _hideRemoveAppsOverlay = null!;
         private ObservableCollection<WindowsApp>? _installedApps;
+        private ObservableCollection<InstalledApp> _installedAppsCollection = new ObservableCollection<InstalledApp>();
 
         public MainWindow()
         {
@@ -77,6 +81,8 @@ namespace ClearGlass
             _hideKeepAppsOverlay = (Storyboard)FindResource("HideKeepAppsOverlay");
             _showTweaksOverlay = (Storyboard)FindResource("ShowTweaksOverlay");
             _hideTweaksOverlay = (Storyboard)FindResource("HideTweaksOverlay");
+            _showRemoveAppsOverlay = (Storyboard)FindResource("ShowRemoveAppsOverlay");
+            _hideRemoveAppsOverlay = (Storyboard)FindResource("HideRemoveAppsOverlay");
             
             // Ensure overlays are hidden initially
             AddonsOverlay.Opacity = 0;
@@ -87,6 +93,11 @@ namespace ClearGlass
             KeepAppsOverlay.Margin = new Thickness(0, 600, 0, -600);
             TweaksOverlay.Opacity = 0;
             TweaksOverlay.Margin = new Thickness(0, 600, 0, -600);
+            RemoveAppsOverlay.Opacity = 0;
+            RemoveAppsOverlay.Margin = new Thickness(0, 600, 0, -600);
+
+            // Set the ItemsSource for the InstalledAppsList
+            InstalledAppsList.ItemsSource = _installedAppsCollection;
         }
 
         private void ExtractWallpaperFromResources()
@@ -1221,6 +1232,109 @@ namespace ClearGlass
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnRemoveAppsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                _installedAppsCollection.Clear();
+                
+                var apps = await _wingetService.GetInstalledApps();
+                // Sort the apps alphabetically by name
+                var sortedApps = apps.OrderBy(app => app.Name).ToList();
+                foreach (var app in sortedApps)
+                {
+                    _installedAppsCollection.Add(app);
+                }
+
+                _showRemoveAppsOverlay.Begin();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error loading installed applications: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void OnCloseRemoveAppsClick(object sender, RoutedEventArgs e)
+        {
+            _hideRemoveAppsOverlay.Begin();
+        }
+
+        private async void OnUninstallAppsClick(object sender, RoutedEventArgs e)
+        {
+            var selectedApps = _installedAppsCollection.Where(app => app.IsSelected).ToList();
+            if (!selectedApps.Any())
+            {
+                MessageBox.Show(
+                    "Please select at least one application to uninstall.",
+                    "No Selection",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?",
+                "Confirm Uninstall",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                Mouse.OverrideCursor = Cursors.Wait;
+                UninstallAppsButton.IsEnabled = false;
+
+                foreach (var app in selectedApps)
+                {
+                    try
+                    {
+                        await _wingetService.UninstallApp(app.Id);
+                        _installedAppsCollection.Remove(app);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Error uninstalling {app.Name}: {ex.Message}",
+                            "Uninstall Error",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+
+                MessageBox.Show(
+                    "Selected applications have been uninstalled.",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error during uninstallation: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                UninstallAppsButton.IsEnabled = true;
+                Mouse.OverrideCursor = null;
             }
         }
     }
