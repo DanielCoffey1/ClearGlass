@@ -122,7 +122,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error extracting wallpaper: {ex.Message}",
                     "Wallpaper Error",
                     MessageBoxButton.OK,
@@ -185,7 +185,7 @@ namespace ClearGlass
                     {
                         Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
                         {
-                            MessageBox.Show(
+                            CustomMessageBox.Show(
                                 $"Error changing theme: {ex.Message}",
                                 "Theme Change Error",
                                 MessageBoxButton.OK,
@@ -261,7 +261,7 @@ namespace ClearGlass
             }
 
             // If we get here, all attempts failed
-            MessageBox.Show(
+            CustomMessageBox.Show(
                 $"Failed to set wallpaper after {maxRetries} attempts: {lastException?.Message}\n\n" +
                 "You can try manually setting the wallpaper from:\n" +
                 _wallpaperPath,
@@ -316,7 +316,7 @@ namespace ClearGlass
                 // Final step: Apply Clear Glass wallpaper after all UI changes are complete
                 await EnsureWallpaperAsync();
 
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "Clear Glass Theme applied successfully!\n\n" +
                     "Some changes may take a few seconds to fully apply.",
                     "Success",
@@ -325,7 +325,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error applying Clear Glass Theme: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -339,7 +339,7 @@ namespace ClearGlass
 
         private async void OnClearGlassClick(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 "This will apply the complete Clear Glass experience:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
                 "2. Remove unnecessary Windows bloatware\n" +
@@ -404,7 +404,7 @@ namespace ClearGlass
                     await EnsureWallpaperAsync();
                     await Task.Delay(200); // Short delay after wallpaper change
 
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Clear Glass experience has been fully applied!\n\n" +
                         "Some changes may require a system restart to take full effect.",
                         "Success",
@@ -413,7 +413,7 @@ namespace ClearGlass
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         $"Error applying Clear Glass experience: {ex.Message}",
                         "Error",
                         MessageBoxButton.OK,
@@ -443,7 +443,7 @@ namespace ClearGlass
 
         private async void OnTweakSettingsClick(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 "This will modify various Windows settings to optimize your system. A restore point will be created before making changes. Do you want to continue?",
                 "Confirm Windows Settings Optimization",
                 MessageBoxButton.YesNo,
@@ -457,7 +457,7 @@ namespace ClearGlass
 
         private async void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 "This will remove unnecessary Windows apps while keeping essential system components and useful applications.\n\n" +
                 "A system restore point will be created before making changes.\n\n" +
                 "Do you want to continue?",
@@ -473,7 +473,7 @@ namespace ClearGlass
 
         private async void OnRunOptimizationClick(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 "This will:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
                 "2. Remove unnecessary Windows bloatware\n\n" +
@@ -493,7 +493,7 @@ namespace ClearGlass
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatware();
 
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
                         "Some changes may require a system restart to take full effect.",
                         "Success",
@@ -502,7 +502,7 @@ namespace ClearGlass
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         $"Error during optimization: {ex.Message}",
                         "Error",
                         MessageBoxButton.OK,
@@ -538,7 +538,7 @@ namespace ClearGlass
                 AutoLoginButton.IsEnabled = false;
 
                 // Show a confirmation dialog
-                var result = MessageBox.Show(
+                var result = CustomMessageBox.Show(
                     "This will launch Microsoft's Autologon tool to configure automatic login.\n\n" +
                     "Are you sure you want to continue?",
                     "Auto Login Configuration",
@@ -584,7 +584,7 @@ namespace ClearGlass
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             $"Error downloading or launching Autologon: {ex.Message}\n\n" +
                             "Please download and run Autologon manually from:\n" +
                             "https://learn.microsoft.com/en-us/sysinternals/downloads/autologon",
@@ -596,7 +596,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error configuring auto login: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -628,7 +628,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error configuring apps to keep: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -656,7 +656,7 @@ namespace ClearGlass
                 // Disable the button during operation
                 ApplyKeepAppsButton.IsEnabled = false;
 
-                var result = MessageBox.Show(
+                var result = CustomMessageBox.Show(
                     "This will update the list of protected apps for this session.\n\n" +
                     "Protected apps will be kept when using:\n" +
                     "- Remove Windows Bloatware\n" +
@@ -673,7 +673,7 @@ namespace ClearGlass
                     // Update the essential apps list with selected apps
                     _bloatwareService.UpdateSessionEssentialApps(_installedApps);
 
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Protected apps list has been updated successfully!\n\n" +
                         "These apps will be kept when removing bloatware.",
                         "Success",
@@ -686,7 +686,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error updating protected apps list: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -713,7 +713,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error opening Ko-fi page: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -771,7 +771,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Failed to open Backup and Restore: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -791,7 +791,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to open Registry Editor: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show($"Failed to open Registry Editor: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -808,7 +808,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to open User Accounts: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show($"Failed to open User Accounts: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -816,7 +816,7 @@ namespace ClearGlass
         {
             try
             {
-                var result = MessageBox.Show(
+                var result = CustomMessageBox.Show(
                     "This will remove Microsoft OneDrive from your system using winget.\n\n" +
                     "Do you want to continue?",
                     "Remove OneDrive",
@@ -828,7 +828,7 @@ namespace ClearGlass
                     // Check if winget is installed first
                     if (!await _wingetService.IsWingetInstalled())
                     {
-                        var installResult = MessageBox.Show(
+                        var installResult = CustomMessageBox.Show(
                             "Winget is not installed. Would you like to install it now?\n\n" +
                             "Winget is required to remove OneDrive.",
                             "Install Winget",
@@ -859,7 +859,7 @@ namespace ClearGlass
                         if (process != null)
                         {
                             await process.WaitForExitAsync();
-                            MessageBox.Show(
+                            CustomMessageBox.Show(
                                 "OneDrive has been successfully removed from your system.",
                                 "Success",
                                 MessageBoxButton.OK,
@@ -870,7 +870,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error removing OneDrive: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1010,7 +1010,7 @@ namespace ClearGlass
                 // Install/Update LibreWolf
                 await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", button);
 
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "LibreWolf has been installed/updated successfully!",
                     "Success",
                     MessageBoxButton.OK,
@@ -1018,7 +1018,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error installing LibreWolf: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1058,7 +1058,7 @@ namespace ClearGlass
                 // Install/Update Revo Uninstaller
                 await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", button);
 
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "Revo Uninstaller has been installed/updated successfully!",
                     "Success",
                     MessageBoxButton.OK,
@@ -1066,7 +1066,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error installing Revo Uninstaller: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1091,7 +1091,7 @@ namespace ClearGlass
                 DownloadBundleButton.IsEnabled = false;
                 DownloadBundleButton.Content = "Checking installations...";
 
-                var result = MessageBox.Show(
+                var result = CustomMessageBox.Show(
                     "This will install or update all recommended applications:\n\n" +
                     "• LibreWolf Browser\n" +
                     "• Revo Uninstaller\n\n" +
@@ -1132,7 +1132,7 @@ namespace ClearGlass
 
                     if (failedApps.Count > 0)
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             $"Installation completed with some errors:\n\n{string.Join("\n", failedApps)}",
                             "Installation Warning",
                             MessageBoxButton.OK,
@@ -1140,7 +1140,7 @@ namespace ClearGlass
                     }
                     else
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             "All applications have been installed/updated successfully!",
                             "Success",
                             MessageBoxButton.OK,
@@ -1150,7 +1150,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error during installation: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1168,7 +1168,7 @@ namespace ClearGlass
         {
             try
             {
-                var result = MessageBox.Show(
+                var result = CustomMessageBox.Show(
                     "This will disable web search suggestions and Bing integration in the Windows search box.\n\n" +
                     "Do you want to continue?",
                     "Disable Search Suggestions",
@@ -1219,7 +1219,7 @@ namespace ClearGlass
                         process.WaitForExit();
                     }
 
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Search suggestions have been disabled successfully!\n\n" +
                         "You may need to restart your computer for all changes to take effect.",
                         "Success",
@@ -1229,7 +1229,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error disabling search suggestions: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1256,7 +1256,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error loading installed applications: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1278,7 +1278,7 @@ namespace ClearGlass
             var selectedApps = _installedAppsCollection.Where(app => app.IsSelected).ToList();
             if (!selectedApps.Any())
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "Please select at least one application to uninstall.",
                     "No Selection",
                     MessageBoxButton.OK,
@@ -1286,7 +1286,7 @@ namespace ClearGlass
                 return;
             }
 
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?\n\n" +
                 "The uninstallation process will:\n" +
                 "1. Create a system restore point\n" +
@@ -1321,7 +1321,7 @@ namespace ClearGlass
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             $"Error uninstalling {app.Name}: {ex.Message}",
                             "Uninstall Error",
                             MessageBoxButton.OK,
@@ -1329,7 +1329,7 @@ namespace ClearGlass
                     }
                 }
 
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "Selected applications have been uninstalled.",
                     "Success",
                     MessageBoxButton.OK,
@@ -1337,7 +1337,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error during uninstallation: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -1450,7 +1450,7 @@ namespace ClearGlass
                     
                     if (process.ExitCode == 0)
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             "Privacy permissions have been successfully disabled.",
                             "Success",
                             MessageBoxButton.OK,
@@ -1458,7 +1458,7 @@ namespace ClearGlass
                     }
                     else
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             "Some settings may not have been changed successfully. Please check your privacy settings manually.",
                             "Warning",
                             MessageBoxButton.OK,
@@ -1471,7 +1471,7 @@ namespace ClearGlass
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error disabling privacy permissions: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,

@@ -13,10 +13,10 @@ namespace ClearGlass.Services
         {
             try
             {
-                MessageBox.Show("Starting Windows optimization...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                CustomMessageBox.Show("Starting Windows optimization...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 // Create restore point
-                MessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                CustomMessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await CreateRestorePoint();
 
                 // Run PowerShell commands with elevated privileges
@@ -185,7 +185,7 @@ namespace ClearGlass.Services
                 
                 if (process.ExitCode == 0)
                 {
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Windows settings have been successfully optimized!",
                         "Success",
                         MessageBoxButton.OK,
@@ -193,7 +193,7 @@ namespace ClearGlass.Services
                 }
                 else
                 {
-                    MessageBox.Show(
+                    CustomMessageBox.Show(
                         "Some optimizations may not have completed successfully. Please check the system logs for more information.",
                         "Warning",
                         MessageBoxButton.OK,
@@ -205,7 +205,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error during optimization: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -249,7 +249,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Failed to create restore point: {ex.Message}\nProceeding with optimization...",
                     "Warning",
                     MessageBoxButton.OK,

@@ -126,7 +126,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error getting installed apps: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
@@ -156,7 +156,7 @@ namespace ClearGlass.Services
         {
             try
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     "Starting Windows bloatware removal. This will remove unnecessary Windows apps while keeping selected ones.\n\n" +
                     "McAfee and Norton products will also be removed if they are installed.\n\n" +
                     "A system restore point will be created before making changes.",
@@ -729,7 +729,7 @@ namespace ClearGlass.Services
                     
                     if (process.ExitCode == 0)
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
                             "Some apps may require a system restart to be fully removed.",
                             "Success",
@@ -738,7 +738,7 @@ namespace ClearGlass.Services
                     }
                     else
                     {
-                        MessageBox.Show(
+                        CustomMessageBox.Show(
                             "Some apps may not have been removed successfully. Please check the PowerShell window for details.",
                             "Warning",
                             MessageBoxButton.OK,
@@ -751,7 +751,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                CustomMessageBox.Show(
                     $"Error during bloatware removal: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,

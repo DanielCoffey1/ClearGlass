@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.IO;
 using System.ComponentModel;
+using System.Windows;
 
 namespace ClearGlass.Services
 {
@@ -63,7 +64,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error restarting Explorer: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                CustomMessageBox.Show($"Error restarting Explorer: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -136,7 +137,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Error setting taskbar alignment: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    CustomMessageBox.Show($"Error setting taskbar alignment: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
@@ -163,7 +164,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Error setting task view: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    CustomMessageBox.Show($"Error setting task view: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
@@ -218,11 +219,11 @@ namespace ClearGlass.Services
             {
                 if (!IsAdministrator())
                 {
-                    System.Windows.MessageBox.Show(
+                    CustomMessageBox.Show(
                         "This application requires administrator privileges to modify widgets settings.\n\nPlease right-click the application and select 'Run as administrator'.",
                         "Administrator Required",
-                        System.Windows.MessageBoxButton.OK,
-                        System.Windows.MessageBoxImage.Warning);
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                     return;
                 }
 
@@ -285,23 +286,23 @@ namespace ClearGlass.Services
 
                     if (!value)
                     {
-                        System.Windows.MessageBox.Show(
+                        CustomMessageBox.Show(
                             "Widgets have been disabled. If they still appear, you may need to:\n\n" +
                             "1. Sign out and sign back in\n" +
                             "2. Or restart your computer\n\n" +
                             "This is sometimes necessary due to Windows 11's widget system.",
                             "Action Required",
-                            System.Windows.MessageBoxButton.OK,
-                            System.Windows.MessageBoxImage.Information);
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show(
+                    CustomMessageBox.Show(
                         $"Error modifying widgets settings: {ex.Message}\n\nSome changes may require a system restart to take effect.",
                         "Widget Settings Error",
-                        System.Windows.MessageBoxButton.OK,
-                        System.Windows.MessageBoxImage.Warning);
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                 }
             }
         }
@@ -328,7 +329,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Error setting search visibility: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    CustomMessageBox.Show($"Error setting search visibility: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
@@ -399,7 +400,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Error toggling desktop icons: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    CustomMessageBox.Show($"Error toggling desktop icons: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }

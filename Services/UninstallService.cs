@@ -434,7 +434,7 @@ namespace ClearGlass.Services
 
             message += "\nWould you like to remove these leftover items?";
 
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 message,
                 "Leftover Items Found",
                 MessageBoxButton.YesNo,
