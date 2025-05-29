@@ -59,12 +59,22 @@ Built-in application management that allows you to:
   - Application name
   - Package ID
   - Version number
+- Advanced uninstallation features similar to Revo Uninstaller:
+  - Creates system restore points before uninstallation
+  - Takes system snapshot to track file changes
+  - Uses native uninstallers when available
+  - Performs deep scanning for leftover files:
+    - Tracks new and modified files during uninstallation
+    - Scans common system directories
+    - Detects various file types (.exe, .dll, .sys, .ini, etc.)
+    - Identifies related files using smart name matching
+  - Thorough registry scanning
+  - Optional removal of all detected leftovers
 - Uninstall applications using Windows Package Manager (winget)
 - Modern glass-effect interface matching Clear Glass design
 - Easy-to-use checkbox selection system
 - Confirmation dialogs to prevent accidental uninstallation
-- Progress feedback during uninstallation process
-- Note: For thorough removal including registry cleanup, use Revo Uninstaller from Recommended Addons
+- Detailed progress feedback during uninstallation process
 
 ### Keep Apps Feature
 

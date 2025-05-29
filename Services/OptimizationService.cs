@@ -175,31 +175,29 @@ namespace ClearGlass.Services
                     RedirectStandardOutput = false
                 };
 
-                using (Process process = Process.Start(startInfo))
+                using var process = Process.Start(startInfo);
+                if (process is null)
                 {
-                    if (process == null)
-                    {
-                        throw new InvalidOperationException("Failed to start PowerShell process");
-                    }
+                    throw new InvalidOperationException("Failed to start PowerShell process");
+                }
 
-                    await process.WaitForExitAsync();
-                    
-                    if (process.ExitCode == 0)
-                    {
-                        MessageBox.Show(
-                            "Windows settings have been successfully optimized!",
-                            "Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show(
-                            "Some optimizations may not have completed successfully. Please check the system logs for more information.",
-                            "Warning",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
-                    }
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode == 0)
+                {
+                    MessageBox.Show(
+                        "Windows settings have been successfully optimized!",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Some optimizations may not have completed successfully. Please check the system logs for more information.",
+                        "Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                 }
 
                 // Clean up the temporary script file
@@ -220,28 +218,34 @@ namespace ClearGlass.Services
             try
             {
                 // Enable System Restore if it's disabled
-                using (Process process = new Process())
+                using var enableProcess = new Process
                 {
-                    process.StartInfo.FileName = "powershell.exe";
-                    process.StartInfo.Arguments = "-Command \"Enable-ComputerRestore -Drive 'C:\'\"";
-                    process.StartInfo.UseShellExecute = true;
-                    process.StartInfo.Verb = "runas";
-                    process.StartInfo.CreateNoWindow = true;
-                    process.Start();
-                    await process.WaitForExitAsync();
-                }
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = "-Command \"Enable-ComputerRestore -Drive 'C:\'\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = true
+                    }
+                };
+                enableProcess.Start();
+                await enableProcess.WaitForExitAsync();
 
                 // Create the restore point
-                using (Process process = new Process())
+                using var restoreProcess = new Process
                 {
-                    process.StartInfo.FileName = "powershell.exe";
-                    process.StartInfo.Arguments = "-Command \"Checkpoint-Computer -Description 'Before ClearGlass Optimization' -RestorePointType 'MODIFY_SETTINGS'\"";
-                    process.StartInfo.UseShellExecute = true;
-                    process.StartInfo.Verb = "runas";
-                    process.StartInfo.CreateNoWindow = true;
-                    process.Start();
-                    await process.WaitForExitAsync();
-                }
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = "-Command \"Checkpoint-Computer -Description 'Before ClearGlass Optimization' -RestorePointType 'MODIFY_SETTINGS'\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = true
+                    }
+                };
+                restoreProcess.Start();
+                await restoreProcess.WaitForExitAsync();
             }
             catch (Exception ex)
             {

@@ -49,11 +49,11 @@ namespace ClearGlass.Services
         {
             Console.WriteLine("Opening Microsoft Store to install winget (App Installer)...");
             // Open the Microsoft Store page for App Installer (which includes winget)
-            Process.Start(new ProcessStartInfo
+            await Task.Run(() => Process.Start(new ProcessStartInfo
             {
                 FileName = "ms-windows-store://pdp/?ProductId=9NBLGGH4NNS1",
                 UseShellExecute = true
-            });
+            }));
 
             throw new Exception(
                 "Please install the App Installer from the Microsoft Store that just opened.\n" +

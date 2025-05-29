@@ -5,9 +5,9 @@ namespace ClearGlass.Models
     public class InstalledApp : INotifyPropertyChanged
     {
         private bool _isSelected;
-        private string _name;
-        private string _id;
-        private string _version;
+        private readonly string _name;
+        private readonly string _id;
+        private readonly string _version;
 
         public bool IsSelected
         {
@@ -22,46 +22,11 @@ namespace ClearGlass.Models
             }
         }
 
-        public string Name
-        {
-            get => _name;
-            set
-            {
-                if (_name != value)
-                {
-                    _name = value;
-                    OnPropertyChanged(nameof(Name));
-                }
-            }
-        }
+        public string Name => _name;
+        public string Id => _id;
+        public string Version => _version;
 
-        public string Id
-        {
-            get => _id;
-            set
-            {
-                if (_id != value)
-                {
-                    _id = value;
-                    OnPropertyChanged(nameof(Id));
-                }
-            }
-        }
-
-        public string Version
-        {
-            get => _version;
-            set
-            {
-                if (_version != value)
-                {
-                    _version = value;
-                    OnPropertyChanged(nameof(Version));
-                }
-            }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         protected virtual void OnPropertyChanged(string propertyName)
         {

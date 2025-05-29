@@ -24,6 +24,7 @@ namespace ClearGlass
         private readonly OptimizationService _optimizationService;
         private readonly BloatwareService _bloatwareService;
         private readonly WingetService _wingetService;
+        private readonly UninstallService _uninstallService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperPath;
         private readonly string _autologonPath;
@@ -47,6 +48,7 @@ namespace ClearGlass
             _optimizationService = new OptimizationService();
             _bloatwareService = new BloatwareService();
             _wingetService = new WingetService();
+            _uninstallService = new UninstallService(_wingetService);
             
             // Store in Windows' tools directory
             string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -1285,7 +1287,12 @@ namespace ClearGlass
             }
 
             var result = MessageBox.Show(
-                $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?",
+                $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?\n\n" +
+                "The uninstallation process will:\n" +
+                "1. Create a system restore point\n" +
+                "2. Run the application's native uninstaller\n" +
+                "3. Scan for and remove leftover files\n" +
+                "4. Scan for and remove leftover registry entries",
                 "Confirm Uninstall",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -1304,7 +1311,12 @@ namespace ClearGlass
                 {
                     try
                     {
-                        await _wingetService.UninstallApp(app.Id);
+                        var progress = new Progress<string>(status =>
+                        {
+                            UninstallAppsButton.Content = status;
+                        });
+
+                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress);
                         _installedAppsCollection.Remove(app);
                     }
                     catch (Exception ex)
@@ -1334,6 +1346,7 @@ namespace ClearGlass
             finally
             {
                 UninstallAppsButton.IsEnabled = true;
+                UninstallAppsButton.Content = "Uninstall Selected";
                 Mouse.OverrideCursor = null;
             }
         }
