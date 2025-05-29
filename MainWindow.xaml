@@ -1390,6 +1390,36 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Disable Privacy Permissions"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Enhance your privacy by disabling Windows tracking and personalization features including advertising ID, app launch tracking, and suggested content in Settings."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Disable Permissions"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnDisablePrivacyPermissionsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

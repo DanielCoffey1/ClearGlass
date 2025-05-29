@@ -1350,5 +1350,133 @@ namespace ClearGlass
                 Mouse.OverrideCursor = null;
             }
         }
+
+        private async void OnDisablePrivacyPermissionsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var button = (Button)sender;
+                var originalContent = button.Content;
+                button.Content = "Disabling...";
+                button.IsEnabled = false;
+
+                // Create PowerShell script to disable privacy settings
+                string script = @"
+                    # Create a restore point
+                    Checkpoint-Computer -Description 'Before Privacy Settings Change' -RestorePointType 'MODIFY_SETTINGS'
+
+                    # Disable Advertising ID
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
+                    
+                    # Disable Website Language Access
+                    Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
+                    
+                    # Disable App Launch Tracking
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
+                    
+                    # Disable Suggested Content in Settings
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353696Enabled' -Value 0 -Type DWord -Force
+                    
+                    # Disable Settings Notifications (all types)
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-314563Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
+                    
+                    # Additional notification settings
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications' -Name 'ToastEnabled' -Value 0 -Type DWord -Force
+                    
+                    # Disable Custom Inking and Typing Dictionary
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitInkCollection' -Value 1 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitTextCollection' -Value 1 -Type DWord -Force
+                    
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Name 'HarvestContacts' -Value 0 -Type DWord -Force
+                    
+                    # Disable Inking & Typing Personalization
+                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Name 'AcceptedPrivacyPolicy' -Value 0 -Type DWord -Force
+                    
+                    # Save current taskbar settings
+                    $explorerProcess = Get-Process -Name explorer -ErrorAction SilentlyContinue
+                    if ($explorerProcess) {
+                        $taskbarSettings = Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -ErrorAction SilentlyContinue
+                        
+                        # Store all relevant taskbar settings
+                        $taskbarAlignment = $taskbarSettings.TaskbarAl
+                        $taskbarSmallIcons = $taskbarSettings.TaskbarSmallIcons
+                        $taskbarSearch = $taskbarSettings.SearchboxTaskbarMode
+                        $showTaskView = $taskbarSettings.ShowTaskViewButton
+                        
+                        Stop-Process -Name explorer -Force
+                        Start-Sleep -Seconds 2
+                        
+                        # Restore all taskbar settings
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarAl' -Value $taskbarAlignment -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarSmallIcons' -Value $taskbarSmallIcons -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'SearchboxTaskbarMode' -Value $taskbarSearch -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value $showTaskView -Type DWord -Force
+                        
+                        # Explicitly disable Copilot
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force
+                        
+                        # Additional Copilot-related settings
+                        New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Force | Out-Null
+                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Name 'IsEnabled' -Value 0 -Type DWord -Force
+                        
+                        Start-Process explorer
+                    }
+                ";
+
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                    
+                    if (process.ExitCode == 0)
+                    {
+                        MessageBox.Show(
+                            "Privacy permissions have been successfully disabled.",
+                            "Success",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Some settings may not have been changed successfully. Please check your privacy settings manually.",
+                            "Warning",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+
+                button.Content = originalContent;
+                button.IsEnabled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error disabling privacy permissions: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
     }
 } 

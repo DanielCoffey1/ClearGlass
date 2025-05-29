@@ -38,7 +38,11 @@ Comprehensive system optimization tools that:
 - Create system restore points for safety
 - Clean temporary files and perform disk cleanup
 - Optimize Windows services
-- Enhance privacy settings
+- Enhance privacy settings:
+  - Control advertising and personalization
+  - Manage app tracking and telemetry
+  - Configure inking and typing privacy
+  - Disable unwanted features (Copilot, suggestions)
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
 - Safely remove pre-installed software:
@@ -112,6 +116,14 @@ Curated selection of privacy-focused and performance-enhancing applications:
 
 Additional system customization options:
 
+- Enhanced Privacy Controls:
+  - Disable advertising ID and personalized ads
+  - Turn off website language list access
+  - Disable app launch tracking
+  - Remove suggested content in Settings
+  - Disable Settings app notifications
+  - Turn off custom inking and typing dictionary
+  - Disable Windows Copilot (preview)
 - Disable search box suggestions and Bing integration
 - Remove Microsoft OneDrive
 - Access to Windows Image Backup
