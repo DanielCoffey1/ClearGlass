@@ -1359,6 +1359,13 @@ namespace ClearGlass
                                     });
                                     steamApps.Add(app.Name);
                                     _installedAppsCollection.Remove(app);
+                                    // Sequential prompt
+                                    CustomMessageBox.Show(
+                                        $"You can only uninstall one Steam game at a time. Click OK to continue to the next game.",
+                                        "Steam Uninstall Notice",
+                                        MessageBoxButton.OK,
+                                        MessageBoxImage.Information
+                                    );
                                 }
                                 catch (Exception ex)
                                 {
