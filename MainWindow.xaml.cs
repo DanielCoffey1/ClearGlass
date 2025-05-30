@@ -1308,7 +1308,7 @@ namespace ClearGlass
                 $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?\n\n" +
                 "The uninstallation process will:\n" +
                 "1. Create a system restore point\n" +
-                "2. Run the application's native uninstaller\n" +
+                "2. Run the application's native uninstaller or platform-specific uninstaller\n" +
                 "3. Scan for and remove leftover files\n" +
                 "4. Scan for and remove leftover registry entries",
                 "Confirm Uninstall",
@@ -1325,37 +1325,97 @@ namespace ClearGlass
                 Mouse.OverrideCursor = Cursors.Wait;
                 UninstallAppsButton.IsEnabled = false;
 
-                // Create a single restore point before starting batch uninstallation
                 var progress = new Progress<string>(status =>
                 {
                     UninstallAppsButton.Content = status;
                 });
 
-                // Create restore point only for the first app
-                await _uninstallService.UninstallAppThoroughly(selectedApps[0].Id, selectedApps[0].Name, progress, true);
-                _installedAppsCollection.Remove(selectedApps[0]);
+                var failedApps = new List<string>();
+                var steamApps = new List<string>();
 
-                // Uninstall remaining apps without creating restore points
-                for (int i = 1; i < selectedApps.Count; i++)
+                // Create restore point only for the first app (if not a Steam game)
+                int firstNonSteamIndex = selectedApps.FindIndex(a => !a.IsSteamGame);
+                if (firstNonSteamIndex >= 0)
                 {
                     try
                     {
-                        await _uninstallService.UninstallAppThoroughly(selectedApps[i].Id, selectedApps[i].Name, progress, false);
-                        _installedAppsCollection.Remove(selectedApps[i]);
+                        await _uninstallService.UninstallAppThoroughly(selectedApps[firstNonSteamIndex].Id, selectedApps[firstNonSteamIndex].Name, progress, true);
+                        _installedAppsCollection.Remove(selectedApps[firstNonSteamIndex]);
                     }
                     catch (Exception ex)
                     {
-                        CustomMessageBox.Show(
-                            $"Error uninstalling {selectedApps[i].Name}: {ex.Message}",
-                            "Uninstall Error",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                        failedApps.Add($"{selectedApps[firstNonSteamIndex].Name}: {ex.Message}");
                     }
                 }
 
+                // Uninstall remaining apps
+                for (int i = 0; i < selectedApps.Count; i++)
+                {
+                    if (i == firstNonSteamIndex) continue;
+                    var app = selectedApps[i];
+                    try
+                    {
+                        if (app.IsSteamGame)
+                        {
+                            // Launch Steam uninstall protocol
+                            string steamAppId = app.Id.Replace("Steam App ", "");
+                            try
+                            {
+                                Process.Start(new ProcessStartInfo
+                                {
+                                    FileName = $"steam://uninstall/{steamAppId}",
+                                    UseShellExecute = true
+                                });
+                                steamApps.Add(app.Name);
+                                _installedAppsCollection.Remove(app);
+                            }
+                            catch (Exception ex)
+                            {
+                                failedApps.Add($"{app.Name} (Steam): {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, false);
+                            _installedAppsCollection.Remove(app);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Check for winget single-package error
+                        if (ex.Message.Contains("can only be used for single package") || ex.Message.Contains("only be used for single package"))
+                        {
+                            failedApps.Add($"{app.Name}: This application cannot be uninstalled automatically. Please uninstall it manually from its platform or the Windows Control Panel.");
+                        }
+                        else
+                        {
+                            failedApps.Add($"{app.Name}: {ex.Message}");
+                        }
+                    }
+                }
+
+                // Show summary
+                string summary = "";
+                if (steamApps.Any())
+                {
+                    summary += $"The following Steam games were opened in Steam for uninstallation:\n- {string.Join("\n- ", steamApps)}\n\n";
+                }
+                if (failedApps.Any())
+                {
+                    summary += $"Some applications could not be uninstalled automatically:\n- {string.Join("\n- ", failedApps)}\n\n";
+                }
+                if (string.IsNullOrWhiteSpace(summary))
+                {
+                    summary = "Selected applications have been uninstalled.";
+                }
+                else
+                {
+                    summary += "Other selected applications have been uninstalled.";
+                }
+
                 CustomMessageBox.Show(
-                    "Selected applications have been uninstalled.",
-                    "Success",
+                    summary,
+                    "Uninstall Summary",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }

@@ -66,7 +66,7 @@ Built-in application management that allows you to:
   - Application name
   - Package ID
   - Version number
-- Advanced uninstallation features similar to Revo Uninstaller:
+- Advanced uninstallation features:
   - Creates system restore points before uninstallation
   - Takes system snapshot to track file changes
   - Uses native uninstallers when available

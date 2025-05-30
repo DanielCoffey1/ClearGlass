@@ -8,6 +8,7 @@ namespace ClearGlass.Models
         private readonly string _name;
         private readonly string _id;
         private readonly string _version;
+        private bool _isSteamGame;
 
         public bool IsSelected
         {
@@ -18,6 +19,19 @@ namespace ClearGlass.Models
                 {
                     _isSelected = value;
                     OnPropertyChanged(nameof(IsSelected));
+                }
+            }
+        }
+
+        public bool IsSteamGame
+        {
+            get => _isSteamGame;
+            set
+            {
+                if (_isSteamGame != value)
+                {
+                    _isSteamGame = value;
+                    OnPropertyChanged(nameof(IsSteamGame));
                 }
             }
         }
@@ -39,6 +53,7 @@ namespace ClearGlass.Models
             _id = id;
             _version = version;
             _isSelected = false;
+            _isSteamGame = id.StartsWith("Steam", System.StringComparison.OrdinalIgnoreCase);
         }
     }
 } 
