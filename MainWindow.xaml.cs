@@ -1292,7 +1292,8 @@ namespace ClearGlass
 
         private async void OnUninstallAppsClick(object sender, RoutedEventArgs e)
         {
-            var selectedApps = _installedAppsCollection.Where(app => app.IsSelected).ToList();
+            // Use the full, unfiltered list to get all selected apps
+            var selectedApps = _originalAppsList.Where(app => app.IsSelected).ToList();
             if (!selectedApps.Any())
             {
                 CustomMessageBox.Show(
@@ -1324,22 +1325,28 @@ namespace ClearGlass
                 Mouse.OverrideCursor = Cursors.Wait;
                 UninstallAppsButton.IsEnabled = false;
 
-                foreach (var app in selectedApps)
+                // Create a single restore point before starting batch uninstallation
+                var progress = new Progress<string>(status =>
+                {
+                    UninstallAppsButton.Content = status;
+                });
+
+                // Create restore point only for the first app
+                await _uninstallService.UninstallAppThoroughly(selectedApps[0].Id, selectedApps[0].Name, progress, true);
+                _installedAppsCollection.Remove(selectedApps[0]);
+
+                // Uninstall remaining apps without creating restore points
+                for (int i = 1; i < selectedApps.Count; i++)
                 {
                     try
                     {
-                        var progress = new Progress<string>(status =>
-                        {
-                            UninstallAppsButton.Content = status;
-                        });
-
-                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress);
-                        _installedAppsCollection.Remove(app);
+                        await _uninstallService.UninstallAppThoroughly(selectedApps[i].Id, selectedApps[i].Name, progress, false);
+                        _installedAppsCollection.Remove(selectedApps[i]);
                     }
                     catch (Exception ex)
                     {
                         CustomMessageBox.Show(
-                            $"Error uninstalling {app.Name}: {ex.Message}",
+                            $"Error uninstalling {selectedApps[i].Name}: {ex.Message}",
                             "Uninstall Error",
                             MessageBoxButton.OK,
                             MessageBoxImage.Warning);
@@ -1356,15 +1363,15 @@ namespace ClearGlass
             {
                 CustomMessageBox.Show(
                     $"Error during uninstallation: {ex.Message}",
-                    "Error",
+                    "Uninstall Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
             finally
             {
+                Mouse.OverrideCursor = null;
                 UninstallAppsButton.IsEnabled = true;
                 UninstallAppsButton.Content = "Uninstall Selected";
-                Mouse.OverrideCursor = null;
             }
         }
 

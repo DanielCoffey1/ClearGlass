@@ -24,7 +24,7 @@ namespace ClearGlass.Services
             _initialFileTimestamps = new Dictionary<string, DateTime>();
         }
 
-        public async Task UninstallAppThoroughly(string packageId, string appName, IProgress<string> progress)
+        public async Task UninstallAppThoroughly(string packageId, string appName, IProgress<string> progress, bool createRestorePoint = true)
         {
             try
             {
@@ -32,9 +32,12 @@ namespace ClearGlass.Services
                 progress.Report("Taking initial system snapshot...");
                 await TakeSystemSnapshot(appName);
 
-                // Step 2: Create a restore point
-                progress.Report("Creating system restore point...");
-                await CreateSystemRestorePoint($"Before uninstalling {appName}");
+                // Step 2: Create a restore point if requested
+                if (createRestorePoint)
+                {
+                    progress.Report("Creating system restore point...");
+                    await CreateSystemRestorePoint($"Before uninstalling {appName}");
+                }
 
                 // Step 3: First try to find uninstaller in app folders
                 progress.Report("Searching for application uninstaller...");
