@@ -1,6 +1,7 @@
 <Window x:Class="ClearGlass.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ClearGlass"
         Title="Clear Glass" Height="600" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
@@ -9,6 +10,8 @@
         BorderThickness="1"
         BorderBrush="{StaticResource GlassBorder}">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <Style TargetType="ToggleButton">
             <Setter Property="Width" Value="50"/>
             <Setter Property="Height" Value="26"/>
@@ -1484,44 +1487,92 @@
                             HorizontalScrollBarVisibility="Disabled"
                             Padding="0,0,5,0"
                             Margin="0,0,0,20">
-                    <ItemsControl x:Name="InstalledAppsList">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#20FFFFFF"
-                                        CornerRadius="10"
-                                        Margin="0,0,0,10"
-                                        Padding="15">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="5"
+                                Margin="0,0,0,10"
+                                Width="300"
+                                HorizontalAlignment="Center"
+                                BorderThickness="1"
+                                BorderBrush="#40FFFFFF">
+                            <TextBox x:Name="AppSearchBox"
+                                    Padding="10,5"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    FontSize="14"
+                                    CaretBrush="White"
+                                    TextAlignment="Left"
+                                    TextChanged="OnAppSearchTextChanged">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#30FFFFFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsFocused" Value="True">
+                                                <Setter Property="Background" Value="#30FFFFFF"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                                <TextBox.Template>
+                                    <ControlTemplate TargetType="TextBox">
+                                        <Grid>
+                                            <ScrollViewer x:Name="PART_ContentHost" 
+                                                        Margin="0"
+                                                        VerticalAlignment="Center"/>
+                                            <TextBlock Text="Search applications..."
+                                                     Foreground="#80FFFFFF"
+                                                     FontSize="14"
+                                                     HorizontalAlignment="Left"
+                                                     VerticalAlignment="Center"
+                                                     Margin="10,0,0,0"
+                                                     Visibility="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </TextBox.Template>
+                            </TextBox>
+                        </Border>
+                        <ItemsControl x:Name="InstalledAppsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#20FFFFFF"
+                                            CornerRadius="10"
+                                            Margin="0,0,0,10"
+                                            Padding="15">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <CheckBox Grid.Column="0"
-                                                 IsChecked="{Binding IsSelected}"
-                                                 VerticalAlignment="Center"
-                                                 Margin="0,0,15,0"/>
+                                            <CheckBox Grid.Column="0"
+                                                     IsChecked="{Binding IsSelected}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,15,0"/>
 
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="{Binding Name}"
-                                                     FontSize="16"
-                                                     FontWeight="SemiBold"
-                                                     Foreground="{StaticResource TextPrimary}"
-                                                     Margin="0,0,0,5"/>
-                                            <TextBlock Text="{Binding Id}"
-                                                     TextWrapping="Wrap"
-                                                     Foreground="{StaticResource TextSecondary}"
-                                                     LineHeight="20"/>
-                                            <TextBlock Text="{Binding Version}"
-                                                     Opacity="0.7"
-                                                     FontSize="12"
-                                                     Margin="0,5,0,0"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Name}"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="{StaticResource TextPrimary}"
+                                                         Margin="0,0,0,5"/>
+                                                <TextBlock Text="{Binding Id}"
+                                                         TextWrapping="Wrap"
+                                                         Foreground="{StaticResource TextSecondary}"
+                                                         LineHeight="20"/>
+                                                <TextBlock Text="{Binding Version}"
+                                                         Opacity="0.7"
+                                                         FontSize="12"
+                                                         Margin="0,5,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <Button Grid.Row="2"

@@ -39,7 +39,8 @@ namespace ClearGlass
         private Storyboard _showRemoveAppsOverlay = null!;
         private Storyboard _hideRemoveAppsOverlay = null!;
         private ObservableCollection<WindowsApp>? _installedApps;
-        private ObservableCollection<InstalledApp> _installedAppsCollection = new ObservableCollection<InstalledApp>();
+        private readonly ObservableCollection<InstalledApp> _installedAppsCollection = new();
+        private List<InstalledApp> _originalAppsList = new();
 
         public MainWindow()
         {
@@ -1243,6 +1244,7 @@ namespace ClearGlass
             {
                 Mouse.OverrideCursor = Cursors.Wait;
                 _installedAppsCollection.Clear();
+                _originalAppsList.Clear();
                 
                 var apps = await _wingetService.GetInstalledApps();
                 // Sort the apps alphabetically by name
@@ -1250,6 +1252,7 @@ namespace ClearGlass
                 foreach (var app in sortedApps)
                 {
                     _installedAppsCollection.Add(app);
+                    _originalAppsList.Add(app);
                 }
 
                 _showRemoveAppsOverlay.Begin();
@@ -1476,6 +1479,21 @@ namespace ClearGlass
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+
+        private void OnAppSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            var searchText = AppSearchBox.Text.ToLower();
+            
+            _installedAppsCollection.Clear();
+            var filteredApps = string.IsNullOrWhiteSpace(searchText)
+                ? _originalAppsList
+                : _originalAppsList.Where(app => app.Name.ToLower().Contains(searchText));
+                
+            foreach (var app in filteredApps)
+            {
+                _installedAppsCollection.Add(app);
             }
         }
     }
