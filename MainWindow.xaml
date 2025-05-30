@@ -1090,27 +1090,85 @@
                 <ScrollViewer Grid.Row="1" 
                             Margin="0,0,0,20"
                             VerticalScrollBarVisibility="Auto">
-                    <ItemsControl x:Name="AppsListView">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,5">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox IsChecked="{Binding IsSelected}"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,10,0"/>
-                                    <TextBlock Text="{Binding DisplayName}"
-                                            Grid.Column="1"
-                                            VerticalAlignment="Center"
-                                            TextWrapping="Wrap"
-                                            Foreground="#E6FFFFFF"
-                                            FontWeight="Normal"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <StackPanel>
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="5"
+                                Margin="0,0,0,10"
+                                Width="300"
+                                HorizontalAlignment="Center"
+                                BorderThickness="1"
+                                BorderBrush="#40FFFFFF">
+                            <TextBox x:Name="KeepAppsSearchBox"
+                                    Padding="10,5"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Foreground="{StaticResource TextPrimary}"
+                                    FontSize="14"
+                                    CaretBrush="White"
+                                    TextAlignment="Left"
+                                    TextChanged="OnKeepAppsSearchTextChanged">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#30FFFFFF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsFocused" Value="True">
+                                                <Setter Property="Background" Value="#30FFFFFF"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                                <TextBox.Template>
+                                    <ControlTemplate TargetType="TextBox">
+                                        <Grid>
+                                            <ScrollViewer x:Name="PART_ContentHost" 
+                                                        Margin="0"
+                                                        VerticalAlignment="Center"/>
+                                            <TextBlock Text="Search applications..."
+                                                     Foreground="#80FFFFFF"
+                                                     FontSize="14"
+                                                     HorizontalAlignment="Left"
+                                                     VerticalAlignment="Center"
+                                                     Margin="10,0,0,0"
+                                                     Visibility="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                        </Grid>
+                                    </ControlTemplate>
+                                </TextBox.Template>
+                            </TextBox>
+                        </Border>
+                        <ItemsControl x:Name="AppsListView">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#20FFFFFF"
+                                            CornerRadius="10"
+                                            Margin="0,0,0,10"
+                                            Padding="15">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,15,0"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                         FontSize="16"
+                                                         FontWeight="SemiBold"
+                                                         Foreground="{StaticResource TextPrimary}"
+                                                         Margin="0,0,0,5"/>
+                                                <TextBlock Text="{Binding Id}"
+                                                         TextWrapping="Wrap"
+                                                         Foreground="{StaticResource TextSecondary}"
+                                                         LineHeight="20"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <Button Grid.Row="2"

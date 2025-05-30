@@ -41,6 +41,7 @@ namespace ClearGlass
         private ObservableCollection<WindowsApp>? _installedApps;
         private readonly ObservableCollection<InstalledApp> _installedAppsCollection = new();
         private List<InstalledApp> _originalAppsList = new();
+        private List<WindowsApp> _originalKeepAppsList = new();
 
         public MainWindow()
         {
@@ -619,8 +620,18 @@ namespace ClearGlass
                 // Load installed apps if not already loaded
                 if (_installedApps == null)
                 {
-                    _installedApps = await _bloatwareService.GetInstalledApps();
+                    var loadedApps = await _bloatwareService.GetInstalledApps();
+                    var sortedApps = loadedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
+                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
                     AppsListView.ItemsSource = _installedApps;
+                    _originalKeepAppsList = sortedApps;
+                }
+                else
+                {
+                    var sortedApps = _installedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
+                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
+                    AppsListView.ItemsSource = _installedApps;
+                    _originalKeepAppsList = sortedApps;
                 }
 
                 // Show the overlay
@@ -1494,6 +1505,20 @@ namespace ClearGlass
             foreach (var app in filteredApps)
             {
                 _installedAppsCollection.Add(app);
+            }
+        }
+
+        private void OnKeepAppsSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            var searchText = KeepAppsSearchBox.Text.ToLower();
+            if (_installedApps == null) return;
+            _installedApps.Clear();
+            var filteredApps = string.IsNullOrWhiteSpace(searchText)
+                ? _originalKeepAppsList
+                : _originalKeepAppsList.Where(app => (app.DisplayName ?? app.Name).ToLower().Contains(searchText));
+            foreach (var app in filteredApps.OrderBy(app => (app.DisplayName ?? app.Name)))
+            {
+                _installedApps.Add(app);
             }
         }
     }
