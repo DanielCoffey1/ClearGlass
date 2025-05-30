@@ -57,7 +57,10 @@ Comprehensive system optimization tools that:
 
 Built-in application management that allows you to:
 
-- List all installed applications on your system
+- List all installed applications on your system from multiple sources:
+  - Windows Package Manager (winget) registered applications
+  - Applications installed in Program Files directories
+  - Applications registered in Windows uninstall registry
 - Select multiple applications for batch uninstallation
 - View detailed information about each application:
   - Application name
