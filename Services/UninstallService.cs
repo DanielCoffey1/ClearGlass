@@ -26,6 +26,12 @@ namespace ClearGlass.Services
 
         public async Task UninstallAppThoroughly(string packageId, string appName, IProgress<string> progress, bool createRestorePoint = true)
         {
+            if (packageId != null && packageId.Contains("Steam App "))
+            {
+                progress.Report("Steam games must be uninstalled through Steam. Skipping...");
+                return;
+            }
+
             try
             {
                 // Step 1: Take initial snapshot of relevant directories

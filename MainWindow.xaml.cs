@@ -15,6 +15,7 @@ using ClearGlass.Models;
 using System.Windows.Controls;
 using System.Reflection;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace ClearGlass
 {
@@ -1332,53 +1333,56 @@ namespace ClearGlass
 
                 var failedApps = new List<string>();
                 var steamApps = new List<string>();
-
-                // Create restore point only for the first app (if not a Steam game)
-                int firstNonSteamIndex = selectedApps.FindIndex(a => !a.IsSteamGame);
-                if (firstNonSteamIndex >= 0)
-                {
-                    try
-                    {
-                        await _uninstallService.UninstallAppThoroughly(selectedApps[firstNonSteamIndex].Id, selectedApps[firstNonSteamIndex].Name, progress, true);
-                        _installedAppsCollection.Remove(selectedApps[firstNonSteamIndex]);
-                    }
-                    catch (Exception ex)
-                    {
-                        failedApps.Add($"{selectedApps[firstNonSteamIndex].Name}: {ex.Message}");
-                    }
-                }
-
-                // Uninstall remaining apps
+                bool restorePointCreated = false;
                 for (int i = 0; i < selectedApps.Count; i++)
                 {
-                    if (i == firstNonSteamIndex) continue;
                     var app = selectedApps[i];
-                    try
+
+                    // Detect Steam games by 'Steam App' in app.Id
+                    if (app.Id != null && app.Id.Contains("Steam App "))
                     {
-                        if (app.IsSteamGame)
+                        // Extract the Steam App ID number
+                        var match = System.Text.RegularExpressions.Regex.Match(app.Id, @"Steam App (\d+)");
+                        if (match.Success)
                         {
-                            // Launch Steam uninstall protocol
-                            string steamAppId = app.Id.Replace("Steam App ", "");
-                            try
+                            string steamAppId = match.Groups[1].Value;
+                            string? steamExe = FindSteamExePath();
+                            if (!string.IsNullOrEmpty(steamExe))
                             {
-                                Process.Start(new ProcessStartInfo
+                                try
                                 {
-                                    FileName = $"steam://uninstall/{steamAppId}",
-                                    UseShellExecute = true
-                                });
-                                steamApps.Add(app.Name);
-                                _installedAppsCollection.Remove(app);
+                                    Process.Start(new ProcessStartInfo
+                                    {
+                                        FileName = steamExe,
+                                        Arguments = $"steam://uninstall/{steamAppId}",
+                                        UseShellExecute = true
+                                    });
+                                    steamApps.Add(app.Name);
+                                    _installedAppsCollection.Remove(app);
+                                }
+                                catch (Exception ex)
+                                {
+                                    failedApps.Add($"{app.Name} (Steam): {ex.Message}");
+                                }
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                failedApps.Add($"{app.Name} (Steam): {ex.Message}");
+                                failedApps.Add($"{app.Name} (Steam): Could not find steam.exe. Please uninstall manually from Steam.");
                             }
                         }
                         else
                         {
-                            await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, false);
-                            _installedAppsCollection.Remove(app);
+                            failedApps.Add($"{app.Name} (Steam): Could not extract Steam App ID. Please uninstall manually from Steam.");
                         }
+                        continue;
+                    }
+
+                    // Handle non-Steam apps
+                    try
+                    {
+                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, !restorePointCreated);
+                        restorePointCreated = true;
+                        _installedAppsCollection.Remove(app);
                     }
                     catch (Exception ex)
                     {
@@ -1590,6 +1594,24 @@ namespace ClearGlass
             {
                 _installedApps.Add(app);
             }
+        }
+
+        // Helper to find steam.exe
+        private string? FindSteamExePath()
+        {
+            // Common locations
+            var possiblePaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam", "steam.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Steam", "steam.exe")
+            };
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                    return path;
+            }
+            // Optionally, check registry (not implemented here for brevity)
+            return null;
         }
     }
 } 

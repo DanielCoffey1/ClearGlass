@@ -349,22 +349,10 @@ namespace ClearGlass.Services
                 return;
             }
 
-            // Check if this is a Steam game (Steam App IDs are typically numeric)
-            if (packageId.StartsWith("Steam") && long.TryParse(packageId.Replace("Steam App ", ""), out long steamAppId))
+            // Never try to uninstall Steam games with winget
+            if (packageId.StartsWith("Steam", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"Uninstalling Steam game (AppID: {steamAppId})...");
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "steam://uninstall/" + steamAppId,
-                        UseShellExecute = true
-                    }
-                };
-
-                process.Start();
-                // We can't wait for exit here as it opens Steam client
-                return;
+                throw new Exception("Steam games should be uninstalled through Steam client");
             }
 
             Console.WriteLine($"Uninstalling package {packageId}...");

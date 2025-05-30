@@ -83,6 +83,9 @@ Built-in application management that allows you to:
 - Confirmation dialogs to prevent accidental uninstallation
 - Detailed progress feedback during uninstallation process
 
+**Note on Steam Games:**  
+Steam games are detected automatically by their app ID (e.g., "Steam App 1091500") and are always uninstalled using the Steam client (via `steam://uninstall/<AppID>`). They are not uninstalled using winget or other methods. This ensures proper removal and avoids errors.
+
 ### Keep Apps Feature
 
 - Select which apps to protect during bloatware removal
