@@ -102,6 +102,9 @@ namespace ClearGlass
 
             // Set the ItemsSource for the InstalledAppsList
             InstalledAppsList.ItemsSource = _installedAppsCollection;
+
+            // Load current system settings into toggle states
+            LoadCurrentSettings();
         }
 
         private void ExtractWallpaperFromResources()
