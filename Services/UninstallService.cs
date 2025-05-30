@@ -36,30 +36,43 @@ namespace ClearGlass.Services
                 progress.Report("Creating system restore point...");
                 await CreateSystemRestorePoint($"Before uninstalling {appName}");
 
-                // Step 3: Get uninstall string from registry
-                progress.Report("Getting uninstallation information...");
-                var uninstallString = GetUninstallString(packageId);
+                // Step 3: First try to find uninstaller in app folders
+                progress.Report("Searching for application uninstaller...");
+                var uninstallerPath = await FindUninstallerInAppFolders(appName, packageId);
 
-                // Step 4: Run the native uninstaller
-                progress.Report("Running native uninstaller...");
-                if (uninstallString != null)
+                if (uninstallerPath != null)
                 {
-                    await RunNativeUninstaller(uninstallString);
+                    progress.Report("Found application uninstaller, running it...");
+                    await RunNativeUninstaller(uninstallerPath);
                 }
                 else
                 {
-                    await _wingetService.UninstallApp(packageId);
+                    // Step 4: If no uninstaller found, try registry uninstall string
+                    progress.Report("No uninstaller found in app folders, checking registry...");
+                    var uninstallString = GetUninstallString(packageId);
+
+                    if (uninstallString != null)
+                    {
+                        progress.Report("Found uninstall string in registry, running it...");
+                        await RunNativeUninstaller(uninstallString);
+                    }
+                    else
+                    {
+                        // Step 5: If no uninstaller found, use winget
+                        progress.Report("No uninstaller found, using winget...");
+                        await _wingetService.UninstallApp(packageId);
+                    }
                 }
 
-                // Step 5: Wait a moment for file operations to complete
+                // Step 6: Wait a moment for file operations to complete
                 progress.Report("Waiting for uninstaller to complete...");
                 await Task.Delay(2000); // Wait 2 seconds
 
-                // Step 6: Scan for leftover files
+                // Step 7: Scan for leftover files
                 progress.Report("Performing deep scan for leftover files...");
                 var leftoverFiles = await ScanForLeftoverFiles(appName, packageId);
 
-                // Step 7: Scan for leftover registry entries
+                // Step 8: Scan for leftover registry entries
                 progress.Report("Scanning for leftover registry entries...");
                 var leftoverRegistry = ScanForLeftoverRegistry(appName, packageId);
 
@@ -477,6 +490,105 @@ namespace ClearGlass.Services
                 }
                 catch (Exception) { }
             }
+        }
+
+        private async Task<string?> FindUninstallerInAppFolders(string appName, string packageId)
+        {
+            var commonPaths = GetCommonPaths();
+            var uninstallerNames = new[] { 
+                "uninstall.exe", 
+                "unins000.exe", 
+                "unins001.exe", 
+                "uninst.exe", 
+                "uninstaller.exe",
+                "Uninstall.exe",
+                "Unins000.exe",
+                "Unins001.exe",
+                "Uninst.exe",
+                "Uninstaller.exe"
+            };
+
+            // Create more comprehensive search terms
+            var searchTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                appName,
+                packageId,
+                appName.Replace(" ", ""),
+                Regex.Replace(appName, @"[^\w\s]", ""),
+                appName.ToLower(),
+                packageId.ToLower(),
+                // Add common variations
+                string.Join("", appName.Split(' ').Select(s => s.Length > 0 ? char.ToUpper(s[0]) + s.Substring(1) : "")),
+                string.Join("", appName.Split(' ').Select(s => s.ToLower())),
+                // Add common prefixes/suffixes
+                $"{appName} Setup",
+                $"Setup {appName}",
+                $"{appName} Installer",
+                $"Installer {appName}"
+            };
+
+            // Prioritize Program Files directories
+            var programFilesPaths = commonPaths
+                .Where(p => p.Contains("Program Files", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // Add other paths after Program Files
+            var otherPaths = commonPaths
+                .Where(p => !p.Contains("Program Files", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // Combine paths with Program Files first
+            var orderedPaths = programFilesPaths.Concat(otherPaths);
+
+            foreach (var path in orderedPaths)
+            {
+                if (!Directory.Exists(path)) continue;
+
+                try
+                {
+                    // First, look for directories matching the app name
+                    var directories = Directory.GetDirectories(path, "*", SearchOption.AllDirectories)
+                        .Where(dir => 
+                        {
+                            var dirName = Path.GetFileName(dir).ToLower();
+                            return searchTerms.Any(term => dirName.Contains(term.ToLower()));
+                        });
+
+                    foreach (var dir in directories)
+                    {
+                        // Look for uninstaller executables in the directory
+                        foreach (var uninstallerName in uninstallerNames)
+                        {
+                            var uninstallerPath = Path.Combine(dir, uninstallerName);
+                            if (File.Exists(uninstallerPath))
+                            {
+                                return uninstallerPath;
+                            }
+                        }
+
+                        // Also check for uninstaller in subdirectories
+                        try
+                        {
+                            var subDirs = Directory.GetDirectories(dir, "*", SearchOption.AllDirectories);
+                            foreach (var subDir in subDirs)
+                            {
+                                foreach (var uninstallerName in uninstallerNames)
+                                {
+                                    var uninstallerPath = Path.Combine(subDir, uninstallerName);
+                                    if (File.Exists(uninstallerPath))
+                                    {
+                                        return uninstallerPath;
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception) { }
+                    }
+                }
+                catch (Exception) { }
+            }
+
+            return null;
         }
     }
 } 

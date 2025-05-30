@@ -5,6 +5,9 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using ClearGlass.Models;
 using System.Text;
+using System.IO;
+using Microsoft.Win32;
+using System.Linq;
 
 namespace ClearGlass.Services
 {
@@ -190,78 +193,152 @@ namespace ClearGlass.Services
 
         public async Task<List<InstalledApp>> GetInstalledApps()
         {
-            if (!await IsWingetInstalled())
-            {
-                await InstallWinget();
-                return new List<InstalledApp>();
-            }
-
             var installedApps = new List<InstalledApp>();
-            var process = new Process
+
+            // First get apps from winget
+            if (await IsWingetInstalled())
             {
-                StartInfo = new ProcessStartInfo
+                var process = new Process
                 {
-                    FileName = "winget",
-                    Arguments = "list --accept-source-agreements",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    StandardOutputEncoding = Encoding.UTF8
-                }
-            };
-
-            var output = new StringBuilder();
-            process.OutputDataReceived += (sender, e) =>
-            {
-                if (e.Data != null)
-                {
-                    output.AppendLine(e.Data);
-                }
-            };
-
-            process.Start();
-            process.BeginOutputReadLine();
-            await process.WaitForExitAsync();
-
-            if (process.ExitCode != 0)
-            {
-                throw new Exception($"Failed to list installed applications. Error:\n{output}");
-            }
-
-            // Parse the output
-            var lines = output.ToString().Split('\n');
-            bool headerPassed = false;
-            foreach (var line in lines)
-            {
-                if (!headerPassed)
-                {
-                    if (line.Contains("Name") && line.Contains("Id") && line.Contains("Version"))
+                    StartInfo = new ProcessStartInfo
                     {
-                        headerPassed = true;
+                        FileName = "winget",
+                        Arguments = "list --accept-source-agreements",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true,
+                        StandardOutputEncoding = Encoding.UTF8
                     }
-                    continue;
-                }
+                };
 
-                // Skip separator line and empty lines
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("--"))
+                var output = new StringBuilder();
+                process.OutputDataReceived += (sender, e) =>
                 {
-                    continue;
-                }
+                    if (e.Data != null)
+                    {
+                        output.AppendLine(e.Data);
+                    }
+                };
 
-                // Split the line by multiple spaces
-                var parts = Regex.Split(line.Trim(), @"\s{2,}");
-                if (parts.Length >= 3)
+                process.Start();
+                process.BeginOutputReadLine();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode == 0)
                 {
-                    installedApps.Add(new InstalledApp(
-                        name: parts[0].Trim(),
-                        id: parts[1].Trim(),
-                        version: parts[2].Trim()
-                    ));
+                    // Parse the output
+                    var lines = output.ToString().Split('\n');
+                    bool headerPassed = false;
+                    foreach (var line in lines)
+                    {
+                        if (!headerPassed)
+                        {
+                            if (line.Contains("Name") && line.Contains("Id") && line.Contains("Version"))
+                            {
+                                headerPassed = true;
+                            }
+                            continue;
+                        }
+
+                        // Skip separator line and empty lines
+                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("--"))
+                        {
+                            continue;
+                        }
+
+                        // Split the line by multiple spaces
+                        var parts = Regex.Split(line.Trim(), @"\s{2,}");
+                        if (parts.Length >= 3)
+                        {
+                            installedApps.Add(new InstalledApp(
+                                name: parts[0].Trim(),
+                                id: parts[1].Trim(),
+                                version: parts[2].Trim()
+                            ));
+                        }
+                    }
                 }
             }
 
-            return installedApps;
+            // Then scan Program Files directories for additional applications
+            var programFilesPaths = new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+            };
+
+            foreach (var path in programFilesPaths)
+            {
+                if (!Directory.Exists(path)) continue;
+
+                try
+                {
+                    var directories = Directory.GetDirectories(path);
+                    foreach (var dir in directories)
+                    {
+                        var dirName = Path.GetFileName(dir);
+                        // Skip common system directories
+                        if (dirName.Equals("Windows", StringComparison.OrdinalIgnoreCase) ||
+                            dirName.Equals("Common Files", StringComparison.OrdinalIgnoreCase) ||
+                            dirName.Equals("Internet Explorer", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        // Check if this directory contains an executable
+                        var exeFiles = Directory.GetFiles(dir, "*.exe", SearchOption.TopDirectoryOnly);
+                        if (exeFiles.Any())
+                        {
+                            // Check if this app is already in our list
+                            if (!installedApps.Any(a => a.Name.Equals(dirName, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                installedApps.Add(new InstalledApp(
+                                    name: dirName,
+                                    id: dirName, // Use directory name as ID
+                                    version: "Unknown" // Version will be unknown for non-winget apps
+                                ));
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { }
+            }
+
+            // Also check registry for uninstall entries
+            var uninstallKeys = new[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+            };
+
+            foreach (var baseKey in uninstallKeys)
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(baseKey);
+                if (key == null) continue;
+
+                foreach (var subKeyName in key.GetSubKeyNames())
+                {
+                    using var subKey = key.OpenSubKey(subKeyName);
+                    if (subKey == null) continue;
+
+                    var displayName = subKey.GetValue("DisplayName") as string;
+                    if (string.IsNullOrEmpty(displayName)) continue;
+
+                    // Check if this app is already in our list
+                    if (!installedApps.Any(a => a.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var version = subKey.GetValue("DisplayVersion") as string ?? "Unknown";
+                        installedApps.Add(new InstalledApp(
+                            name: displayName,
+                            id: displayName, // Use display name as ID
+                            version: version
+                        ));
+                    }
+                }
+            }
+
+            return installedApps.OrderBy(a => a.Name).ToList();
         }
 
         public async Task UninstallApp(string packageId)
