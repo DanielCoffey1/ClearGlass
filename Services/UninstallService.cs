@@ -24,7 +24,7 @@ namespace ClearGlass.Services
             _initialFileTimestamps = new Dictionary<string, DateTime>();
         }
 
-        public async Task UninstallAppThoroughly(string packageId, string appName, IProgress<string> progress, bool createRestorePoint = true)
+        public async Task UninstallAppThoroughly(string packageId, string appName, IProgress<string> progress, bool createRestorePoint = true, bool autoRemoveLeftovers = false)
         {
             if (packageId != null && packageId.Contains("Steam App "))
             {
@@ -85,14 +85,17 @@ namespace ClearGlass.Services
                 progress.Report("Scanning for leftover registry entries...");
                 var leftoverRegistry = ScanForLeftoverRegistry(appName, packageId);
 
-                if ((leftoverFiles.Count > 0 || leftoverRegistry.Count > 0) &&
-                    ShowLeftoversDialog(leftoverFiles, leftoverRegistry))
+                if (leftoverFiles.Count > 0 || leftoverRegistry.Count > 0)
                 {
-                    progress.Report("Removing leftover files...");
-                    await RemoveLeftoverFiles(leftoverFiles);
+                    bool shouldRemove = autoRemoveLeftovers || ShowLeftoversDialog(leftoverFiles, leftoverRegistry);
+                    if (shouldRemove)
+                    {
+                        progress.Report("Removing leftover files...");
+                        await RemoveLeftoverFiles(leftoverFiles);
 
-                    progress.Report("Removing leftover registry entries...");
-                    RemoveLeftoverRegistry(leftoverRegistry);
+                        progress.Report("Removing leftover registry entries...");
+                        RemoveLeftoverRegistry(leftoverRegistry);
+                    }
                 }
 
                 progress.Report("Uninstallation completed successfully.");

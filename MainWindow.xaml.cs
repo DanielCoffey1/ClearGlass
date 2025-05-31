@@ -1311,7 +1311,8 @@ namespace ClearGlass
                 "1. Create a system restore point\n" +
                 "2. Run the application's native uninstaller or platform-specific uninstaller\n" +
                 "3. Scan for and remove leftover files\n" +
-                "4. Scan for and remove leftover registry entries",
+                "4. Scan for and remove leftover registry entries\n\n" +
+                "Would you like to automatically remove leftover files and registry entries?",
                 "Confirm Uninstall",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -1387,7 +1388,7 @@ namespace ClearGlass
                     // Handle non-Steam apps
                     try
                     {
-                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, !restorePointCreated);
+                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, !restorePointCreated, true);
                         restorePointCreated = true;
                         _installedAppsCollection.Remove(app);
                     }
