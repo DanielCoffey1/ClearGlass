@@ -26,6 +26,7 @@ namespace ClearGlass
         private readonly BloatwareService _bloatwareService;
         private readonly WingetService _wingetService;
         private readonly UninstallService _uninstallService;
+        private readonly UpdateService _updateService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperPath;
         private readonly string _autologonPath;
@@ -52,6 +53,7 @@ namespace ClearGlass
             _bloatwareService = new BloatwareService();
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
+            _updateService = new UpdateService();
             
             // Store in Windows' tools directory
             string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -106,6 +108,8 @@ namespace ClearGlass
 
             // Load current system settings into toggle states
             LoadCurrentSettings();
+
+            CheckForUpdatesAsync();
         }
 
         private void ExtractWallpaperFromResources()
@@ -1620,6 +1624,31 @@ namespace ClearGlass
             }
             // Optionally, check registry (not implemented here for brevity)
             return null;
+        }
+
+        private async void CheckForUpdatesAsync()
+        {
+            try
+            {
+                var (hasUpdate, latestVersion, downloadUrl) = await _updateService.CheckForUpdates();
+                if (hasUpdate)
+                {
+                    var result = MessageBox.Show(
+                        $"A new version of Clear Glass ({latestVersion}) is available. Would you like to update now?",
+                        "Update Available",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        await _updateService.DownloadAndInstallUpdate(downloadUrl);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking for updates: {ex.Message}");
+            }
         }
     }
 } 

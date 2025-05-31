@@ -201,11 +201,15 @@ You can install recommended applications in two ways:
 
 Clear Glass includes automatic update checking for:
 
+- The application itself (checks for new versions on startup)
+  - Optional updates with user confirmation
+  - Continue using current version if preferred
 - Installed recommended applications
 - Winget package manager
 - Application installations and updates run silently without user interaction
 - Progress indication through button text updates
 - Detailed success/error messaging for all operations
+- Automatic download and installation of new versions when available
 
 ## Development
 
