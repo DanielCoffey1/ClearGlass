@@ -195,7 +195,7 @@ namespace ClearGlass.Services
         {
             var installedApps = new List<InstalledApp>();
 
-            // First get apps from winget
+            // Only get apps from winget
             if (await IsWingetInstalled())
             {
                 var process = new Process
@@ -257,83 +257,6 @@ namespace ClearGlass.Services
                                 version: parts[2].Trim()
                             ));
                         }
-                    }
-                }
-            }
-
-            // Then scan Program Files directories for additional applications
-            var programFilesPaths = new[]
-            {
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
-            };
-
-            foreach (var path in programFilesPaths)
-            {
-                if (!Directory.Exists(path)) continue;
-
-                try
-                {
-                    var directories = Directory.GetDirectories(path);
-                    foreach (var dir in directories)
-                    {
-                        var dirName = Path.GetFileName(dir);
-                        // Skip common system directories
-                        if (dirName.Equals("Windows", StringComparison.OrdinalIgnoreCase) ||
-                            dirName.Equals("Common Files", StringComparison.OrdinalIgnoreCase) ||
-                            dirName.Equals("Internet Explorer", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        // Check if this directory contains an executable
-                        var exeFiles = Directory.GetFiles(dir, "*.exe", SearchOption.TopDirectoryOnly);
-                        if (exeFiles.Any())
-                        {
-                            // Check if this app is already in our list
-                            if (!installedApps.Any(a => a.Name.Equals(dirName, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                installedApps.Add(new InstalledApp(
-                                    name: dirName,
-                                    id: dirName, // Use directory name as ID
-                                    version: "Unknown" // Version will be unknown for non-winget apps
-                                ));
-                            }
-                        }
-                    }
-                }
-                catch (Exception) { }
-            }
-
-            // Also check registry for uninstall entries
-            var uninstallKeys = new[]
-            {
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
-            };
-
-            foreach (var baseKey in uninstallKeys)
-            {
-                using var key = Registry.LocalMachine.OpenSubKey(baseKey);
-                if (key == null) continue;
-
-                foreach (var subKeyName in key.GetSubKeyNames())
-                {
-                    using var subKey = key.OpenSubKey(subKeyName);
-                    if (subKey == null) continue;
-
-                    var displayName = subKey.GetValue("DisplayName") as string;
-                    if (string.IsNullOrEmpty(displayName)) continue;
-
-                    // Check if this app is already in our list
-                    if (!installedApps.Any(a => a.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        var version = subKey.GetValue("DisplayVersion") as string ?? "Unknown";
-                        installedApps.Add(new InstalledApp(
-                            name: displayName,
-                            id: displayName, // Use display name as ID
-                            version: version
-                        ));
                     }
                 }
             }
