@@ -45,43 +45,19 @@ namespace ClearGlass.Services
                     await CreateSystemRestorePoint($"Before uninstalling {appName}");
                 }
 
-                // Step 3: First try to find uninstaller in app folders
-                progress.Report("Searching for application uninstaller...");
-                var uninstallerPath = await FindUninstallerInAppFolders(appName, packageId);
+                // Step 3: Use winget to uninstall
+                progress.Report($"Uninstalling {appName} using winget...");
+                await _wingetService.UninstallApp(packageId);
 
-                if (uninstallerPath != null)
-                {
-                    progress.Report("Found application uninstaller, running it...");
-                    await RunNativeUninstaller(uninstallerPath);
-                }
-                else
-                {
-                    // Step 4: If no uninstaller found, try registry uninstall string
-                    progress.Report("No uninstaller found in app folders, checking registry...");
-                    var uninstallString = GetUninstallString(packageId);
-
-                    if (uninstallString != null)
-                    {
-                        progress.Report("Found uninstall string in registry, running it...");
-                        await RunNativeUninstaller(uninstallString);
-                    }
-                    else
-                    {
-                        // Step 5: If no uninstaller found, use winget
-                        progress.Report("No uninstaller found, using winget...");
-                        await _wingetService.UninstallApp(packageId);
-                    }
-                }
-
-                // Step 6: Wait a moment for file operations to complete
+                // Step 4: Wait a moment for file operations to complete
                 progress.Report("Waiting for uninstaller to complete...");
                 await Task.Delay(2000); // Wait 2 seconds
 
-                // Step 7: Scan for leftover files
+                // Step 5: Scan for leftover files
                 progress.Report("Performing deep scan for leftover files...");
                 var leftoverFiles = await ScanForLeftoverFiles(appName, packageId);
 
-                // Step 8: Scan for leftover registry entries
+                // Step 6: Scan for leftover registry entries
                 progress.Report("Scanning for leftover registry entries...");
                 var leftoverRegistry = ScanForLeftoverRegistry(appName, packageId);
 
@@ -168,8 +144,6 @@ namespace ClearGlass.Services
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles),
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFilesX86),
-                Environment.GetFolderPath(Environment.SpecialFolder.System),
-                Environment.GetFolderPath(Environment.SpecialFolder.SystemX86),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Documents")
             };
@@ -185,6 +159,28 @@ namespace ClearGlass.Services
             return paths.Where(p => !string.IsNullOrEmpty(p)).Distinct().ToArray();
         }
 
+        private async Task CreateSystemRestorePoint(string description)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-Command \"Checkpoint-Computer -Description '{description}' -RestorePointType 'APPLICATION_UNINSTALL'\"",
+                UseShellExecute = true,
+                Verb = "runas",
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process != null)
+            {
+                await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                {
+                    throw new Exception("Failed to create system restore point");
+                }
+            }
+        }
+
         private async Task<List<string>> ScanForLeftoverFiles(string appName, string packageId)
         {
             var leftoverFiles = new List<string>();
@@ -198,7 +194,6 @@ namespace ClearGlass.Services
                 packageId,
                 appName.Replace(" ", ""),
                 Regex.Replace(appName, @"[^\w\s]", ""),
-                // Add common variations
                 appName.ToLower(),
                 packageId.ToLower(),
                 string.Join("", appName.Split(' ').Select(s => s.Length > 0 ? char.ToUpper(s[0]) + s.Substring(1) : "")),
@@ -261,104 +256,6 @@ namespace ClearGlass.Services
             }
 
             return leftoverFiles.Distinct().ToList();
-        }
-
-        private async Task CreateSystemRestorePoint(string description)
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-Command \"Checkpoint-Computer -Description '{description}' -RestorePointType 'APPLICATION_UNINSTALL'\"",
-                UseShellExecute = true,
-                Verb = "runas",
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process != null)
-            {
-                await process.WaitForExitAsync();
-                if (process.ExitCode != 0)
-                {
-                    throw new Exception("Failed to create system restore point");
-                }
-            }
-        }
-
-        private string? GetUninstallString(string packageId)
-        {
-            var uninstallKeys = new[]
-            {
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
-            };
-
-            foreach (var baseKey in uninstallKeys)
-            {
-                using var key = Registry.LocalMachine.OpenSubKey(baseKey);
-                if (key == null) continue;
-
-                foreach (var subKeyName in key.GetSubKeyNames())
-                {
-                    using var subKey = key.OpenSubKey(subKeyName);
-                    if (subKey == null) continue;
-
-                    var displayName = subKey.GetValue("DisplayName") as string;
-                    if (string.IsNullOrEmpty(displayName)) continue;
-
-                    // Try to match the package ID or name
-                    if (displayName.Contains(packageId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        var uninstallString = subKey.GetValue("UninstallString") as string;
-                        if (!string.IsNullOrEmpty(uninstallString))
-                        {
-                            return uninstallString;
-                        }
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private async Task RunNativeUninstaller(string uninstallString)
-        {
-            if (string.IsNullOrEmpty(uninstallString))
-            {
-                throw new ArgumentException("Uninstall string cannot be null or empty", nameof(uninstallString));
-            }
-
-            // Extract the executable and arguments
-            var match = Regex.Match(uninstallString, @"^""?([^""]+)""?\s*(.*)$");
-            if (!match.Success)
-            {
-                throw new Exception("Invalid uninstall string format");
-            }
-
-            var executable = match.Groups[1].Value;
-            var arguments = match.Groups[2].Value;
-
-            // Add silent flags if possible
-            if (uninstallString.Contains("msiexec", StringComparison.OrdinalIgnoreCase))
-            {
-                arguments += " /quiet /norestart";
-            }
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = executable,
-                Arguments = arguments,
-                UseShellExecute = true,
-                Verb = "runas"
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                throw new InvalidOperationException("Failed to start uninstaller process");
-            }
-
-            await process.WaitForExitAsync();
         }
 
         private List<string> ScanForLeftoverRegistry(string appName, string packageId)
@@ -470,21 +367,24 @@ namespace ClearGlass.Services
 
         private async Task RemoveLeftoverFiles(List<string> leftoverFiles)
         {
-            foreach (var file in leftoverFiles)
+            await Task.Run(() =>
             {
-                try
+                foreach (var file in leftoverFiles)
                 {
-                    if (Directory.Exists(file))
+                    try
                     {
-                        Directory.Delete(file, true);
+                        if (Directory.Exists(file))
+                        {
+                            Directory.Delete(file, true);
+                        }
+                        else if (File.Exists(file))
+                        {
+                            File.Delete(file);
+                        }
                     }
-                    else if (File.Exists(file))
-                    {
-                        File.Delete(file);
-                    }
+                    catch (Exception) { }
                 }
-                catch (Exception) { }
-            }
+            });
         }
 
         private void RemoveLeftoverRegistry(List<string> leftoverRegistry)
@@ -504,103 +404,37 @@ namespace ClearGlass.Services
             }
         }
 
-        private async Task<string?> FindUninstallerInAppFolders(string appName, string packageId)
+        public async Task CleanupAfterUninstall(string packageId, string appName, IProgress<string> progress)
         {
-            var commonPaths = GetCommonPaths();
-            var uninstallerNames = new[] { 
-                "uninstall.exe", 
-                "unins000.exe", 
-                "unins001.exe", 
-                "uninst.exe", 
-                "uninstaller.exe",
-                "Uninstall.exe",
-                "Unins000.exe",
-                "Unins001.exe",
-                "Uninst.exe",
-                "Uninstaller.exe"
-            };
-
-            // Create more comprehensive search terms
-            var searchTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            try
             {
-                appName,
-                packageId,
-                appName.Replace(" ", ""),
-                Regex.Replace(appName, @"[^\w\s]", ""),
-                appName.ToLower(),
-                packageId.ToLower(),
-                // Add common variations
-                string.Join("", appName.Split(' ').Select(s => s.Length > 0 ? char.ToUpper(s[0]) + s.Substring(1) : "")),
-                string.Join("", appName.Split(' ').Select(s => s.ToLower())),
-                // Add common prefixes/suffixes
-                $"{appName} Setup",
-                $"Setup {appName}",
-                $"{appName} Installer",
-                $"Installer {appName}"
-            };
+                // Take a small pause to ensure all uninstall operations are complete
+                await Task.Delay(2000);
 
-            // Prioritize Program Files directories
-            var programFilesPaths = commonPaths
-                .Where(p => p.Contains("Program Files", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                progress.Report("Scanning for leftover files...");
+                var leftoverFiles = await ScanForLeftoverFiles(appName, packageId);
 
-            // Add other paths after Program Files
-            var otherPaths = commonPaths
-                .Where(p => !p.Contains("Program Files", StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                progress.Report("Scanning for leftover registry entries...");
+                var leftoverRegistry = ScanForLeftoverRegistry(appName, packageId);
 
-            // Combine paths with Program Files first
-            var orderedPaths = programFilesPaths.Concat(otherPaths);
-
-            foreach (var path in orderedPaths)
-            {
-                if (!Directory.Exists(path)) continue;
-
-                try
+                if (leftoverFiles.Count > 0)
                 {
-                    // First, look for directories matching the app name
-                    var directories = Directory.GetDirectories(path, "*", SearchOption.AllDirectories)
-                        .Where(dir => 
-                        {
-                            var dirName = Path.GetFileName(dir).ToLower();
-                            return searchTerms.Any(term => dirName.Contains(term.ToLower()));
-                        });
-
-                    foreach (var dir in directories)
-                    {
-                        // Look for uninstaller executables in the directory
-                        foreach (var uninstallerName in uninstallerNames)
-                        {
-                            var uninstallerPath = Path.Combine(dir, uninstallerName);
-                            if (File.Exists(uninstallerPath))
-                            {
-                                return uninstallerPath;
-                            }
-                        }
-
-                        // Also check for uninstaller in subdirectories
-                        try
-                        {
-                            var subDirs = Directory.GetDirectories(dir, "*", SearchOption.AllDirectories);
-                            foreach (var subDir in subDirs)
-                            {
-                                foreach (var uninstallerName in uninstallerNames)
-                                {
-                                    var uninstallerPath = Path.Combine(subDir, uninstallerName);
-                                    if (File.Exists(uninstallerPath))
-                                    {
-                                        return uninstallerPath;
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception) { }
-                    }
+                    progress.Report($"Found {leftoverFiles.Count} leftover files. Removing...");
+                    await RemoveLeftoverFiles(leftoverFiles);
                 }
-                catch (Exception) { }
-            }
 
-            return null;
+                if (leftoverRegistry.Count > 0)
+                {
+                    progress.Report($"Found {leftoverRegistry.Count} leftover registry entries. Removing...");
+                    RemoveLeftoverRegistry(leftoverRegistry);
+                }
+
+                progress.Report("Cleanup completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error during cleanup: {ex.Message}", ex);
+            }
         }
     }
 } 
