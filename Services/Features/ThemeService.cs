@@ -4,9 +4,11 @@ using System.Diagnostics;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.IO;
 using System.ComponentModel;
 using System.Windows;
+using ClearGlass.Services.Core;
 
 namespace ClearGlass.Services
 {
@@ -50,17 +52,22 @@ namespace ClearGlass.Services
             }
         }
 
-        private void RestartExplorer()
+        private async void RestartExplorer()
         {
             try
             {
-                Process.Start(new ProcessStartInfo
+                if (await ProcessHelper.RestartExplorerAsync())
                 {
-                    FileName = "cmd.exe",
-                    Arguments = "/c taskkill /f /im explorer.exe && start explorer.exe",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
+                    await Task.Delay(1000); // Give Explorer time to restart
+                }
+                else
+                {
+                    CustomMessageBox.Show(
+                        "Failed to restart Explorer. Some changes may not take effect until you restart your computer.",
+                        "Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
             }
             catch (Exception ex)
             {
@@ -68,27 +75,24 @@ namespace ClearGlass.Services
             }
         }
 
-        private void KillWidgetsProcess()
+        private async void KillWidgetsProcess()
         {
             try
             {
                 // Kill both Widgets.exe and WidgetService.exe
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = "/c taskkill /f /im Widgets.exe /im WidgetService.exe 2>nul",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
+                await ProcessHelper.KillProcessAsync("Widgets");
+                await ProcessHelper.KillProcessAsync("WidgetService");
 
                 // Try to disable the service
-                Process.Start(new ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = "/c sc config \"Windows Widgets Service\" start=disabled 2>nul && net stop \"Windows Widgets Service\" 2>nul",
                     CreateNoWindow = true,
                     UseShellExecute = false
-                });
+                };
+
+                await ProcessHelper.RunProcessAsync(startInfo, requireAdmin: true);
             }
             catch (Exception ex)
             {
@@ -96,18 +100,19 @@ namespace ClearGlass.Services
             }
         }
 
-        private void EnableWidgetsService()
+        private async void EnableWidgetsService()
         {
             try
             {
-                // Enable and start the service
-                Process.Start(new ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = "/c sc config \"Windows Widgets Service\" start=auto 2>nul && net start \"Windows Widgets Service\" 2>nul",
                     CreateNoWindow = true,
                     UseShellExecute = false
-                });
+                };
+
+                await ProcessHelper.RunProcessAsync(startInfo, requireAdmin: true);
             }
             catch (Exception ex)
             {

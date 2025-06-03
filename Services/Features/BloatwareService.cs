@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using ClearGlass.Models;
 using System.Linq;
 using System.Collections.Generic;
+using ClearGlass.Services.Core;
 
 namespace ClearGlass.Services
 {
@@ -81,48 +82,24 @@ namespace ClearGlass.Services
                     Get-AppxPackage -AllUsers | Select-Object Name, PackageFullName | ConvertTo-Json
                 ";
 
-                // Save the script to a temporary file
-                string scriptPath = Path.Combine(Path.GetTempPath(), "GetInstalledApps.ps1");
-                await File.WriteAllTextAsync(scriptPath, script);
+                var (success, output) = await ProcessHelper.RunPowerShellScriptAsync(
+                    script, 
+                    requireAdmin: true,
+                    showWindow: false);
 
-                // Run PowerShell with elevated privileges
-                var startInfo = new ProcessStartInfo()
+                if (success && !string.IsNullOrEmpty(output))
                 {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true,
-                    Verb = "runas"
-                };
-
-                using (var process = Process.Start(startInfo))
-                {
-                    if (process == null)
+                    var appList = System.Text.Json.JsonSerializer.Deserialize<List<WindowsApp>>(output);
+                    if (appList != null)
                     {
-                        throw new InvalidOperationException("Failed to start PowerShell process");
-                    }
-
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-
-                    if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
-                    {
-                        var appList = System.Text.Json.JsonSerializer.Deserialize<List<WindowsApp>>(output);
-                        if (appList != null)
+                        foreach (var app in appList.OrderBy(a => a.Name))
                         {
-                            foreach (var app in appList.OrderBy(a => a.Name))
-                            {
-                                app.DisplayName = GetDisplayName(app.Name);
-                                app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
-                                apps.Add(app);
-                            }
+                            app.DisplayName = GetDisplayName(app.Name);
+                            app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
+                            apps.Add(app);
                         }
                     }
                 }
-
-                // Clean up the temporary script file
-                File.Delete(scriptPath);
             }
             catch (Exception ex)
             {
@@ -703,51 +680,28 @@ namespace ClearGlass.Services
                     }
                 ";
 
-                // Save the script to a temporary file
-                string scriptPath = Path.Combine(Path.GetTempPath(), "ClearGlassBloatwareRemoval.ps1");
-                await File.WriteAllTextAsync(scriptPath, script);
+                var (success, output) = await ProcessHelper.RunPowerShellScriptAsync(
+                    script, 
+                    requireAdmin: true,
+                    showWindow: true);
 
-                // Run PowerShell with elevated privileges
-                ProcessStartInfo startInfo = new ProcessStartInfo()
+                if (success)
                 {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    CreateNoWindow = false,
-                    RedirectStandardOutput = false
-                };
-
-                using (Process process = Process.Start(startInfo))
-                {
-                    if (process == null)
-                    {
-                        throw new InvalidOperationException("Failed to start PowerShell process");
-                    }
-
-                    await process.WaitForExitAsync();
-                    
-                    if (process.ExitCode == 0)
-                    {
-                        CustomMessageBox.Show(
-                            "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
-                            "Some apps may require a system restart to be fully removed.",
-                            "Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                    else
-                    {
-                        CustomMessageBox.Show(
-                            "Some apps may not have been removed successfully. Please check the PowerShell window for details.",
-                            "Warning",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
-                    }
+                    CustomMessageBox.Show(
+                        "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
+                        "Some apps may require a system restart to be fully removed.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
-
-                // Clean up the temporary script file
-                File.Delete(scriptPath);
+                else
+                {
+                    CustomMessageBox.Show(
+                        "Some apps may not have been removed successfully. Please check the PowerShell window for details.",
+                        "Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
             }
             catch (Exception ex)
             {
