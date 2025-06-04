@@ -169,45 +169,101 @@ namespace ClearGlass.Services
             }
         }
 
+        private bool CheckWidgetsPolicyState()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPolicyPath);
+            var value = key?.GetValue("TaskbarDa");
+            return value == null || (int)value != 0;
+        }
+
+        private bool CheckWidgetsRegistryState()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPath);
+            var value = key?.GetValue("WidgetsDisabled");
+            return value == null || (int)value != 1;
+        }
+
+        private bool CheckFeedsState()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(FeedsPath);
+            var value = key?.GetValue("ShellFeedsTaskbarViewMode");
+            return value == null || (int)value != 0;
+        }
+
+        private bool CheckGroupPolicyState()
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(WidgetsGPOPath);
+            var value = key?.GetValue("EnableFeeds");
+            return value == null || (int)value != 0;
+        }
+
+        private bool CheckWebWidgetsState()
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(WebWidgetsPath);
+            var value = key?.GetValue("AllowWebContentOnLockScreen");
+            return value == null || (int)value != 0;
+        }
+
+        private void SetWidgetsPolicyState(bool enable)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPolicyPath, true) 
+                ?? Registry.CurrentUser.CreateSubKey(WidgetsPolicyPath);
+            key.SetValue("TaskbarDa", enable ? 1 : 0, RegistryValueKind.DWord);
+        }
+
+        private void SetWidgetsRegistryState(bool enable)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPath, true) 
+                ?? Registry.CurrentUser.CreateSubKey(WidgetsPath);
+            key.SetValue("WidgetsDisabled", enable ? 0 : 1, RegistryValueKind.DWord);
+            key.SetValue("ConfiguredByPolicy", enable ? 0 : 1, RegistryValueKind.DWord);
+        }
+
+        private void SetFeedsState(bool enable)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(FeedsPath, true) 
+                ?? Registry.CurrentUser.CreateSubKey(FeedsPath);
+            key.SetValue("ShellFeedsTaskbarViewMode", enable ? 1 : 0, RegistryValueKind.DWord);
+            key.SetValue("IsFeedsAvailable", enable ? 1 : 0, RegistryValueKind.DWord);
+        }
+
+        private void SetGroupPolicyState(bool enable)
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(WidgetsGPOPath, true) 
+                ?? Registry.LocalMachine.CreateSubKey(WidgetsGPOPath);
+            key.SetValue("EnableFeeds", enable ? 1 : 0, RegistryValueKind.DWord);
+        }
+
+        private void SetWebWidgetsState(bool enable)
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(WebWidgetsPath, true) 
+                ?? Registry.LocalMachine.CreateSubKey(WebWidgetsPath);
+            key.SetValue("AllowWebContentOnLockScreen", enable ? 1 : 0, RegistryValueKind.DWord);
+        }
+
+        private void ShowWidgetsDisabledMessage()
+        {
+            CustomMessageBox.Show(
+                "Widgets have been disabled. If they still appear, you may need to:\n\n" +
+                "1. Sign out and sign back in\n" +
+                "2. Or restart your computer\n\n" +
+                "This is sometimes necessary due to Windows 11's widget system.",
+                "Action Required",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
         public bool AreWidgetsEnabled
         {
             get
             {
                 try
                 {
-                    // Check multiple registry locations
-                    using (var key1 = Registry.CurrentUser.OpenSubKey(WidgetsPolicyPath))
-                    {
-                        var value1 = key1?.GetValue("TaskbarDa");
-                        if (value1 != null && (int)value1 == 0) return false;
-                    }
-
-                    using (var key2 = Registry.CurrentUser.OpenSubKey(WidgetsPath))
-                    {
-                        var value2 = key2?.GetValue("WidgetsDisabled");
-                        if (value2 != null && (int)value2 == 1) return false;
-                    }
-
-                    using (var key3 = Registry.CurrentUser.OpenSubKey(FeedsPath))
-                    {
-                        var value3 = key3?.GetValue("ShellFeedsTaskbarViewMode");
-                        if (value3 != null && (int)value3 == 0) return false;
-                    }
-
-                    // Check Group Policy settings
-                    using (var key4 = Registry.LocalMachine.OpenSubKey(WidgetsGPOPath))
-                    {
-                        var value4 = key4?.GetValue("EnableFeeds");
-                        if (value4 != null && (int)value4 == 0) return false;
-                    }
-
-                    using (var key5 = Registry.LocalMachine.OpenSubKey(WebWidgetsPath))
-                    {
-                        var value5 = key5?.GetValue("AllowWebContentOnLockScreen");
-                        if (value5 != null && (int)value5 == 0) return false;
-                    }
-
-                    return true;
+                    return CheckWidgetsPolicyState() &&
+                           CheckWidgetsRegistryState() &&
+                           CheckFeedsState() &&
+                           CheckGroupPolicyState() &&
+                           CheckWebWidgetsState();
                 }
                 catch (Exception ex)
                 {
@@ -229,50 +285,23 @@ namespace ClearGlass.Services
 
                 try
                 {
-                    // HKCU settings
-                    try
-                    {
-                        using var key1 = Registry.CurrentUser.OpenSubKey(WidgetsPolicyPath, true) 
-                            ?? Registry.CurrentUser.CreateSubKey(WidgetsPolicyPath);
-                        key1.SetValue("TaskbarDa", value ? 1 : 0, RegistryValueKind.DWord);
-                    }
+                    // Set all registry states
+                    try { SetWidgetsPolicyState(value); }
                     catch (Exception ex) { Debug.WriteLine($"Error setting TaskbarDa: {ex.Message}"); }
 
-                    try
-                    {
-                        using var key2 = Registry.CurrentUser.OpenSubKey(WidgetsPath, true) 
-                            ?? Registry.CurrentUser.CreateSubKey(WidgetsPath);
-                        key2.SetValue("WidgetsDisabled", value ? 0 : 1, RegistryValueKind.DWord);
-                        key2.SetValue("ConfiguredByPolicy", value ? 0 : 1, RegistryValueKind.DWord);
-                    }
+                    try { SetWidgetsRegistryState(value); }
                     catch (Exception ex) { Debug.WriteLine($"Error setting WidgetsDisabled: {ex.Message}"); }
 
-                    try
-                    {
-                        using var key3 = Registry.CurrentUser.OpenSubKey(FeedsPath, true) 
-                            ?? Registry.CurrentUser.CreateSubKey(FeedsPath);
-                        key3.SetValue("ShellFeedsTaskbarViewMode", value ? 1 : 0, RegistryValueKind.DWord);
-                        key3.SetValue("IsFeedsAvailable", value ? 1 : 0, RegistryValueKind.DWord);
-                    }
+                    try { SetFeedsState(value); }
                     catch (Exception ex) { Debug.WriteLine($"Error setting Feeds keys: {ex.Message}"); }
 
-                    // HKLM Group Policy settings
-                    try
-                    {
-                        using var key4 = Registry.LocalMachine.OpenSubKey(WidgetsGPOPath, true) 
-                            ?? Registry.LocalMachine.CreateSubKey(WidgetsGPOPath);
-                        key4.SetValue("EnableFeeds", value ? 1 : 0, RegistryValueKind.DWord);
-                    }
+                    try { SetGroupPolicyState(value); }
                     catch (Exception ex) { Debug.WriteLine($"Error setting GPO EnableFeeds: {ex.Message}"); }
 
-                    try
-                    {
-                        using var key5 = Registry.LocalMachine.OpenSubKey(WebWidgetsPath, true) 
-                            ?? Registry.LocalMachine.CreateSubKey(WebWidgetsPath);
-                        key5.SetValue("AllowWebContentOnLockScreen", value ? 1 : 0, RegistryValueKind.DWord);
-                    }
+                    try { SetWebWidgetsState(value); }
                     catch (Exception ex) { Debug.WriteLine($"Error setting WebWidgets policy: {ex.Message}"); }
 
+                    // Handle processes and services
                     if (!value)
                     {
                         KillWidgetsProcess();
@@ -286,14 +315,7 @@ namespace ClearGlass.Services
 
                     if (!value)
                     {
-                        CustomMessageBox.Show(
-                            "Widgets have been disabled. If they still appear, you may need to:\n\n" +
-                            "1. Sign out and sign back in\n" +
-                            "2. Or restart your computer\n\n" +
-                            "This is sometimes necessary due to Windows 11's widget system.",
-                            "Action Required",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                        ShowWidgetsDisabledMessage();
                     }
                 }
                 catch (Exception ex)
@@ -334,103 +356,30 @@ namespace ClearGlass.Services
             }
         }
 
-        public bool AreDesktopIconsVisible
+        private void SetWallpaperStyle()
         {
-            get
+            using var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true);
+            if (key != null)
             {
-                try
-                {
-                    // First check registry for persisted state
-                    using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced");
-                    var value = key?.GetValue("HideIcons");
-                    if (value != null)
-                    {
-                        return (int)value == 0;
-                    }
-
-                    // Fallback to checking window state
-                    var toggleHandle = NativeMethods.FindWindowEx(
-                        NativeMethods.FindWindowEx(
-                            NativeMethods.FindWindow("Progman", null),
-                            IntPtr.Zero,
-                            "SHELLDLL_DefView",
-                            null),
-                        IntPtr.Zero,
-                        "SysListView32",
-                        "FolderView");
-
-                    return toggleHandle != IntPtr.Zero && NativeMethods.IsWindowVisible(toggleHandle);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error getting desktop icons state: {ex.Message}");
-                    return true;
-                }
-            }
-            set
-            {
-                try
-                {
-                    // Persist the state in registry
-                    using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", true);
-                    key?.SetValue("HideIcons", value ? 0 : 1, RegistryValueKind.DWord);
-
-                    // Apply the change to the desktop window
-                    var toggleHandle = NativeMethods.FindWindowEx(
-                        NativeMethods.FindWindowEx(
-                            NativeMethods.FindWindow("Progman", null),
-                            IntPtr.Zero,
-                            "SHELLDLL_DefView",
-                            null),
-                        IntPtr.Zero,
-                        "SysListView32",
-                        "FolderView");
-
-                    if (toggleHandle != IntPtr.Zero)
-                    {
-                        if (value && !NativeMethods.IsWindowVisible(toggleHandle))
-                        {
-                            NativeMethods.ShowWindow(toggleHandle, SW_SHOW);
-                        }
-                        else if (!value && NativeMethods.IsWindowVisible(toggleHandle))
-                        {
-                            NativeMethods.ShowWindow(toggleHandle, SW_HIDE);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show($"Error toggling desktop icons: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                key.SetValue("WallpaperStyle", "10"); // 10 = Fill
+                key.SetValue("TileWallpaper", "0");
             }
         }
 
-        private string GetWallpaperPath(bool isDarkMode)
+        private void ApplyWallpaperImage(string path)
         {
-            try
+            const int SPI_SETDESKWALLPAPER = 0x0014;
+            const int SPIF_UPDATEINIFILE = 0x01;
+            const int SPIF_SENDCHANGE = 0x02;
+
+            if (!NativeMethods.SystemParametersInfo(
+                (uint)SPI_SETDESKWALLPAPER,
+                0,
+                path,
+                (uint)(SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)))
             {
-                string wallpaperBasePath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                    "Web", "Wallpaper", "Windows");
-
-                // Use the correct filenames
-                string fileName = isDarkMode ? "img19_1920x1200.jpg" : "img0_1920x1200.jpg";
-                string wallpaperPath = Path.Combine(wallpaperBasePath, fileName);
-
-                Debug.WriteLine($"Trying wallpaper path: {wallpaperPath}");
-
-                if (File.Exists(wallpaperPath))
-                {
-                    return wallpaperPath;
-                }
-
-                Debug.WriteLine("Wallpaper file not found");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error finding wallpaper path: {ex.Message}");
-                return null;
+                int error = Marshal.GetLastWin32Error();
+                throw new Win32Exception(error);
             }
         }
 
@@ -442,35 +391,11 @@ namespace ClearGlass.Services
                 return;
             }
 
-            const int SPI_SETDESKWALLPAPER = 0x0014;
-            const int SPIF_UPDATEINIFILE = 0x01;
-            const int SPIF_SENDCHANGE = 0x02;
-
             try
             {
                 Debug.WriteLine($"Attempting to set wallpaper: {path}");
-
-                // First try to set the wallpaper style to Fill
-                using (var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
-                {
-                    if (key != null)
-                    {
-                        key.SetValue("WallpaperStyle", "10"); // 10 = Fill
-                        key.SetValue("TileWallpaper", "0");
-                    }
-                }
-
-                // Set the wallpaper
-                if (!NativeMethods.SystemParametersInfo(
-                    (uint)SPI_SETDESKWALLPAPER,
-                    0,
-                    path,
-                    (uint)(SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)))
-                {
-                    int error = Marshal.GetLastWin32Error();
-                    throw new Win32Exception(error);
-                }
-
+                SetWallpaperStyle();
+                ApplyWallpaperImage(path);
                 Debug.WriteLine("Wallpaper set successfully");
             }
             catch (Exception ex)
@@ -480,61 +405,198 @@ namespace ClearGlass.Services
             }
         }
 
-        private void BroadcastThemeChange()
+        private IntPtr GetDesktopListViewHandle()
+        {
+            return NativeMethods.FindWindowEx(
+                NativeMethods.FindWindowEx(
+                    NativeMethods.FindWindow("Progman", null),
+                    IntPtr.Zero,
+                    "SHELLDLL_DefView",
+                    null),
+                IntPtr.Zero,
+                "SysListView32",
+                "FolderView");
+        }
+
+        private bool GetDesktopIconsRegistryState()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced");
+            var value = key?.GetValue("HideIcons");
+            return value == null || (int)value == 0;
+        }
+
+        private void SetDesktopIconsRegistryState(bool show)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", true);
+            key?.SetValue("HideIcons", show ? 0 : 1, RegistryValueKind.DWord);
+        }
+
+        private void SetDesktopIconsVisibility(IntPtr handle, bool show)
+        {
+            if (handle != IntPtr.Zero)
+            {
+                if (show && !NativeMethods.IsWindowVisible(handle))
+                {
+                    NativeMethods.ShowWindow(handle, SW_SHOW);
+                }
+                else if (!show && NativeMethods.IsWindowVisible(handle))
+                {
+                    NativeMethods.ShowWindow(handle, SW_HIDE);
+                }
+            }
+        }
+
+        public bool AreDesktopIconsVisible
+        {
+            get
+            {
+                try
+                {
+                    // First check registry for persisted state
+                    bool registryState = GetDesktopIconsRegistryState();
+
+                    // Fallback to checking window state
+                    var toggleHandle = GetDesktopListViewHandle();
+                    return toggleHandle != IntPtr.Zero ? NativeMethods.IsWindowVisible(toggleHandle) : registryState;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error getting desktop icons state: {ex.Message}");
+                    return true;
+                }
+            }
+            set
+            {
+                try
+                {
+                    SetDesktopIconsRegistryState(value);
+                    var toggleHandle = GetDesktopListViewHandle();
+                    SetDesktopIconsVisibility(toggleHandle, value);
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Show($"Error toggling desktop icons: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void SendSystemColorChangeMessage()
         {
             const int HWND_BROADCAST = 0xFFFF;
-            const int WM_SETTINGCHANGE = 0x001A;
             const int WM_SYSCOLORCHANGE = 0x0015;
+
+            NativeMethods.SendMessageTimeout(
+                new IntPtr(HWND_BROADCAST),
+                WM_SYSCOLORCHANGE,
+                IntPtr.Zero,
+                null,
+                NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                300,
+                out _);
+        }
+
+        private void SendThemeChangeMessage()
+        {
+            const int HWND_BROADCAST = 0xFFFF;
             const int WM_THEMECHANGE = 0x031A;
 
-            try
-            {
-                // Send all messages in quick succession
-                NativeMethods.SendMessageTimeout(
-                    new IntPtr(HWND_BROADCAST),
-                    WM_SYSCOLORCHANGE,
-                    IntPtr.Zero,
-                    null,
-                    NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
-                    300,
-                    out _);
+            NativeMethods.SendMessageTimeout(
+                new IntPtr(HWND_BROADCAST),
+                WM_THEMECHANGE,
+                IntPtr.Zero,
+                null,
+                NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                300,
+                out _);
+        }
 
+        private void NotifyShellOfThemeChange()
+        {
+            const int WM_THEMECHANGE = 0x031A;
+
+            var shell = NativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (shell != IntPtr.Zero)
+            {
                 NativeMethods.SendMessageTimeout(
-                    new IntPtr(HWND_BROADCAST),
+                    shell,
                     WM_THEMECHANGE,
                     IntPtr.Zero,
                     null,
                     NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
                     300,
                     out _);
+            }
+        }
 
-                // Notify Windows Shell about the change
-                var shell = NativeMethods.FindWindow("Shell_TrayWnd", null);
-                if (shell != IntPtr.Zero)
-                {
-                    NativeMethods.SendMessageTimeout(
-                        shell,
-                        WM_THEMECHANGE,
-                        IntPtr.Zero,
-                        null,
-                        NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
-                        300,
-                        out _);
-                }
+        private void SendImmersiveColorSetMessage()
+        {
+            const int HWND_BROADCAST = 0xFFFF;
+            const int WM_SETTINGCHANGE = 0x001A;
 
-                // Send the final immersive color set change
-                NativeMethods.SendMessageTimeout(
-                    new IntPtr(HWND_BROADCAST),
-                    WM_SETTINGCHANGE,
-                    IntPtr.Zero,
-                    "ImmersiveColorSet",
-                    NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
-                    300,
-                    out _);
+            NativeMethods.SendMessageTimeout(
+                new IntPtr(HWND_BROADCAST),
+                WM_SETTINGCHANGE,
+                IntPtr.Zero,
+                "ImmersiveColorSet",
+                NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_NORMAL,
+                300,
+                out _);
+        }
+
+        private void BroadcastThemeChange()
+        {
+            try
+            {
+                SendSystemColorChangeMessage();
+                SendThemeChangeMessage();
+                NotifyShellOfThemeChange();
+                SendImmersiveColorSetMessage();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error broadcasting theme change: {ex.Message}");
+            }
+        }
+
+        private void SetAccentColorSettings()
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true);
+            if (key != null)
+            {
+                key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
+                key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
+                key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
+                key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
+            }
+        }
+
+        private void SetSystemTheme(bool isDarkMode)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true);
+            if (key != null)
+            {
+                key.SetValue("SystemUsesLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
+                key.SetValue("AppsUseLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
+            }
+        }
+
+        private void ApplyWindowsTheme(bool isDarkMode)
+        {
+            string themesPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                "Resources", "Themes");
+
+            string themeFile = isDarkMode ? "dark.theme" : "aero.theme";
+            string themePath = Path.Combine(themesPath, themeFile);
+
+            if (File.Exists(themePath))
+            {
+                Debug.WriteLine($"Applying theme: {themePath}");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = themePath,
+                    UseShellExecute = true
+                });
             }
         }
 
@@ -560,51 +622,11 @@ namespace ClearGlass.Services
                 {
                     Debug.WriteLine($"Setting theme to: {(value ? "Dark" : "Light")}");
 
-                    // Set accent color to automatic first
-                    using (var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true))
-                    {
-                        if (key != null)
-                        {
-                            key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
-                            key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
-                            key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
-                            key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
-                        }
-                    }
+                    SetAccentColorSettings();
+                    SetSystemTheme(value);
+                    ApplyWindowsTheme(value);
 
-                    // Set system theme
-                    using (var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true))
-                    {
-                        if (key != null)
-                        {
-                            key.SetValue("SystemUsesLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
-                            key.SetValue("AppsUseLightTheme", value ? 0 : 1, RegistryValueKind.DWord);
-                        }
-                    }
-
-                    // Apply the appropriate Windows theme
-                    string themesPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                        "Resources", "Themes");
-
-                    string themeFile = value ? "dark.theme" : "aero.theme";
-                    string themePath = Path.Combine(themesPath, themeFile);
-
-                    if (File.Exists(themePath))
-                    {
-                        Debug.WriteLine($"Applying theme: {themePath}");
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = themePath,
-                            UseShellExecute = true
-                        });
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"Theme file not found: {themePath}");
-                    }
-
-                    // Broadcast theme change
+                    // Broadcast the theme change
                     BroadcastThemeChange();
                 }
                 catch (Exception ex)
@@ -647,24 +669,26 @@ namespace ClearGlass.Services
             public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
         }
 
+        private void FlushRegistryChanges()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath, true);
+                key?.Flush();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error flushing registry changes: {ex.Message}");
+            }
+        }
+
         public void RefreshWindows()
         {
             try
             {
-                // Restart Explorer to ensure all UI changes take effect
                 RestartExplorer();
-                
-                // Broadcast theme change to all windows
                 BroadcastThemeChange();
-                
-                // Additional registry flush to ensure changes are committed
-                using (var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath, true))
-                {
-                    if (key != null)
-                    {
-                        key.Flush();
-                    }
-                }
+                FlushRegistryChanges();
             }
             catch (Exception ex)
             {
