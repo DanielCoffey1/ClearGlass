@@ -10,6 +10,86 @@ using System.Windows;
 
 namespace ClearGlass.Services
 {
+    /// <summary>
+    /// Represents errors that occur during theme service operations
+    /// </summary>
+    public class ThemeServiceException : Exception
+    {
+        public ThemeServiceOperation Operation { get; }
+
+        public ThemeServiceException(string message, ThemeServiceOperation operation, Exception innerException = null)
+            : base(message, innerException)
+        {
+            Operation = operation;
+        }
+    }
+
+    /// <summary>
+    /// Defines the type of operation that caused an error
+    /// </summary>
+    public enum ThemeServiceOperation
+    {
+        RegistryAccess,
+        WindowsApi,
+        ProcessManagement,
+        FileSystem,
+        AdminPrivileges
+    }
+
+    /// <summary>
+    /// Handles registry operations with proper error handling
+    /// </summary>
+    internal static class RegistryHelper
+    {
+        public static T GetValue<T>(string keyPath, string valueName, T defaultValue = default)
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(keyPath);
+                var value = key?.GetValue(valueName);
+                return value != null ? (T)Convert.ChangeType(value, typeof(T)) : defaultValue;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error reading registry value {valueName} from {keyPath}: {ex.Message}");
+                throw new ThemeServiceException(
+                    $"Failed to read registry value: {valueName}",
+                    ThemeServiceOperation.RegistryAccess,
+                    ex);
+            }
+        }
+
+        public static void SetValue(string keyPath, string valueName, object value, RegistryValueKind valueKind)
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(keyPath, true) 
+                    ?? Registry.CurrentUser.CreateSubKey(keyPath);
+                key.SetValue(valueName, value, valueKind);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error writing registry value {valueName} to {keyPath}: {ex.Message}");
+                throw new ThemeServiceException(
+                    $"Failed to write registry value: {valueName}",
+                    ThemeServiceOperation.RegistryAccess,
+                    ex);
+            }
+        }
+
+        public static void SetValueWithFallback(string keyPath, string valueName, object value, RegistryValueKind valueKind)
+        {
+            try
+            {
+                SetValue(keyPath, valueName, value, valueKind);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Non-critical error writing registry value {valueName}: {ex.Message}");
+            }
+        }
+    }
+
     public class ThemeService
     {
         private const string TaskbarSettingsPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
@@ -115,29 +195,62 @@ namespace ClearGlass.Services
             }
         }
 
+        private void HandleError(Exception ex, string operation, bool isCritical = true)
+        {
+            string message = $"Error during {operation}: {ex.Message}";
+            Debug.WriteLine(message);
+
+            if (isCritical)
+            {
+                if (ex is ThemeServiceException)
+                    throw ex;
+                
+                throw new ThemeServiceException(
+                    message,
+                    DetermineOperationType(ex),
+                    ex);
+            }
+        }
+
+        private ThemeServiceOperation DetermineOperationType(Exception ex)
+        {
+            return ex switch
+            {
+                UnauthorizedAccessException _ => ThemeServiceOperation.AdminPrivileges,
+                Win32Exception _ => ThemeServiceOperation.WindowsApi,
+                IOException _ => ThemeServiceOperation.FileSystem,
+                _ => ThemeServiceOperation.RegistryAccess
+            };
+        }
+
+        private void ShowError(string message, string title = "Error")
+        {
+            CustomMessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
         public bool IsTaskbarCentered
         {
             get
             {
                 try
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath);
-                    var value = key?.GetValue("TaskbarAl");
-                    return value == null || (int)value == 1;
+                    return RegistryHelper.GetValue<int>(TaskbarSettingsPath, "TaskbarAl", 1) == 1;
                 }
-                catch { return true; }
+                catch (ThemeServiceException)
+                {
+                    return true; // Default value if registry access fails
+                }
             }
             set
             {
                 try
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath, true);
-                    key?.SetValue("TaskbarAl", value ? 1 : 0, RegistryValueKind.DWord);
+                    RegistryHelper.SetValue(TaskbarSettingsPath, "TaskbarAl", value ? 1 : 0, RegistryValueKind.DWord);
                     RestartExplorer();
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Show($"Error setting taskbar alignment: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    HandleError(ex, "setting taskbar alignment");
                 }
             }
         }
@@ -148,46 +261,40 @@ namespace ClearGlass.Services
             {
                 try
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath);
-                    var value = key?.GetValue("ShowTaskViewButton");
-                    return value == null || (int)value == 1;
+                    return RegistryHelper.GetValue<int>(TaskbarSettingsPath, "ShowTaskViewButton", 1) == 1;
                 }
-                catch { return true; }
+                catch (ThemeServiceException)
+                {
+                    return true;
+                }
             }
             set
             {
                 try
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(TaskbarSettingsPath, true);
-                    key?.SetValue("ShowTaskViewButton", value ? 1 : 0, RegistryValueKind.DWord);
+                    RegistryHelper.SetValue(TaskbarSettingsPath, "ShowTaskViewButton", value ? 1 : 0, RegistryValueKind.DWord);
                     RestartExplorer();
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Show($"Error setting task view: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    HandleError(ex, "setting task view");
                 }
             }
         }
 
         private bool CheckWidgetsPolicyState()
         {
-            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPolicyPath);
-            var value = key?.GetValue("TaskbarDa");
-            return value == null || (int)value != 0;
+            return RegistryHelper.GetValue<int>(WidgetsPolicyPath, "TaskbarDa", 1) != 0;
         }
 
         private bool CheckWidgetsRegistryState()
         {
-            using var key = Registry.CurrentUser.OpenSubKey(WidgetsPath);
-            var value = key?.GetValue("WidgetsDisabled");
-            return value == null || (int)value != 1;
+            return RegistryHelper.GetValue<int>(WidgetsPath, "WidgetsDisabled", 0) != 1;
         }
 
         private bool CheckFeedsState()
         {
-            using var key = Registry.CurrentUser.OpenSubKey(FeedsPath);
-            var value = key?.GetValue("ShellFeedsTaskbarViewMode");
-            return value == null || (int)value != 0;
+            return RegistryHelper.GetValue<int>(FeedsPath, "ShellFeedsTaskbarViewMode", 1) != 0;
         }
 
         private bool CheckGroupPolicyState()
@@ -320,11 +427,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Show(
-                        $"Error modifying widgets settings: {ex.Message}\n\nSome changes may require a system restart to take effect.",
-                        "Widget Settings Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    HandleError(ex, "modifying widgets settings");
                 }
             }
         }
@@ -351,19 +454,15 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Show($"Error setting search visibility: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    HandleError(ex, "setting search visibility");
                 }
             }
         }
 
         private void SetWallpaperStyle()
         {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true);
-            if (key != null)
-            {
-                key.SetValue("WallpaperStyle", "10"); // 10 = Fill
-                key.SetValue("TileWallpaper", "0");
-            }
+            RegistryHelper.SetValue(@"Control Panel\Desktop", "WallpaperStyle", "10", RegistryValueKind.String);
+            RegistryHelper.SetValue(@"Control Panel\Desktop", "TileWallpaper", "0", RegistryValueKind.String);
         }
 
         private void ApplyWallpaperImage(string path)
@@ -400,8 +499,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error setting wallpaper: {ex.Message}");
-                throw;
+                HandleError(ex, "setting wallpaper");
             }
         }
 
@@ -475,7 +573,7 @@ namespace ClearGlass.Services
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Show($"Error toggling desktop icons: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    HandleError(ex, "toggling desktop icons");
                 }
             }
         }
@@ -560,24 +658,16 @@ namespace ClearGlass.Services
 
         private void SetAccentColorSettings()
         {
-            using var key = Registry.CurrentUser.OpenSubKey(AccentColorSettingsPath, true);
-            if (key != null)
-            {
-                key.SetValue("EnableTransparency", 1, RegistryValueKind.DWord);
-                key.SetValue("ColorPrevalence", 0, RegistryValueKind.DWord);
-                key.SetValue("AccentColor", -1, RegistryValueKind.DWord);
-                key.SetValue("AccentColorInactive", -1, RegistryValueKind.DWord);
-            }
+            RegistryHelper.SetValueWithFallback(AccentColorSettingsPath, "EnableTransparency", 1, RegistryValueKind.DWord);
+            RegistryHelper.SetValueWithFallback(AccentColorSettingsPath, "ColorPrevalence", 0, RegistryValueKind.DWord);
+            RegistryHelper.SetValueWithFallback(AccentColorSettingsPath, "AccentColor", -1, RegistryValueKind.DWord);
+            RegistryHelper.SetValueWithFallback(AccentColorSettingsPath, "AccentColorInactive", -1, RegistryValueKind.DWord);
         }
 
         private void SetSystemTheme(bool isDarkMode)
         {
-            using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath, true);
-            if (key != null)
-            {
-                key.SetValue("SystemUsesLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
-                key.SetValue("AppsUseLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
-            }
+            RegistryHelper.SetValue(PersonalizePath, "SystemUsesLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
+            RegistryHelper.SetValue(PersonalizePath, "AppsUseLightTheme", isDarkMode ? 0 : 1, RegistryValueKind.DWord);
         }
 
         private void ApplyWindowsTheme(bool isDarkMode)
@@ -606,13 +696,11 @@ namespace ClearGlass.Services
             {
                 try
                 {
-                    using var key = Registry.CurrentUser.OpenSubKey(PersonalizePath);
-                    var value = key?.GetValue("SystemUsesLightTheme");
-                    return value != null && (int)value == 0;
+                    return RegistryHelper.GetValue<int>(PersonalizePath, "SystemUsesLightTheme", 1) == 0;
                 }
-                catch (Exception ex)
+                catch (ThemeServiceException ex)
                 {
-                    Debug.WriteLine($"Error getting theme state: {ex.Message}");
+                    HandleError(ex, "getting theme state", false);
                     return false;
                 }
             }
@@ -621,18 +709,14 @@ namespace ClearGlass.Services
                 try
                 {
                     Debug.WriteLine($"Setting theme to: {(value ? "Dark" : "Light")}");
-
                     SetAccentColorSettings();
                     SetSystemTheme(value);
                     ApplyWindowsTheme(value);
-
-                    // Broadcast the theme change
                     BroadcastThemeChange();
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error setting theme: {ex.Message}");
-                    throw;
+                    HandleError(ex, "setting theme");
                 }
             }
         }
@@ -640,11 +724,30 @@ namespace ClearGlass.Services
         private const int SW_HIDE = 0;
         private const int SW_SHOW = 5;
 
+        /// <summary>
+        /// Contains native Win32 API method declarations and constants
+        /// </summary>
         private static class NativeMethods
         {
+            #region Window Message Constants
+            private const int HWND_BROADCAST = 0xFFFF;
             public const int SMTO_ABORTIFHUNG = 0x0002;
             public const int SMTO_NORMAL = 0x0000;
+            public const int WM_SETTINGCHANGE = 0x001A;
+            public const int WM_SYSCOLORCHANGE = 0x0015;
+            public const int WM_THEMECHANGE = 0x031A;
+            #endregion
 
+            #region System Parameters
+            private const int SPI_SETDESKWALLPAPER = 0x0014;
+            private const int SPIF_UPDATEINIFILE = 0x01;
+            private const int SPIF_SENDCHANGE = 0x02;
+
+            public static uint GetWallpaperFlags() => (uint)(SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+            public static uint GetWallpaperAction() => (uint)SPI_SETDESKWALLPAPER;
+            #endregion
+
+            #region Window Management
             [DllImport("user32.dll", SetLastError = true)]
             public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
@@ -656,17 +759,45 @@ namespace ClearGlass.Services
 
             [DllImport("user32.dll")]
             public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+            #endregion
 
+            #region System Parameters and Messaging
             [DllImport("user32.dll", CharSet = CharSet.Unicode)]
             public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
 
             [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-            public static extern IntPtr SendMessageTimeout(IntPtr hWnd, int msg, IntPtr wParam, string lParam,
-                int fuFlags, int uTimeout, out IntPtr lpdwResult);
+            public static extern IntPtr SendMessageTimeout(
+                IntPtr hWnd,
+                int msg,
+                IntPtr wParam,
+                string lParam,
+                int fuFlags,
+                int uTimeout,
+                out IntPtr lpdwResult);
 
             [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
-            public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, string pvParam, uint fWinIni);
+            public static extern bool SystemParametersInfo(
+                uint uiAction,
+                uint uiParam,
+                string pvParam,
+                uint fWinIni);
+            #endregion
+
+            /// <summary>
+            /// Broadcasts a theme change message to all windows
+            /// </summary>
+            public static void BroadcastMessage(int msg, string lParam = null)
+            {
+                SendMessageTimeout(
+                    new IntPtr(HWND_BROADCAST),
+                    msg,
+                    IntPtr.Zero,
+                    lParam,
+                    SMTO_ABORTIFHUNG | SMTO_NORMAL,
+                    300,
+                    out _);
+            }
         }
 
         private void FlushRegistryChanges()
@@ -678,7 +809,7 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error flushing registry changes: {ex.Message}");
+                HandleError(ex, "flushing registry changes", false);
             }
         }
 
