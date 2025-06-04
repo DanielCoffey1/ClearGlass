@@ -119,19 +119,19 @@ namespace ClearGlass.Services
         public bool IsTaskbarCentered
         {
             get => _taskbarService.IsTaskbarCentered;
-            set => _taskbarService.IsTaskbarCentered = value;
+            set => _taskbarService.ApplySettings(isTaskbarCentered: value, applyImmediately: false);
         }
 
         public bool IsTaskViewEnabled
         {
             get => _taskbarService.IsTaskViewEnabled;
-            set => _taskbarService.IsTaskViewEnabled = value;
+            set => _taskbarService.ApplySettings(isTaskViewEnabled: value, applyImmediately: false);
         }
 
         public bool IsSearchVisible
         {
             get => _taskbarService.IsSearchVisible;
-            set => _taskbarService.IsSearchVisible = value;
+            set => _taskbarService.ApplySettings(isSearchVisible: value, applyImmediately: false);
         }
 
         // Delegate widgets property to WidgetService
@@ -180,19 +180,63 @@ namespace ClearGlass.Services
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
-            IsDarkMode = settings.IsDarkMode;
-            IsTaskbarCentered = settings.IsTaskbarCentered;
-            IsTaskViewEnabled = settings.IsTaskViewEnabled;
-            AreWidgetsEnabled = settings.AreWidgetsEnabled;
-            IsSearchVisible = settings.IsSearchVisible;
-            AreDesktopIconsVisible = settings.AreDesktopIconsVisible;
-
-            if (!string.IsNullOrEmpty(settings.WallpaperPath))
+            try
             {
-                SetWallpaper(settings.WallpaperPath);
-            }
+                // Apply all registry changes first
+                if (settings.IsDarkMode != IsDarkMode)
+                {
+                    // Set accent color settings
+                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "EnableTransparency", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "ColorPrevalence", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColor", -1, Microsoft.Win32.RegistryValueKind.DWord);
+                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColorInactive", -1, Microsoft.Win32.RegistryValueKind.DWord);
 
-            BroadcastThemeChange();
+                    // Set system theme
+                    RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "SystemUsesLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "AppsUseLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+                }
+
+                // Batch taskbar changes
+                _taskbarService.ApplySettings(
+                    isTaskbarCentered: settings.IsTaskbarCentered,
+                    isTaskViewEnabled: settings.IsTaskViewEnabled,
+                    isSearchVisible: settings.IsSearchVisible,
+                    applyImmediately: false
+                );
+
+                // Apply other settings
+                if (settings.AreWidgetsEnabled != AreWidgetsEnabled)
+                {
+                    _widgetService.AreWidgetsEnabled = settings.AreWidgetsEnabled;
+                }
+
+                if (settings.AreDesktopIconsVisible != AreDesktopIconsVisible)
+                {
+                    _desktopIconsService.AreDesktopIconsVisible = settings.AreDesktopIconsVisible;
+                }
+
+                // Set wallpaper if provided
+                if (!string.IsNullOrEmpty(settings.WallpaperPath))
+                {
+                    _wallpaperService.SetWallpaper(settings.WallpaperPath);
+                }
+
+                // Apply all changes at once
+                if (_taskbarService.HasPendingChanges)
+                {
+                    _taskbarService.ApplyPendingChanges();
+                }
+
+                // Broadcast changes
+                BroadcastThemeChange();
+            }
+            catch (Exception ex)
+            {
+                throw new ThemeServiceException(
+                    $"Error applying settings: {ex.Message}",
+                    ThemeServiceOperation.RegistryAccess,
+                    ex);
+            }
         }
 
         /// <summary>
@@ -202,7 +246,10 @@ namespace ClearGlass.Services
         {
             try
             {
-                _taskbarService.RestartExplorer();
+                if (_taskbarService.HasPendingChanges)
+                {
+                    _taskbarService.ApplyPendingChanges();
+                }
                 BroadcastThemeChange();
                 RegistryHelper.FlushChanges(RegistryHelper.TaskbarSettingsPath);
             }

@@ -11,10 +11,23 @@ namespace ClearGlass.Services.Features
     /// </summary>
     internal class TaskbarService
     {
+        private bool _restartPending = false;
+        private bool _taskbarCentered;
+        private bool _taskViewEnabled;
+        private bool _searchVisible;
+
+        public TaskbarService()
+        {
+            // Initialize current values
+            _taskbarCentered = GetTaskbarCentered();
+            _taskViewEnabled = GetTaskViewEnabled();
+            _searchVisible = GetSearchVisible();
+        }
+
         /// <summary>
         /// Restarts the Windows Explorer process
         /// </summary>
-        public void RestartExplorer()
+        private void RestartExplorer()
         {
             try
             {
@@ -25,6 +38,7 @@ namespace ClearGlass.Services.Features
                     CreateNoWindow = true,
                     UseShellExecute = false
                 });
+                _restartPending = false;
             }
             catch (Exception ex)
             {
@@ -35,102 +49,118 @@ namespace ClearGlass.Services.Features
             }
         }
 
-        /// <summary>
-        /// Gets or sets whether the taskbar is centered
-        /// </summary>
-        public bool IsTaskbarCentered
+        private bool GetTaskbarCentered()
         {
-            get
+            try
             {
-                try
-                {
-                    return RegistryHelper.GetValue<int>(RegistryHelper.TaskbarSettingsPath, "TaskbarAl", 1) == 1;
-                }
-                catch (ThemeServiceException)
-                {
-                    return true; // Default value if registry access fails
-                }
+                return RegistryHelper.GetValue<int>(RegistryHelper.TaskbarSettingsPath, "TaskbarAl", 1) == 1;
             }
-            set
+            catch (ThemeServiceException)
             {
-                try
-                {
-                    RegistryHelper.SetValue(RegistryHelper.TaskbarSettingsPath, "TaskbarAl", value ? 1 : 0, RegistryValueKind.DWord);
-                    RestartExplorer();
-                }
-                catch (Exception ex)
-                {
-                    throw new ThemeServiceException(
-                        $"Error setting taskbar alignment: {ex.Message}",
-                        ThemeServiceOperation.RegistryAccess,
-                        ex);
-                }
+                return true;
+            }
+        }
+
+        private bool GetTaskViewEnabled()
+        {
+            try
+            {
+                return RegistryHelper.GetValue<int>(RegistryHelper.TaskbarSettingsPath, "ShowTaskViewButton", 1) == 1;
+            }
+            catch (ThemeServiceException)
+            {
+                return true;
+            }
+        }
+
+        private bool GetSearchVisible()
+        {
+            try
+            {
+                return RegistryHelper.GetValue<int>(RegistryHelper.SearchSettingsPath, "SearchboxTaskbarMode", 1) != 0;
+            }
+            catch (ThemeServiceException)
+            {
+                return true;
             }
         }
 
         /// <summary>
-        /// Gets or sets whether the task view button is visible
+        /// Gets whether the taskbar is centered
         /// </summary>
-        public bool IsTaskViewEnabled
+        public bool IsTaskbarCentered => _taskbarCentered;
+
+        /// <summary>
+        /// Gets whether the task view button is visible
+        /// </summary>
+        public bool IsTaskViewEnabled => _taskViewEnabled;
+
+        /// <summary>
+        /// Gets whether the search box is visible
+        /// </summary>
+        public bool IsSearchVisible => _searchVisible;
+
+        /// <summary>
+        /// Applies multiple taskbar settings at once
+        /// </summary>
+        public void ApplySettings(bool? isTaskbarCentered = null, bool? isTaskViewEnabled = null, bool? isSearchVisible = null, bool applyImmediately = false)
         {
-            get
+            bool changed = false;
+
+            try
             {
-                try
+                if (isTaskbarCentered.HasValue && isTaskbarCentered.Value != _taskbarCentered)
                 {
-                    return RegistryHelper.GetValue<int>(RegistryHelper.TaskbarSettingsPath, "ShowTaskViewButton", 1) == 1;
+                    RegistryHelper.SetValue(RegistryHelper.TaskbarSettingsPath, "TaskbarAl", isTaskbarCentered.Value ? 1 : 0, RegistryValueKind.DWord);
+                    _taskbarCentered = isTaskbarCentered.Value;
+                    changed = true;
                 }
-                catch (ThemeServiceException)
+                
+                if (isTaskViewEnabled.HasValue && isTaskViewEnabled.Value != _taskViewEnabled)
                 {
-                    return true;
+                    RegistryHelper.SetValue(RegistryHelper.TaskbarSettingsPath, "ShowTaskViewButton", isTaskViewEnabled.Value ? 1 : 0, RegistryValueKind.DWord);
+                    _taskViewEnabled = isTaskViewEnabled.Value;
+                    changed = true;
+                }
+                
+                if (isSearchVisible.HasValue && isSearchVisible.Value != _searchVisible)
+                {
+                    RegistryHelper.SetValue(RegistryHelper.SearchSettingsPath, "SearchboxTaskbarMode", isSearchVisible.Value ? 1 : 0, RegistryValueKind.DWord);
+                    _searchVisible = isSearchVisible.Value;
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    _restartPending = true;
+                    if (applyImmediately)
+                    {
+                        ApplyPendingChanges();
+                    }
                 }
             }
-            set
+            catch (Exception ex)
             {
-                try
-                {
-                    RegistryHelper.SetValue(RegistryHelper.TaskbarSettingsPath, "ShowTaskViewButton", value ? 1 : 0, RegistryValueKind.DWord);
-                    RestartExplorer();
-                }
-                catch (Exception ex)
-                {
-                    throw new ThemeServiceException(
-                        $"Error setting task view: {ex.Message}",
-                        ThemeServiceOperation.RegistryAccess,
-                        ex);
-                }
+                throw new ThemeServiceException(
+                    $"Error applying taskbar settings: {ex.Message}",
+                    ThemeServiceOperation.RegistryAccess,
+                    ex);
             }
         }
 
         /// <summary>
-        /// Gets or sets whether the search box is visible
+        /// Checks if changes are pending that require an Explorer restart
         /// </summary>
-        public bool IsSearchVisible
+        public bool HasPendingChanges => _restartPending;
+
+        /// <summary>
+        /// Applies any pending changes by restarting Explorer if necessary
+        /// </summary>
+        public void ApplyPendingChanges()
         {
-            get
+            if (_restartPending)
             {
-                try
-                {
-                    return RegistryHelper.GetValue<int>(RegistryHelper.SearchSettingsPath, "SearchboxTaskbarMode", 1) != 0;
-                }
-                catch (ThemeServiceException)
-                {
-                    return true;
-                }
-            }
-            set
-            {
-                try
-                {
-                    RegistryHelper.SetValue(RegistryHelper.SearchSettingsPath, "SearchboxTaskbarMode", value ? 1 : 0, RegistryValueKind.DWord);
-                    RestartExplorer();
-                }
-                catch (Exception ex)
-                {
-                    throw new ThemeServiceException(
-                        $"Error setting search visibility: {ex.Message}",
-                        ThemeServiceOperation.RegistryAccess,
-                        ex);
-                }
+                RestartExplorer();
             }
         }
     }
