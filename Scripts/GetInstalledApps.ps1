@@ -1,0 +1,1 @@
+Get-AppxPackage -AllUsers | Select-Object Name, PackageFullName | ConvertTo-Json 
