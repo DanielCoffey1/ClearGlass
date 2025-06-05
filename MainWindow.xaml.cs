@@ -50,7 +50,8 @@ namespace ClearGlass
             InitializeComponent();
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
-            _bloatwareService = new BloatwareService();
+            var loggingService = new LoggingService();
+            _bloatwareService = new BloatwareService(loggingService);
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
             _updateService = new UpdateService();

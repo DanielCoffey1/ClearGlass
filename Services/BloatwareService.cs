@@ -18,6 +18,7 @@ namespace ClearGlass.Services
         private const string TEMP_GET_APPS_SCRIPT_NAME = "GetInstalledApps.ps1";
         private const string SCRIPTS_NAMESPACE = "ClearGlass.Scripts";
 
+        private readonly LoggingService _logger;
         private readonly string[] defaultEssentialApps = new[]
         {
             "Microsoft.Windows.ShellExperienceHost",
@@ -49,24 +50,34 @@ namespace ClearGlass.Services
 
         private List<string> _sessionEssentialApps = new();
 
-        public BloatwareService()
+        public BloatwareService(LoggingService logger)
         {
+            _logger = logger;
             ResetToDefaultEssentialApps();
+            _logger.LogInformation("BloatwareService initialized");
         }
 
         public void ResetToDefaultEssentialApps()
         {
             _sessionEssentialApps = new List<string>(defaultEssentialApps);
+            _logger.LogInformation("Reset to default essential apps list");
         }
 
         public void UpdateSessionEssentialApps(IEnumerable<WindowsApp> selectedApps)
         {
             _sessionEssentialApps = new List<string>(defaultEssentialApps);
-            _sessionEssentialApps.AddRange(
-                selectedApps
-                    .Where(a => a.IsSelected)
-                    .Select(a => a.Name)
-                    .Where(name => !_sessionEssentialApps.Contains(name))
+            var newApps = selectedApps
+                .Where(a => a.IsSelected)
+                .Select(a => a.Name)
+                .Where(name => !_sessionEssentialApps.Contains(name))
+                .ToList();
+
+            _sessionEssentialApps.AddRange(newApps);
+            
+            _logger.LogInformation(
+                "Updated essential apps list. Added {Count} new apps: {Apps}", 
+                newApps.Count, 
+                string.Join(", ", newApps)
             );
         }
 
@@ -74,6 +85,7 @@ namespace ClearGlass.Services
 
         public async Task<ObservableCollection<WindowsApp>> GetInstalledApps()
         {
+            _logger.LogOperationStart("Getting installed apps");
             var apps = new ObservableCollection<WindowsApp>();
             string scriptPath = await CreateGetAppsScript();
 
@@ -91,11 +103,13 @@ namespace ClearGlass.Services
                             app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
                             apps.Add(app);
                         }
+                        _logger.LogInformation("Found {Count} installed apps", appList.Count);
                     }
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError("Failed to get installed apps", ex);
                 ShowError("Error getting installed apps", ex);
             }
             finally
@@ -103,59 +117,97 @@ namespace ClearGlass.Services
                 CleanupScript(scriptPath);
             }
 
+            _logger.LogOperationComplete("Getting installed apps");
             return apps;
         }
 
         private async Task<string> LoadRemovalScriptContent()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = $"{SCRIPTS_NAMESPACE}.RemoveBloatware.ps1";
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream == null)
+            try
             {
-                throw new InvalidOperationException($"Could not find embedded script: {resourceName}");
-            }
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceName = $"{SCRIPTS_NAMESPACE}.RemoveBloatware.ps1";
 
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync();
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    var error = $"Could not find embedded script: {resourceName}";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                using var reader = new StreamReader(stream);
+                var content = await reader.ReadToEndAsync();
+                _logger.LogInformation("Successfully loaded removal script");
+                return content;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to load removal script", ex);
+                throw;
+            }
         }
 
         private async Task<string> LoadGetAppsScriptContent()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = $"{SCRIPTS_NAMESPACE}.GetInstalledApps.ps1";
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream == null)
+            try
             {
-                throw new InvalidOperationException($"Could not find embedded script: {resourceName}");
-            }
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceName = $"{SCRIPTS_NAMESPACE}.GetInstalledApps.ps1";
 
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync();
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    var error = $"Could not find embedded script: {resourceName}";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                using var reader = new StreamReader(stream);
+                var content = await reader.ReadToEndAsync();
+                _logger.LogInformation("Successfully loaded get apps script");
+                return content;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to load get apps script", ex);
+                throw;
+            }
         }
 
         private async Task<string> CreateGetAppsScript()
         {
-            string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_GET_APPS_SCRIPT_NAME);
-            string scriptContent = await LoadGetAppsScriptContent();
-            await File.WriteAllTextAsync(scriptPath, scriptContent);
-            return scriptPath;
+            try
+            {
+                string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_GET_APPS_SCRIPT_NAME);
+                string scriptContent = await LoadGetAppsScriptContent();
+                await File.WriteAllTextAsync(scriptPath, scriptContent);
+                _logger.LogInformation("Created get apps script at: {Path}", scriptPath);
+                return scriptPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to create get apps script", ex);
+                throw;
+            }
         }
 
         public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep)
         {
+            _logger.LogOperationStart("Removing Windows bloatware");
             ShowStartupMessage();
+            
             string scriptPath = await CreateRemovalScript(appsToKeep);
 
             try
             {
                 await ExecuteRemovalScript(scriptPath);
+                _logger.LogOperationComplete("Removing Windows bloatware");
                 ShowSuccessMessage();
             }
             catch (Exception ex)
             {
+                _logger.LogError("Error during bloatware removal", ex);
                 ShowError("Error during bloatware removal", ex);
             }
             finally
@@ -172,70 +224,120 @@ namespace ClearGlass.Services
 
         private async Task<string> CreateRemovalScript(IEnumerable<WindowsApp> appsToKeep)
         {
-            string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_SCRIPT_NAME);
-            string scriptContent = await LoadRemovalScriptContent();
-            
-            // Replace the apps to keep placeholder
-            scriptContent = scriptContent.Replace(
-                "__APP_NAMES_PLACEHOLDER__", 
-                string.Join("','", appsToKeep.Where(a => a.IsSelected).Select(a => a.Name))
-            );
+            try
+            {
+                string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_SCRIPT_NAME);
+                string scriptContent = await LoadRemovalScriptContent();
+                
+                var selectedApps = appsToKeep.Where(a => a.IsSelected).Select(a => a.Name).ToList();
+                _logger.LogInformation("Creating removal script with {Count} apps to keep: {Apps}", 
+                    selectedApps.Count, 
+                    string.Join(", ", selectedApps));
 
-            await File.WriteAllTextAsync(scriptPath, scriptContent);
-            return scriptPath;
+                scriptContent = scriptContent.Replace(
+                    "__APP_NAMES_PLACEHOLDER__", 
+                    string.Join("','", selectedApps)
+                );
+
+                await File.WriteAllTextAsync(scriptPath, scriptContent);
+                _logger.LogInformation("Created removal script at: {Path}", scriptPath);
+                return scriptPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to create removal script", ex);
+                throw;
+            }
         }
 
         private async Task ExecuteRemovalScript(string scriptPath)
         {
-            var startInfo = new ProcessStartInfo()
+            try
             {
-                FileName = POWERSHELL_PATH,
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                UseShellExecute = true,
-                Verb = "runas",
-                CreateNoWindow = false,
-                RedirectStandardOutput = false
-            };
+                _logger.LogInformation("Executing removal script: {Path}", scriptPath);
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = POWERSHELL_PATH,
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false
+                };
 
-            using var process = Process.Start(startInfo);
-            if (process == null)
-            {
-                throw new InvalidOperationException("Failed to start PowerShell process");
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    var error = "Failed to start PowerShell process";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Removal script completed with non-zero exit code: {ExitCode}", process.ExitCode);
+                    ShowWarning();
+                }
+                else
+                {
+                    _logger.LogInformation("Removal script completed successfully");
+                }
             }
-
-            await process.WaitForExitAsync();
-            
-            if (process.ExitCode != 0)
+            catch (Exception ex)
             {
-                ShowWarning();
+                _logger.LogError("Failed to execute removal script", ex);
+                throw;
             }
         }
 
         private async Task<string> RunPowerShellScript(string scriptPath, bool elevated = true)
         {
-            var startInfo = new ProcessStartInfo()
+            try
             {
-                FileName = POWERSHELL_PATH,
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
+                _logger.LogInformation("Running PowerShell script: {Path} (Elevated: {Elevated})", scriptPath, elevated);
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = POWERSHELL_PATH,
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
 
-            if (elevated)
-            {
-                startInfo.Verb = "runas";
+                if (elevated)
+                {
+                    startInfo.Verb = "runas";
+                }
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    var error = "Failed to start PowerShell process";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                string output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Script completed with non-zero exit code: {ExitCode}", process.ExitCode);
+                }
+                else
+                {
+                    _logger.LogInformation("Script completed successfully");
+                }
+
+                return output;
             }
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            catch (Exception ex)
             {
-                throw new InvalidOperationException("Failed to start PowerShell process");
+                _logger.LogError("Failed to run PowerShell script", ex);
+                throw;
             }
-
-            string output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            return output;
         }
 
         private void CleanupScript(string scriptPath)
@@ -245,11 +347,12 @@ namespace ClearGlass.Services
                 if (File.Exists(scriptPath))
                 {
                     File.Delete(scriptPath);
+                    _logger.LogInformation("Cleaned up script: {Path}", scriptPath);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best effort cleanup, ignore errors
+                _logger.LogWarning("Failed to cleanup script {Path}: {Error}", scriptPath, ex.Message);
             }
         }
 
@@ -268,10 +371,13 @@ namespace ClearGlass.Services
 
         private void ShowStartupMessage()
         {
+            var message = "Starting Windows bloatware removal. This will remove unnecessary Windows apps while keeping selected ones.\n\n" +
+                         "McAfee and Norton products will also be removed if they are installed.\n\n" +
+                         "A system restore point will be created before making changes.";
+            
+            _logger.LogInformation("Showing startup message to user");
             CustomMessageBox.Show(
-                "Starting Windows bloatware removal. This will remove unnecessary Windows apps while keeping selected ones.\n\n" +
-                "McAfee and Norton products will also be removed if they are installed.\n\n" +
-                "A system restore point will be created before making changes.",
+                message,
                 "Starting Bloatware Removal",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -279,9 +385,12 @@ namespace ClearGlass.Services
 
         private void ShowSuccessMessage()
         {
+            var message = "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
+                         "Some apps may require a system restart to be fully removed.";
+            
+            _logger.LogInformation("Showing success message to user");
             CustomMessageBox.Show(
-                "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
-                "Some apps may require a system restart to be fully removed.",
+                message,
                 "Success",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -289,8 +398,11 @@ namespace ClearGlass.Services
 
         private void ShowWarning()
         {
+            var message = "Some apps may not have been removed successfully. Please check the PowerShell window for details.";
+            
+            _logger.LogWarning("Showing warning message to user");
             CustomMessageBox.Show(
-                "Some apps may not have been removed successfully. Please check the PowerShell window for details.",
+                message,
                 "Warning",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -298,6 +410,7 @@ namespace ClearGlass.Services
 
         private void ShowError(string message, Exception ex)
         {
+            _logger.LogError("Showing error message to user: {Message}", message);
             CustomMessageBox.Show(
                 $"{message}: {ex.Message}",
                 "Error",
