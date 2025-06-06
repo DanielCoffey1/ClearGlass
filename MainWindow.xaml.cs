@@ -1104,6 +1104,54 @@ namespace ClearGlass
             }
         }
 
+        private async void OnBraveDownloadClick(object sender, RoutedEventArgs e)
+        {
+            Button? button = null;
+            try
+            {
+                // Disable button during installation
+                button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = false;
+                    button.Content = "Checking installation...";
+                }
+
+                // Check and install winget if needed
+                if (!await _wingetService.IsWingetInstalled())
+                {
+                    button.Content = "Installing Winget...";
+                    await _wingetService.InstallWinget();
+                }
+
+                // Install/Update Brave Browser
+                await InstallAppWithWinget("Brave.Brave", "Brave Browser", button);
+
+                CustomMessageBox.Show(
+                    "Brave Browser has been installed/updated successfully!",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error installing Brave Browser: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Reset button state
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "Download";
+                }
+            }
+        }
+
         private async void OnDownloadBundleClick(object sender, RoutedEventArgs e)
         {
             try
@@ -1115,6 +1163,7 @@ namespace ClearGlass
                 var result = CustomMessageBox.Show(
                     "This will install or update all recommended applications:\n\n" +
                     "• LibreWolf Browser\n" +
+                    "• Brave Browser\n" +
                     "• Revo Uninstaller Pro\n\n" +
                     "Do you want to continue?",
                     "Install All Applications",
@@ -1140,6 +1189,15 @@ namespace ClearGlass
                     catch (Exception ex)
                     {
                         failedApps.Add($"LibreWolf: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InstallAppWithWinget("Brave.Brave", "Brave Browser", DownloadBundleButton);
+                    }
+                    catch (Exception ex)
+                    {
+                        failedApps.Add($"Brave Browser: {ex.Message}");
                     }
 
                     try

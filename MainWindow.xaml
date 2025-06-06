@@ -820,6 +820,45 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Brave Browser -->
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Icon -->
+                                    <Image Source="pack://application:,,,/Images/brave.png"
+                                           Width="40"
+                                           Height="40"
+                                           VerticalAlignment="Top"/>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="1"
+                                              Margin="15,0,0,0">
+                                        <TextBlock Text="Brave Browser"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Brave is a privacy-focused web browser that blocks trackers and malicious ads by default. It features built-in privacy protection, a crypto wallet, and rewards system. The browser is designed to be fast, secure, and protect user privacy while maintaining compatibility with Chrome extensions."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Download"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="80"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnBraveDownloadClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
                             <!-- Revo Uninstaller -->
                             <Border Background="#20FFFFFF"
                                     CornerRadius="10"
@@ -1305,7 +1344,7 @@
                                             Click="OnOpenUserAccountsClick"/>
                                 </StackPanel>
                             </Grid>
-                        </Border>
+                                                </Border>
 
                         <Border Background="#20FFFFFF"
                                 CornerRadius="10"
@@ -1393,96 +1432,6 @@
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
                                             Click="OnDisableSearchSuggestionsClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Windows Image Backup"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="Open Windows Image Backup to create a complete system image backup of your computer. This is useful for creating a full backup before making system changes."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Open Backup"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnOpenImageBackupClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Registry Editor"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="Open the Windows Registry Editor for advanced system configuration. Use with caution as incorrect changes can affect system stability."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Open Registry"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnOpenRegistryClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Disable Privacy Permissions"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="Enhance your privacy by disabling Windows tracking and personalization features including advertising ID, app launch tracking, and suggested content in Settings."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Disable Permissions"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnDisablePrivacyPermissionsClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
