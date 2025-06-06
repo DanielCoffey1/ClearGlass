@@ -1298,7 +1298,7 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="This will completely remove Microsoft OneDrive from your system using winget. This is a safe operation that will not affect your system's functionality."
+                                    <TextBlock Text="This will completely remove Microsoft OneDrive from your system using multiple methods to ensure thorough removal. Before proceeding, make sure to stop OneDrive sync and back up any important files. This is a safe operation but requires proper preparation to avoid data loss."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>

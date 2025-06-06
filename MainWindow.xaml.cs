@@ -838,7 +838,11 @@ namespace ClearGlass
             try
             {
                 var result = CustomMessageBox.Show(
-                    "This will remove Microsoft OneDrive from your system using winget.\n\n" +
+                    "This will completely remove Microsoft OneDrive from your system.\n\n" +
+                    "Before proceeding:\n" +
+                    "1. Make sure to stop OneDrive sync\n" +
+                    "2. Back up any important files from OneDrive folders\n" +
+                    "3. Move files back to local folders if needed\n\n" +
                     "Do you want to continue?",
                     "Remove OneDrive",
                     MessageBoxButton.YesNo,
@@ -846,53 +850,125 @@ namespace ClearGlass
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Check if winget is installed first
-                    if (!await _wingetService.IsWingetInstalled())
+                    // Step 1: Kill OneDrive processes
+                    foreach (var process in Process.GetProcessesByName("OneDrive"))
                     {
-                        var installResult = CustomMessageBox.Show(
-                            "Winget is not installed. Would you like to install it now?\n\n" +
-                            "Winget is required to remove OneDrive.",
-                            "Install Winget",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-
-                        if (installResult == MessageBoxResult.Yes)
-                        {
-                            await _wingetService.InstallWinget();
-                        }
-                        else
-                        {
-                            return;
-                        }
+                        process.Kill();
                     }
 
-                    // Run winget uninstall command
-                    var startInfo = new ProcessStartInfo
+                    // Step 2: Try uninstalling via winget first
+                    try
                     {
-                        FileName = "winget",
-                        Arguments = "uninstall \"Microsoft OneDrive\" --silent",
-                        UseShellExecute = true,
-                        Verb = "runas" // Run as administrator
-                    };
-
-                    using (var process = Process.Start(startInfo))
-                    {
-                        if (process != null)
+                        if (await _wingetService.IsWingetInstalled())
                         {
-                            await process.WaitForExitAsync();
-                            CustomMessageBox.Show(
-                                "OneDrive has been successfully removed from your system.",
-                                "Success",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information);
+                            var startInfo = new ProcessStartInfo
+                            {
+                                FileName = "winget",
+                                Arguments = "uninstall \"Microsoft OneDrive\" --silent",
+                                UseShellExecute = true,
+                                Verb = "runas" // Run as administrator
+                            };
+
+                            using (var process = Process.Start(startInfo))
+                            {
+                                if (process != null)
+                                {
+                                    await process.WaitForExitAsync();
+                                }
+                            }
                         }
                     }
+                    catch (Exception) { } // Continue if winget fails
+
+                    // Step 3: Try uninstalling via built-in uninstaller
+                    try
+                    {
+                        var oneDrivePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "OneDrive", "OneDrive.exe");
+                        if (File.Exists(oneDrivePath))
+                        {
+                            var startInfo = new ProcessStartInfo
+                            {
+                                FileName = oneDrivePath,
+                                Arguments = "/uninstall",
+                                UseShellExecute = true,
+                                Verb = "runas"
+                            };
+
+                            using (var process = Process.Start(startInfo))
+                            {
+                                if (process != null)
+                                {
+                                    await process.WaitForExitAsync();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if uninstaller fails
+
+                    // Step 4: Remove OneDrive from Windows Store if present
+                    try
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = "Get-AppxPackage *Microsoft.OneDrive* | Remove-AppxPackage",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if Store removal fails
+
+                    // Step 5: Clean up registry entries
+                    try
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = "reg",
+                            Arguments = "delete \"HKEY_CLASSES_ROOT\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+
+                        startInfo.Arguments = "delete \"HKEY_CLASSES_ROOT\\Wow6432Node\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f";
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if registry cleanup fails
+
+                    CustomMessageBox.Show(
+                        "OneDrive has been removed from your system.\n\n" +
+                        "Note: If you want to remove OneDrive folders, you'll need to manually move your files first and then delete the folders.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error removing OneDrive: {ex.Message}",
+                    $"Error removing OneDrive: {ex.Message}\n\n" +
+                    "You may need to try alternative removal methods or contact system administrator.",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
