@@ -1609,6 +1609,77 @@ namespace ClearGlass
             }
         }
 
+        private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will enable the 'End Task' option in taskbar context menu. Do you want to continue?",
+                    "Confirm End Task Feature",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Enable End Task in Settings
+                        if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
+                            New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
+                        }
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTask.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "End Task feature has been enabled in taskbar context menu.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to enable End Task feature.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error enabling End Task feature: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private void OnAppSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             var searchText = AppSearchBox.Text.ToLower();
