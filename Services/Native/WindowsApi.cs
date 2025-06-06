@@ -31,10 +31,10 @@ namespace ClearGlass.Services.Native
 
         #region Window Management
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        public static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
 
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, string lpszWindow);
+        public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
 
         [DllImport("user32.dll")]
         public static extern bool IsWindowVisible(IntPtr hWnd);
@@ -45,14 +45,14 @@ namespace ClearGlass.Services.Native
 
         #region System Parameters and Messaging
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
+        public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string? lParam);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern IntPtr SendMessageTimeout(
             IntPtr hWnd,
             int msg,
             IntPtr wParam,
-            string lParam,
+            string? lParam,
             int fuFlags,
             int uTimeout,
             out IntPtr lpdwResult);
@@ -62,14 +62,14 @@ namespace ClearGlass.Services.Native
         public static extern bool SystemParametersInfo(
             uint uiAction,
             uint uiParam,
-            string pvParam,
+            string? pvParam,
             uint fWinIni);
         #endregion
 
         /// <summary>
         /// Broadcasts a theme change message to all windows
         /// </summary>
-        public static void BroadcastMessage(int msg, string lParam = null)
+        public static void BroadcastMessage(int msg, string? lParam = null)
         {
             SendMessageTimeout(
                 new IntPtr(HWND_BROADCAST),

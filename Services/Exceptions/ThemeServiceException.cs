@@ -30,7 +30,7 @@ namespace ClearGlass.Services.Exceptions
         /// <param name="message">The error message</param>
         /// <param name="operation">The type of operation that caused the error</param>
         /// <param name="innerException">The inner exception that caused this error</param>
-        public ThemeServiceException(string message, ThemeServiceOperation operation, Exception innerException = null)
+        public ThemeServiceException(string message, ThemeServiceOperation operation, Exception? innerException = null)
             : base(message, innerException)
         {
             Operation = operation;

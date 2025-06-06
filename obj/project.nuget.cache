@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "mLEDlIoHUS5vTlVZapWExh9PvSBEV9jUM3zGybbTvGLg2mthFqm8nWxPeFSk3pRXXv3A3G7JPUYNJ2CH8qV71w==",
+  "dgSpecHash": "KuSVkdyNRrs8k8M+I5MErUGUq7fYqoWB819hGroYfYdfiePJtFJ7193lfC0UGhcU2fHgCoLMjcPjdKpnsN8nzg==",
   "success": true,
   "projectFilePath": "C:\\Users\\Daniel\\Documents\\GitHub\\ClearGlass\\ClearGlass.csproj",
   "expectedPackageFiles": [
@@ -22,7 +22,10 @@
     "C:\\Users\\Daniel\\.nuget\\packages\\system.diagnostics.diagnosticsource\\6.0.0\\system.diagnostics.diagnosticsource.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.text.encodings.web\\6.0.0\\system.text.encodings.web.6.0.0.nupkg.sha512",
-    "C:\\Users\\Daniel\\.nuget\\packages\\system.text.json\\6.0.0\\system.text.json.6.0.0.nupkg.sha512"
+    "C:\\Users\\Daniel\\.nuget\\packages\\system.text.json\\6.0.0\\system.text.json.6.0.0.nupkg.sha512",
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\6.0.0\\microsoft.netcore.app.runtime.win-x64.6.0.0.nupkg.sha512",
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\6.0.0\\microsoft.windowsdesktop.app.runtime.win-x64.6.0.0.nupkg.sha512",
+    "C:\\Users\\Daniel\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\6.0.0\\microsoft.aspnetcore.app.runtime.win-x64.6.0.0.nupkg.sha512"
   ],
   "logs": []
 }

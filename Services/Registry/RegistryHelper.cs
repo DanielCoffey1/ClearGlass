@@ -34,7 +34,9 @@ namespace ClearGlass.Services.Registry
             try
             {
                 using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath);
-                var value = key?.GetValue(valueName);
+                if (key == null) return defaultValue;
+                
+                var value = key.GetValue(valueName);
                 return value != null ? (T)Convert.ChangeType(value, typeof(T)) : defaultValue;
             }
             catch (Exception ex)
@@ -55,10 +57,16 @@ namespace ClearGlass.Services.Registry
             try
             {
                 using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath, true) 
-                    ?? Microsoft.Win32.Registry.CurrentUser.CreateSubKey(keyPath);
+                               ?? Microsoft.Win32.Registry.CurrentUser.CreateSubKey(keyPath);
+                if (key == null)
+                {
+                    throw new ThemeServiceException(
+                        $"Failed to create or open registry key: {keyPath}",
+                        ThemeServiceOperation.RegistryAccess);
+                }
                 key.SetValue(valueName, value, valueKind);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ThemeServiceException)
             {
                 Debug.WriteLine($"Error writing registry value {valueName} to {keyPath}: {ex.Message}");
                 throw new ThemeServiceException(
@@ -107,10 +115,16 @@ namespace ClearGlass.Services.Registry
             try
             {
                 using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath, true) 
-                    ?? Microsoft.Win32.Registry.LocalMachine.CreateSubKey(keyPath);
+                               ?? Microsoft.Win32.Registry.LocalMachine.CreateSubKey(keyPath);
+                if (key == null)
+                {
+                    throw new ThemeServiceException(
+                        $"Failed to create or open machine registry key: {keyPath}",
+                        ThemeServiceOperation.RegistryAccess);
+                }
                 key.SetValue(valueName, value, valueKind);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not ThemeServiceException)
             {
                 Debug.WriteLine($"Error writing machine registry value {valueName} to {keyPath}: {ex.Message}");
                 throw new ThemeServiceException(
@@ -128,7 +142,9 @@ namespace ClearGlass.Services.Registry
             try
             {
                 using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath);
-                var value = key?.GetValue(valueName);
+                if (key == null) return defaultValue;
+                
+                var value = key.GetValue(valueName);
                 return value != null ? (T)Convert.ChangeType(value, typeof(T)) : defaultValue;
             }
             catch (Exception ex)
