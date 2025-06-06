@@ -1066,6 +1066,96 @@
                                     </StackPanel>
                                 </Grid>
                             </Border>
+
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Windows Image Backup"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Create a system image backup of your Windows installation. This creates a complete backup of your system drive that can be used to restore your PC."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Open Backup"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnOpenBackupClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Registry Editor"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Open the Windows Registry Editor to view and modify system settings. Be cautious when making changes as they can affect system stability."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Open Registry Editor"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnOpenRegistryEditorClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Disable Privacy Permissions"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Disable various Windows privacy permissions including camera, microphone, location, and other app permissions to enhance your privacy."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Disable Permissions"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnDisablePrivacyPermissionsClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </StackPanel>
@@ -1344,7 +1434,7 @@
                                             Click="OnOpenUserAccountsClick"/>
                                 </StackPanel>
                             </Grid>
-                                                </Border>
+                        </Border>
 
                         <Border Background="#20FFFFFF"
                                 CornerRadius="10"
@@ -1432,6 +1522,96 @@
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
                                             Click="OnDisableSearchSuggestionsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Windows Image Backup"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Create a system image backup of your Windows installation. This creates a complete backup of your system drive that can be used to restore your PC."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Backup"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenBackupClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Registry Editor"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Open the Windows Registry Editor to view and modify system settings. Be cautious when making changes as they can affect system stability."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Open Registry Editor"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnOpenRegistryEditorClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Disable Privacy Permissions"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Disable various Windows privacy permissions including camera, microphone, location, and other app permissions to enhance your privacy."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Disable Permissions"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnDisablePrivacyPermissionsClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>

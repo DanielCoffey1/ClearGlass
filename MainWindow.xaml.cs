@@ -1518,119 +1518,86 @@ namespace ClearGlass
         {
             try
             {
-                var button = (Button)sender;
-                var originalContent = button.Content;
-                button.Content = "Disabling...";
-                button.IsEnabled = false;
+                var result = CustomMessageBox.Show(
+                    "This will disable various Windows privacy permissions including camera, microphone, location, and other app permissions. Do you want to continue?",
+                    "Confirm Privacy Settings Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
 
-                // Create PowerShell script to disable privacy settings
-                string script = @"
-                    # Create a restore point
-                    Checkpoint-Computer -Description 'Before Privacy Settings Change' -RestorePointType 'MODIFY_SETTINGS'
-
-                    # Disable Advertising ID
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Website Language Access
-                    Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
-                    
-                    # Disable App Launch Tracking
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
-                    
-                    # Disable Suggested Content in Settings
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353696Enabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Settings Notifications (all types)
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-314563Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
-                    
-                    # Additional notification settings
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications' -Name 'ToastEnabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Custom Inking and Typing Dictionary
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitInkCollection' -Value 1 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitTextCollection' -Value 1 -Type DWord -Force
-                    
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Name 'HarvestContacts' -Value 0 -Type DWord -Force
-                    
-                    # Disable Inking & Typing Personalization
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Name 'AcceptedPrivacyPolicy' -Value 0 -Type DWord -Force
-                    
-                    # Save current taskbar settings
-                    $explorerProcess = Get-Process -Name explorer -ErrorAction SilentlyContinue
-                    if ($explorerProcess) {
-                        $taskbarSettings = Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -ErrorAction SilentlyContinue
-                        
-                        # Store all relevant taskbar settings
-                        $taskbarAlignment = $taskbarSettings.TaskbarAl
-                        $taskbarSmallIcons = $taskbarSettings.TaskbarSmallIcons
-                        $taskbarSearch = $taskbarSettings.SearchboxTaskbarMode
-                        $showTaskView = $taskbarSettings.ShowTaskViewButton
-                        
-                        Stop-Process -Name explorer -Force
-                        Start-Sleep -Seconds 2
-                        
-                        # Restore all taskbar settings
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarAl' -Value $taskbarAlignment -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarSmallIcons' -Value $taskbarSmallIcons -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'SearchboxTaskbarMode' -Value $taskbarSearch -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value $showTaskView -Type DWord -Force
-                        
-                        # Explicitly disable Copilot
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force
-                        
-                        # Additional Copilot-related settings
-                        New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Force | Out-Null
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Name 'IsEnabled' -Value 0 -Type DWord -Force
-                        
-                        Start-Process explorer
-                    }
-                ";
-
-                var startInfo = new ProcessStartInfo
+                if (result == MessageBoxResult.Yes)
                 {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    CreateNoWindow = true
-                };
+                    string script = @"
+                        # Disable app access to camera
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to microphone
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to location
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to notifications
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userNotificationListener' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to account info
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userAccountInformation' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to contacts
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\contacts' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to calendar
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appointments' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to call history
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCallHistory' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to email
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email' -Name 'Value' -Value 'Deny'
+                        
+                        # Disable app access to tasks
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userDataTasks' -Name 'Value' -Value 'Deny'
+                    ";
 
-                using var process = Process.Start(startInfo);
-                if (process != null)
-                {
-                    await process.WaitForExitAsync();
-                    
-                    if (process.ExitCode == 0)
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "DisablePrivacyPermissions.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
                     {
-                        CustomMessageBox.Show(
-                            "Privacy permissions have been successfully disabled.",
-                            "Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                    else
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
                     {
-                        CustomMessageBox.Show(
-                            "Some settings may not have been changed successfully. Please check your privacy settings manually.",
-                            "Warning",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "Privacy permissions have been disabled successfully!\n\nYou may need to restart your computer for all changes to take effect.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Some privacy permissions may not have been disabled successfully. Please check Windows Settings for more information.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
                     }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
                 }
-
-                button.Content = originalContent;
-                button.IsEnabled = true;
             }
             catch (Exception ex)
             {
@@ -1711,6 +1678,48 @@ namespace ClearGlass
             catch (Exception ex)
             {
                 Console.WriteLine($"Error checking for updates: {ex.Message}");
+            }
+        }
+
+        private void OnOpenBackupClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "control",
+                    Arguments = "/name Microsoft.BackupAndRestore",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error opening Windows Backup: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void OnOpenRegistryEditorClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "regedit.exe",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error opening Registry Editor: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
     }
