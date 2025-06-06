@@ -16,6 +16,7 @@ using System.Windows.Controls;
 using System.Reflection;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 
 namespace ClearGlass
 {
@@ -759,6 +760,43 @@ namespace ClearGlass
             {
                 TweaksOverlay.Visibility = Visibility.Collapsed;
             };
+        }
+
+        private async void OnEnableRightClickEndTaskClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will enable the right-click to end task feature in Windows. Do you want to continue?",
+                    "Enable Right Click End Task",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Create the TaskbarDeveloperSettings key if it doesn't exist
+                    using (var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings"))
+                    {
+                        if (key != null)
+                        {
+                            key.SetValue("TaskbarEndTask", 1, RegistryValueKind.DWord);
+                            CustomMessageBox.Show(
+                                "Right-click to end task has been enabled. The change should take effect immediately.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error enabling right click end task: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         private void OnOpenSettingsClick(object sender, RoutedEventArgs e)

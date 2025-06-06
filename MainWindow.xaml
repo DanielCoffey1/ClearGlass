@@ -1066,6 +1066,66 @@
                                     </StackPanel>
                                 </Grid>
                             </Border>
+
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Enable Right Click to End Task"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Enable the ability to end tasks directly from the right-click menu. This setting modifies the System -> For developers -> End Task option."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Enable Right Click End Task"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="180"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnEnableRightClickEndTaskClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Disable Search Suggestions"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="This will disable web search suggestions and Bing integration in the Windows search box, improving privacy and reducing unnecessary network traffic."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Disable Suggestions"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnDisableSearchSuggestionsClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </StackPanel>
@@ -1344,7 +1404,7 @@
                                             Click="OnOpenUserAccountsClick"/>
                                 </StackPanel>
                             </Grid>
-                                                </Border>
+                        </Border>
 
                         <Border Background="#20FFFFFF"
                                 CornerRadius="10"
@@ -1432,6 +1492,36 @@
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
                                             Click="OnDisableSearchSuggestionsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Enable Right Click to End Task"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Enable the ability to end tasks directly from the right-click menu. This setting modifies the System -> For developers -> End Task option."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Enable Right Click End Task"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="180"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnEnableRightClickEndTaskClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>

@@ -130,6 +130,10 @@ Additional system customization options:
   - Disable Settings app notifications
   - Turn off custom inking and typing dictionary
   - Disable Windows Copilot (preview)
+- Enable right-click End Task in taskbar (Windows 11)
+  - Quickly terminate apps from taskbar context menu
+  - No restart required
+  - Works for all running applications
 - Disable search box suggestions and Bing integration
 - Remove Microsoft OneDrive
 - Access to Windows Image Backup
