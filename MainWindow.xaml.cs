@@ -1519,7 +1519,7 @@ namespace ClearGlass
             try
             {
                 var result = CustomMessageBox.Show(
-                    "This will disable various Windows privacy permissions including camera, microphone, location, and other app permissions. Do you want to continue?",
+                    "This will disable personalized ads, local content based on language, app launch tracking, and suggested content in settings. Do you want to continue?",
                     "Confirm Privacy Settings Change",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
@@ -1527,35 +1527,22 @@ namespace ClearGlass
                 if (result == MessageBoxResult.Yes)
                 {
                     string script = @"
-                        # Disable app access to camera
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam' -Name 'Value' -Value 'Deny'
+                        # Disable advertising ID
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
                         
-                        # Disable app access to microphone
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone' -Name 'Value' -Value 'Deny'
+                        # Disable language list access
+                        Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
                         
-                        # Disable app access to location
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location' -Name 'Value' -Value 'Deny'
+                        # Disable app launch tracking
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
                         
-                        # Disable app access to notifications
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userNotificationListener' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to account info
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userAccountInformation' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to contacts
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\contacts' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to calendar
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\appointments' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to call history
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\phoneCallHistory' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to email
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email' -Name 'Value' -Value 'Deny'
-                        
-                        # Disable app access to tasks
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\userDataTasks' -Name 'Value' -Value 'Deny'
+                        # Disable suggested content in settings
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord -Force
                     ";
 
                     // Save the script to a temporary file
@@ -1580,7 +1567,7 @@ namespace ClearGlass
                         if (process.ExitCode == 0)
                         {
                             CustomMessageBox.Show(
-                                "Privacy permissions have been disabled successfully!\n\nYou may need to restart your computer for all changes to take effect.",
+                                "Privacy settings have been updated successfully!",
                                 "Success",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Information);
@@ -1588,7 +1575,7 @@ namespace ClearGlass
                         else
                         {
                             CustomMessageBox.Show(
-                                "Some privacy permissions may not have been disabled successfully. Please check Windows Settings for more information.",
+                                "Some privacy settings may not have been updated successfully. Please check Windows Settings for more information.",
                                 "Warning",
                                 MessageBoxButton.OK,
                                 MessageBoxImage.Warning);
@@ -1602,7 +1589,7 @@ namespace ClearGlass
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error disabling privacy permissions: {ex.Message}",
+                    $"Error updating privacy settings: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

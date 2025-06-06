@@ -1508,7 +1508,7 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="Disable various Windows privacy permissions including camera, microphone, location, and other app permissions to enhance your privacy."
+                                    <TextBlock Text="Disable personalized ads, local content based on language, app launch tracking, and suggested content in the settings app to enhance your privacy."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>
