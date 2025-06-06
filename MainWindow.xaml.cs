@@ -1077,10 +1077,10 @@ namespace ClearGlass
                 }
 
                 // Install/Update Revo Uninstaller
-                await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", button);
+                await InstallAppWithWinget("RevoUninstaller.RevoUninstallerPro", "Revo Uninstaller Pro", button);
 
                 CustomMessageBox.Show(
-                    "Revo Uninstaller has been installed/updated successfully!",
+                    "Revo Uninstaller Pro has been installed/updated successfully!",
                     "Success",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -1088,7 +1088,7 @@ namespace ClearGlass
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error installing Revo Uninstaller: {ex.Message}",
+                    $"Error installing Revo Uninstaller Pro: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1115,7 +1115,7 @@ namespace ClearGlass
                 var result = CustomMessageBox.Show(
                     "This will install or update all recommended applications:\n\n" +
                     "• LibreWolf Browser\n" +
-                    "• Revo Uninstaller\n\n" +
+                    "• Revo Uninstaller Pro\n\n" +
                     "Do you want to continue?",
                     "Install All Applications",
                     MessageBoxButton.YesNo,
@@ -1144,11 +1144,11 @@ namespace ClearGlass
 
                     try
                     {
-                        await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", DownloadBundleButton);
+                        await InstallAppWithWinget("RevoUninstaller.RevoUninstallerPro", "Revo Uninstaller Pro", DownloadBundleButton);
                     }
                     catch (Exception ex)
                     {
-                        failedApps.Add($"Revo Uninstaller: {ex.Message}");
+                        failedApps.Add($"Revo Uninstaller Pro: {ex.Message}");
                     }
 
                     if (failedApps.Count > 0)

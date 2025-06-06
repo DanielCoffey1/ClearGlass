@@ -840,12 +840,12 @@
                                     <!-- App Info -->
                                     <StackPanel Grid.Column="1"
                                               Margin="15,0,0,0">
-                                        <TextBlock Text="Revo Uninstaller"
+                                        <TextBlock Text="Revo Uninstaller Pro"
                                                  FontSize="16"
                                                  FontWeight="SemiBold"
                                                  Foreground="{StaticResource TextPrimary}"
                                                  Margin="0,0,0,5"/>
-                                        <TextBlock Text="Revo Uninstaller is a software tool designed to help users completely uninstall applications from Windows systems. Ideal for: Users who frequently install and remove software, or who need to cleanly get rid of problematic programs."
+                                        <TextBlock Text="Revo Uninstaller Pro is a powerful software tool designed to help users completely uninstall applications from Windows systems. Features advanced scanning modes, forced uninstall, real-time monitoring, and batch uninstallation. Ideal for: Users who frequently install and remove software, or who need to cleanly get rid of problematic programs."
                                                  TextWrapping="Wrap"
                                                  Foreground="{StaticResource TextSecondary}"
                                                  LineHeight="20"/>
