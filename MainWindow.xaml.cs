@@ -1609,6 +1609,87 @@ namespace ClearGlass
             }
         }
 
+        private async void OnSetThisPCDefaultClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will set 'This PC' as the default view in File Explorer by removing Home and Gallery. Do you want to continue?",
+                    "Confirm File Explorer Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Remove Home and Gallery from File Explorer
+                        if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}')) {
+                            New-Item -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Force
+                        }
+                        Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -Type DWord -Force
+
+                        # Disable Gallery View
+                        if (!(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced')) {
+                            New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force
+                        }
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'LaunchTo' -Value 1 -Type DWord -Force
+
+                        # Restart Explorer to apply changes
+                        Stop-Process -Name explorer -Force
+                        Start-Process explorer
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "SetThisPCDefault.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "File Explorer has been set to show 'This PC' by default.\nExplorer has been restarted to apply the changes.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to set 'This PC' as default view. Please try again or check system permissions.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error setting File Explorer default view: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
         {
             try

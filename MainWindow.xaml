@@ -1551,6 +1551,36 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Set This PC as Default"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Set 'This PC' as the default view in File Explorer by removing Home and Gallery views. This provides a cleaner, more traditional file management experience."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Set This PC Default"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnSetThisPCDefaultClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

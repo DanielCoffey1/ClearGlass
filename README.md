@@ -138,6 +138,14 @@ Additional system customization options:
   - Control Panel
   - Registry Editor
   - User Accounts
+- Enable End Task in taskbar context menu
+  - Adds End Task option when right-clicking app icons
+  - Quickly terminate unresponsive applications
+  - No need to open Task Manager
+- Set This PC as default File Explorer view
+  - Removes Home and Gallery views
+  - Provides cleaner, traditional file management
+  - Automatically restarts Explorer to apply changes
 
 ### Safety Features
 
