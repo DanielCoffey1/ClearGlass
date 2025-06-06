@@ -263,8 +263,8 @@ namespace ClearGlass.Services
             var leftoverKeys = new List<string>();
             var rootKeys = new[]
             {
-                Registry.LocalMachine,
-                Registry.CurrentUser
+                Microsoft.Win32.Registry.LocalMachine,
+                Microsoft.Win32.Registry.CurrentUser
             };
 
             var searchPaths = new[]
@@ -393,12 +393,12 @@ namespace ClearGlass.Services
             {
                 try
                 {
-                    Registry.LocalMachine.DeleteSubKeyTree(keyPath, false);
+                    Microsoft.Win32.Registry.LocalMachine.DeleteSubKeyTree(keyPath, false);
                 }
                 catch (Exception) { }
                 try
                 {
-                    Registry.CurrentUser.DeleteSubKeyTree(keyPath, false);
+                    Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(keyPath, false);
                 }
                 catch (Exception) { }
             }

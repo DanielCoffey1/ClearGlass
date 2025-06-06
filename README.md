@@ -131,13 +131,25 @@ Additional system customization options:
   - Turn off custom inking and typing dictionary
   - Disable Windows Copilot (preview)
 - Disable search box suggestions and Bing integration
-- Remove Microsoft OneDrive
+- Remove Microsoft OneDrive:
+  - Multiple removal methods for different installation types
+  - Registry cleanup
+  - Process termination
+  - Service disablement
 - Access to Windows Image Backup
 - Quick access to system tools:
   - Windows Settings
   - Control Panel
   - Registry Editor
   - User Accounts
+- Enable End Task in taskbar context menu
+  - Adds End Task option when right-clicking app icons
+  - Quickly terminate unresponsive applications
+  - No need to open Task Manager
+- Set This PC as default File Explorer view
+  - Removes Home and Gallery views
+  - Provides cleaner, traditional file management
+  - Automatically restarts Explorer to apply changes
 
 ### Safety Features
 
@@ -146,6 +158,8 @@ Additional system customization options:
 - Provides progress feedback during optimization
 - Shows success/warning messages for all operations
 - Protected apps list to prevent removal of essential software
+- Confirmation dialogs for important actions
+- Rollback capability for failed operations
 
 ### Modern UI Features
 
@@ -156,6 +170,9 @@ Additional system customization options:
 - Progress indicators
 - Clear success/error messaging
 - Intuitive app protection interface
+- Dark mode support
+- Responsive design
+- Accessibility features
 
 ## Requirements
 
@@ -164,6 +181,8 @@ Additional system customization options:
 - .NET 6.0 or later
 - Internet connection for addon installations and updates
 - Winget package manager (automatically installed if needed)
+- Minimum 4GB RAM
+- 100MB free disk space
 
 ## Usage
 
@@ -215,17 +234,34 @@ Clear Glass includes automatic update checking for:
 
 The application is built using:
 
-- C# / .NET
+- C# / .NET 6.0
 - Modern WPF UI
 - PowerShell for system modifications
 - Windows Registry manipulation
 - System service management
+- Winget package manager integration
+- Serilog for logging
+- Microsoft.Extensions.Logging
+
+### Logging
+
+The application uses Serilog for comprehensive logging:
+
+- File-based logging for troubleshooting
+- Console output for development
+- Structured logging format
+- Different log levels for various operations
+- Automatic log rotation
+- Error tracking and reporting
 
 ## Support
 
 If you find Clear Glass useful, consider supporting its development:
 
 - [Support on Ko-fi](https://ko-fi.com/daniel1017)
+- Report issues on GitHub
+- Contribute to the codebase
+- Share with others
 
 ## License
 
@@ -233,4 +269,4 @@ This project is licensed under a custom non-commercial license. See the [LICENSE
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

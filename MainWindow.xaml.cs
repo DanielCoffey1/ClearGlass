@@ -50,7 +50,8 @@ namespace ClearGlass
             InitializeComponent();
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
-            _bloatwareService = new BloatwareService();
+            var loggingService = new LoggingService();
+            _bloatwareService = new BloatwareService(loggingService);
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
             _updateService = new UpdateService();
@@ -837,7 +838,11 @@ namespace ClearGlass
             try
             {
                 var result = CustomMessageBox.Show(
-                    "This will remove Microsoft OneDrive from your system using winget.\n\n" +
+                    "This will completely remove Microsoft OneDrive from your system.\n\n" +
+                    "Before proceeding:\n" +
+                    "1. Make sure to stop OneDrive sync\n" +
+                    "2. Back up any important files from OneDrive folders\n" +
+                    "3. Move files back to local folders if needed\n\n" +
                     "Do you want to continue?",
                     "Remove OneDrive",
                     MessageBoxButton.YesNo,
@@ -845,53 +850,125 @@ namespace ClearGlass
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    // Check if winget is installed first
-                    if (!await _wingetService.IsWingetInstalled())
+                    // Step 1: Kill OneDrive processes
+                    foreach (var process in Process.GetProcessesByName("OneDrive"))
                     {
-                        var installResult = CustomMessageBox.Show(
-                            "Winget is not installed. Would you like to install it now?\n\n" +
-                            "Winget is required to remove OneDrive.",
-                            "Install Winget",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-
-                        if (installResult == MessageBoxResult.Yes)
-                        {
-                            await _wingetService.InstallWinget();
-                        }
-                        else
-                        {
-                            return;
-                        }
+                        process.Kill();
                     }
 
-                    // Run winget uninstall command
-                    var startInfo = new ProcessStartInfo
+                    // Step 2: Try uninstalling via winget first
+                    try
                     {
-                        FileName = "winget",
-                        Arguments = "uninstall \"Microsoft OneDrive\" --silent",
-                        UseShellExecute = true,
-                        Verb = "runas" // Run as administrator
-                    };
-
-                    using (var process = Process.Start(startInfo))
-                    {
-                        if (process != null)
+                        if (await _wingetService.IsWingetInstalled())
                         {
-                            await process.WaitForExitAsync();
-                            CustomMessageBox.Show(
-                                "OneDrive has been successfully removed from your system.",
-                                "Success",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information);
+                            var startInfo = new ProcessStartInfo
+                            {
+                                FileName = "winget",
+                                Arguments = "uninstall \"Microsoft OneDrive\" --silent",
+                                UseShellExecute = true,
+                                Verb = "runas" // Run as administrator
+                            };
+
+                            using (var process = Process.Start(startInfo))
+                            {
+                                if (process != null)
+                                {
+                                    await process.WaitForExitAsync();
+                                }
+                            }
                         }
                     }
+                    catch (Exception) { } // Continue if winget fails
+
+                    // Step 3: Try uninstalling via built-in uninstaller
+                    try
+                    {
+                        var oneDrivePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "OneDrive", "OneDrive.exe");
+                        if (File.Exists(oneDrivePath))
+                        {
+                            var startInfo = new ProcessStartInfo
+                            {
+                                FileName = oneDrivePath,
+                                Arguments = "/uninstall",
+                                UseShellExecute = true,
+                                Verb = "runas"
+                            };
+
+                            using (var process = Process.Start(startInfo))
+                            {
+                                if (process != null)
+                                {
+                                    await process.WaitForExitAsync();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if uninstaller fails
+
+                    // Step 4: Remove OneDrive from Windows Store if present
+                    try
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = "powershell.exe",
+                            Arguments = "Get-AppxPackage *Microsoft.OneDrive* | Remove-AppxPackage",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if Store removal fails
+
+                    // Step 5: Clean up registry entries
+                    try
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = "reg",
+                            Arguments = "delete \"HKEY_CLASSES_ROOT\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+
+                        startInfo.Arguments = "delete \"HKEY_CLASSES_ROOT\\Wow6432Node\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f";
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                    catch (Exception) { } // Continue if registry cleanup fails
+
+                    CustomMessageBox.Show(
+                        "OneDrive has been removed from your system.\n\n" +
+                        "Note: If you want to remove OneDrive folders, you'll need to manually move your files first and then delete the folders.",
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error removing OneDrive: {ex.Message}",
+                    $"Error removing OneDrive: {ex.Message}\n\n" +
+                    "You may need to try alternative removal methods or contact system administrator.",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1076,10 +1153,10 @@ namespace ClearGlass
                 }
 
                 // Install/Update Revo Uninstaller
-                await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", button);
+                await InstallAppWithWinget("RevoUninstaller.RevoUninstallerPro", "Revo Uninstaller Pro", button);
 
                 CustomMessageBox.Show(
-                    "Revo Uninstaller has been installed/updated successfully!",
+                    "Revo Uninstaller Pro has been installed/updated successfully!",
                     "Success",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -1087,7 +1164,55 @@ namespace ClearGlass
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error installing Revo Uninstaller: {ex.Message}",
+                    $"Error installing Revo Uninstaller Pro: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Reset button state
+                if (button != null)
+                {
+                    button.IsEnabled = true;
+                    button.Content = "Download";
+                }
+            }
+        }
+
+        private async void OnBraveDownloadClick(object sender, RoutedEventArgs e)
+        {
+            Button? button = null;
+            try
+            {
+                // Disable button during installation
+                button = sender as Button;
+                if (button != null)
+                {
+                    button.IsEnabled = false;
+                    button.Content = "Checking installation...";
+                }
+
+                // Check and install winget if needed
+                if (!await _wingetService.IsWingetInstalled())
+                {
+                    button.Content = "Installing Winget...";
+                    await _wingetService.InstallWinget();
+                }
+
+                // Install/Update Brave Browser
+                await InstallAppWithWinget("Brave.Brave", "Brave Browser", button);
+
+                CustomMessageBox.Show(
+                    "Brave Browser has been installed/updated successfully!",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error installing Brave Browser: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1111,16 +1236,13 @@ namespace ClearGlass
                 DownloadBundleButton.IsEnabled = false;
                 DownloadBundleButton.Content = "Checking installations...";
 
-                var result = CustomMessageBox.Show(
-                    "This will install or update all recommended applications:\n\n" +
-                    "• LibreWolf Browser\n" +
-                    "• Revo Uninstaller\n\n" +
-                    "Do you want to continue?",
-                    "Install All Applications",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                // Show the browser choice dialog
+                var dialog = new BrowserChoiceDialog
+                {
+                    Owner = this
+                };
 
-                if (result == MessageBoxResult.Yes)
+                if (dialog.ShowDialog() == true)
                 {
                     // Check and install winget if needed
                     if (!await _wingetService.IsWingetInstalled())
@@ -1129,25 +1251,42 @@ namespace ClearGlass
                         await _wingetService.InstallWinget();
                     }
 
-                    // Install/Update all apps, continue even if some fail
+                    // Install/Update selected apps, continue even if some fail
                     List<string> failedApps = new List<string>();
 
-                    try
+                    // Install browsers based on user choice
+                    if (dialog.Choice == BrowserChoice.Both || dialog.Choice == BrowserChoice.LibreWolf)
                     {
-                        await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", DownloadBundleButton);
-                    }
-                    catch (Exception ex)
-                    {
-                        failedApps.Add($"LibreWolf: {ex.Message}");
+                        try
+                        {
+                            await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", DownloadBundleButton);
+                        }
+                        catch (Exception ex)
+                        {
+                            failedApps.Add($"LibreWolf: {ex.Message}");
+                        }
                     }
 
+                    if (dialog.Choice == BrowserChoice.Both || dialog.Choice == BrowserChoice.Brave)
+                    {
+                        try
+                        {
+                            await InstallAppWithWinget("Brave.Brave", "Brave Browser", DownloadBundleButton);
+                        }
+                        catch (Exception ex)
+                        {
+                            failedApps.Add($"Brave Browser: {ex.Message}");
+                        }
+                    }
+
+                    // Always install Revo Uninstaller
                     try
                     {
-                        await InstallAppWithWinget("RevoUninstaller.RevoUninstaller", "Revo Uninstaller", DownloadBundleButton);
+                        await InstallAppWithWinget("RevoUninstaller.RevoUninstallerPro", "Revo Uninstaller Pro", DownloadBundleButton);
                     }
                     catch (Exception ex)
                     {
-                        failedApps.Add($"Revo Uninstaller: {ex.Message}");
+                        failedApps.Add($"Revo Uninstaller Pro: {ex.Message}");
                     }
 
                     if (failedApps.Count > 0)
@@ -1161,7 +1300,7 @@ namespace ClearGlass
                     else
                     {
                         CustomMessageBox.Show(
-                            "All applications have been installed/updated successfully!",
+                            "All selected applications have been installed/updated successfully!",
                             "Success",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);
@@ -1455,124 +1594,305 @@ namespace ClearGlass
         {
             try
             {
-                var button = (Button)sender;
-                var originalContent = button.Content;
-                button.Content = "Disabling...";
-                button.IsEnabled = false;
+                var result = CustomMessageBox.Show(
+                    "This will disable personalized ads, local content based on language, app launch tracking, and suggested content in settings. Do you want to continue?",
+                    "Confirm Privacy Settings Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
 
-                // Create PowerShell script to disable privacy settings
-                string script = @"
-                    # Create a restore point
-                    Checkpoint-Computer -Description 'Before Privacy Settings Change' -RestorePointType 'MODIFY_SETTINGS'
-
-                    # Disable Advertising ID
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Website Language Access
-                    Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
-                    
-                    # Disable App Launch Tracking
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
-                    
-                    # Disable Suggested Content in Settings
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353696Enabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Settings Notifications (all types)
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-314563Enabled' -Value 0 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
-                    
-                    # Additional notification settings
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications' -Name 'ToastEnabled' -Value 0 -Type DWord -Force
-                    
-                    # Disable Custom Inking and Typing Dictionary
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitInkCollection' -Value 1 -Type DWord -Force
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization' -Name 'RestrictImplicitTextCollection' -Value 1 -Type DWord -Force
-                    
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore' -Name 'HarvestContacts' -Value 0 -Type DWord -Force
-                    
-                    # Disable Inking & Typing Personalization
-                    New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Force | Out-Null
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Personalization\Settings' -Name 'AcceptedPrivacyPolicy' -Value 0 -Type DWord -Force
-                    
-                    # Save current taskbar settings
-                    $explorerProcess = Get-Process -Name explorer -ErrorAction SilentlyContinue
-                    if ($explorerProcess) {
-                        $taskbarSettings = Get-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -ErrorAction SilentlyContinue
-                        
-                        # Store all relevant taskbar settings
-                        $taskbarAlignment = $taskbarSettings.TaskbarAl
-                        $taskbarSmallIcons = $taskbarSettings.TaskbarSmallIcons
-                        $taskbarSearch = $taskbarSettings.SearchboxTaskbarMode
-                        $showTaskView = $taskbarSettings.ShowTaskViewButton
-                        
-                        Stop-Process -Name explorer -Force
-                        Start-Sleep -Seconds 2
-                        
-                        # Restore all taskbar settings
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarAl' -Value $taskbarAlignment -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarSmallIcons' -Value $taskbarSmallIcons -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'SearchboxTaskbarMode' -Value $taskbarSearch -Type DWord -Force
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value $showTaskView -Type DWord -Force
-                        
-                        # Explicitly disable Copilot
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowCopilotButton' -Value 0 -Type DWord -Force
-                        
-                        # Additional Copilot-related settings
-                        New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Force | Out-Null
-                        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Microsoft\CopilotSettings' -Name 'IsEnabled' -Value 0 -Type DWord -Force
-                        
-                        Start-Process explorer
-                    }
-                ";
-
-                var startInfo = new ProcessStartInfo
+                if (result == MessageBoxResult.Yes)
                 {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    CreateNoWindow = true
-                };
+                    string script = @"
+                        # Disable advertising ID
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
+                        
+                        # Disable language list access
+                        Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
+                        
+                        # Disable app launch tracking
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
+                        
+                        # Disable suggested content in settings
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord -Force
+                    ";
 
-                using var process = Process.Start(startInfo);
-                if (process != null)
-                {
-                    await process.WaitForExitAsync();
-                    
-                    if (process.ExitCode == 0)
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "DisablePrivacyPermissions.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
                     {
-                        CustomMessageBox.Show(
-                            "Privacy permissions have been successfully disabled.",
-                            "Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                    else
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
                     {
-                        CustomMessageBox.Show(
-                            "Some settings may not have been changed successfully. Please check your privacy settings manually.",
-                            "Warning",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "Privacy settings have been updated successfully!",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Some privacy settings may not have been updated successfully. Please check Windows Settings for more information.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
                     }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
                 }
-
-                button.Content = originalContent;
-                button.IsEnabled = true;
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error disabling privacy permissions: {ex.Message}",
+                    $"Error updating privacy settings: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnSetThisPCDefaultClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will set 'This PC' as the default view in File Explorer by removing Home and Gallery. Do you want to continue?",
+                    "Confirm File Explorer Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Remove Home and Gallery from File Explorer
+                        if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}')) {
+                            New-Item -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Force
+                        }
+                        Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -Type DWord -Force
+
+                        # Disable Gallery View
+                        if (!(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced')) {
+                            New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force
+                        }
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'LaunchTo' -Value 1 -Type DWord -Force
+
+                        # Restart Explorer to apply changes
+                        Stop-Process -Name explorer -Force
+                        Start-Process explorer
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "SetThisPCDefault.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "File Explorer has been set to show 'This PC' by default.\nExplorer has been restarted to apply the changes.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to set 'This PC' as default view. Please try again or check system permissions.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error setting File Explorer default view: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnRestoreClassicMenuClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will restore the classic (full) right-click context menu, removing the 'Show more options' step. Do you want to continue?",
+                    "Confirm Context Menu Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Restore classic context menu
+                        if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32')) {
+                            New-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Force | Out-Null
+                        }
+                        Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Type String -Force
+
+                        # Restart Explorer to apply changes
+                        Stop-Process -Name explorer -Force
+                        Start-Process explorer
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenu.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "Classic context menu has been restored.\nExplorer has been restarted to apply the changes.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to restore classic context menu. Please try again or check system permissions.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error restoring classic context menu: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will enable the 'End Task' option in taskbar context menu. Do you want to continue?",
+                    "Confirm End Task Feature",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Enable End Task in Settings
+                        if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
+                            New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
+                        }
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTask.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "End Task feature has been enabled in taskbar context menu.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to enable End Task feature.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error enabling End Task feature: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -1648,6 +1968,48 @@ namespace ClearGlass
             catch (Exception ex)
             {
                 Console.WriteLine($"Error checking for updates: {ex.Message}");
+            }
+        }
+
+        private void OnOpenBackupClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "control",
+                    Arguments = "/name Microsoft.BackupAndRestore",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error opening Windows Backup: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void OnOpenRegistryEditorClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "regedit.exe",
+                    UseShellExecute = true,
+                    Verb = "runas"
+                });
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error opening Registry Editor: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
     }

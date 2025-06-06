@@ -820,6 +820,45 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Brave Browser -->
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- App Icon -->
+                                    <Image Source="pack://application:,,,/Images/brave.png"
+                                           Width="40"
+                                           Height="40"
+                                           VerticalAlignment="Top"/>
+
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="1"
+                                              Margin="15,0,0,0">
+                                        <TextBlock Text="Brave Browser"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="Brave is a privacy-focused web browser that blocks trackers and malicious ads by default. It features built-in privacy protection, a crypto wallet, and rewards system. The browser is designed to be fast, secure, and protect user privacy while maintaining compatibility with Chrome extensions."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Download"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="80"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnBraveDownloadClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
                             <!-- Revo Uninstaller -->
                             <Border Background="#20FFFFFF"
                                     CornerRadius="10"
@@ -840,12 +879,12 @@
                                     <!-- App Info -->
                                     <StackPanel Grid.Column="1"
                                               Margin="15,0,0,0">
-                                        <TextBlock Text="Revo Uninstaller"
+                                        <TextBlock Text="Revo Uninstaller Pro"
                                                  FontSize="16"
                                                  FontWeight="SemiBold"
                                                  Foreground="{StaticResource TextPrimary}"
                                                  Margin="0,0,0,5"/>
-                                        <TextBlock Text="Revo Uninstaller is a software tool designed to help users completely uninstall applications from Windows systems. Ideal for: Users who frequently install and remove software, or who need to cleanly get rid of problematic programs."
+                                        <TextBlock Text="Revo Uninstaller Pro is a powerful software tool designed to help users completely uninstall applications from Windows systems. Features advanced scanning modes, forced uninstall, real-time monitoring, and batch uninstallation. Ideal for: Users who frequently install and remove software, or who need to cleanly get rid of problematic programs."
                                                  TextWrapping="Wrap"
                                                  Foreground="{StaticResource TextSecondary}"
                                                  LineHeight="20"/>
@@ -928,108 +967,104 @@
                             Click="OnCloseOptimizationClick"/>
                 </Grid>
 
-                <StackPanel Grid.Row="1" 
-                           VerticalAlignment="Top" 
-                           HorizontalAlignment="Center">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                HorizontalScrollBarVisibility="Disabled"
-                                Padding="0,0,5,0"
-                                MaxHeight="400">
-                        <StackPanel VerticalAlignment="Top" 
-                                  HorizontalAlignment="Center"
-                                  Margin="0,0,0,10">
-                            <Border Background="#20FFFFFF"
-                                    CornerRadius="10"
-                                    Margin="0,0,0,15"
-                                    Padding="15">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                <ScrollViewer Grid.Row="1"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled"
+                            Padding="0,0,5,0">
+                    <StackPanel VerticalAlignment="Top" 
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,10">
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                                    <!-- App Info -->
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Windows Settings Optimization"
-                                                 FontSize="16"
-                                                 FontWeight="SemiBold"
-                                                 Foreground="{StaticResource TextPrimary}"
-                                                 Margin="0,0,0,5"/>
-                                        <TextBlock Text="This will optimize various Windows settings including: disabling telemetry and data collection, optimizing visual effects for performance, adjusting power settings for better responsiveness, and configuring privacy settings. A system restore point will be created before making changes."
-                                                 TextWrapping="Wrap"
-                                                 Foreground="{StaticResource TextSecondary}"
-                                                 LineHeight="20"/>
-                                        <Button Content="Optimize Settings"
-                                                Style="{StaticResource TinyButton}"
-                                                Width="120"
-                                                Margin="0,10,0,0"
-                                                HorizontalAlignment="Left"
-                                                Click="OnTweakSettingsClick"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Windows Settings Optimization"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="This will optimize various Windows settings including: disabling telemetry and data collection, optimizing visual effects for performance, adjusting power settings for better responsiveness, and configuring privacy settings. A system restore point will be created before making changes."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Optimize Settings"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnTweakSettingsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                            <Border Background="#20FFFFFF"
-                                    CornerRadius="10"
-                                    Margin="0,0,0,15"
-                                    Padding="15">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                                    <!-- App Info -->
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Remove Windows Bloatware"
-                                                 FontSize="16"
-                                                 FontWeight="SemiBold"
-                                                 Foreground="{StaticResource TextPrimary}"
-                                                 Margin="0,0,0,5"/>
-                                        <TextBlock Text="This will remove unnecessary Windows apps while keeping essential system components and useful applications. A system restore point will be created before making changes."
-                                                 TextWrapping="Wrap"
-                                                 Foreground="{StaticResource TextSecondary}"
-                                                 LineHeight="20"/>
-                                        <Button Content="Remove Bloatware"
-                                                Style="{StaticResource TinyButton}"
-                                                Width="120"
-                                                Margin="0,10,0,0"
-                                                HorizontalAlignment="Left"
-                                                Click="OnRemoveBloatwareClick"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Remove Windows Bloatware"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="This will remove unnecessary Windows apps while keeping essential system components and useful applications. A system restore point will be created before making changes."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Remove Bloatware"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRemoveBloatwareClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                            <Border Background="#20FFFFFF"
-                                    CornerRadius="10"
-                                    Margin="0,0,0,15"
-                                    Padding="15">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                                    <!-- App Info -->
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Full System Optimization"
-                                                 FontSize="16"
-                                                 FontWeight="SemiBold"
-                                                 Foreground="{StaticResource TextPrimary}"
-                                                 Margin="0,0,0,5"/>
-                                        <TextBlock Text="This will perform a complete system optimization including Windows settings tweaks and bloatware removal. A system restore point will be created before making changes."
-                                                 TextWrapping="Wrap"
-                                                 Foreground="{StaticResource TextSecondary}"
-                                                 LineHeight="20"/>
-                                        <Button Content="Run Optimization"
-                                                Style="{StaticResource TinyButton}"
-                                                Width="120"
-                                                Margin="0,10,0,0"
-                                                HorizontalAlignment="Left"
-                                                Click="OnRunOptimizationClick"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </StackPanel>
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Full System Optimization"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="This will perform a complete system optimization including Windows settings tweaks and bloatware removal. A system restore point will be created before making changes."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Run Optimization"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRunOptimizationClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </Grid>
         </Border>
 
@@ -1263,7 +1298,7 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="This will completely remove Microsoft OneDrive from your system using winget. This is a safe operation that will not affect your system's functionality."
+                                    <TextBlock Text="This will completely remove Microsoft OneDrive from your system using multiple methods to ensure thorough removal. Before proceeding, make sure to stop OneDrive sync and back up any important files. This is a safe operation but requires proper preparation to avoid data loss."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>
@@ -1413,7 +1448,7 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="Open Windows Image Backup to create a complete system image backup of your computer. This is useful for creating a full backup before making system changes."
+                                    <TextBlock Text="Create a system image backup of your Windows installation. This creates a complete backup of your system drive that can be used to restore your PC."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>
@@ -1422,7 +1457,7 @@
                                             Width="120"
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
-                                            Click="OnOpenImageBackupClick"/>
+                                            Click="OnOpenBackupClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -1443,16 +1478,16 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="Open the Windows Registry Editor for advanced system configuration. Use with caution as incorrect changes can affect system stability."
+                                    <TextBlock Text="Open the Windows Registry Editor to view and modify system settings. Be cautious when making changes as they can affect system stability."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>
-                                    <Button Content="Open Registry"
+                                    <Button Content="Open Registry Editor"
                                             Style="{StaticResource TinyButton}"
                                             Width="120"
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
-                                            Click="OnOpenRegistryClick"/>
+                                            Click="OnOpenRegistryEditorClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -1473,7 +1508,7 @@
                                              FontWeight="SemiBold"
                                              Foreground="{StaticResource TextPrimary}"
                                              Margin="0,0,0,5"/>
-                                    <TextBlock Text="Enhance your privacy by disabling Windows tracking and personalization features including advertising ID, app launch tracking, and suggested content in Settings."
+                                    <TextBlock Text="Disable personalized ads, local content based on language, app launch tracking, and suggested content in the settings app to enhance your privacy."
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextSecondary}"
                                              LineHeight="20"/>
@@ -1483,6 +1518,96 @@
                                             Margin="0,10,0,0"
                                             HorizontalAlignment="Left"
                                             Click="OnDisablePrivacyPermissionsClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Enable End Task in Taskbar"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Enable the ability to end tasks directly from the taskbar by right-clicking. This adds an 'End Task' option to the context menu when right-clicking taskbar items."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Enable End Task"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnEnableEndTaskClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Set This PC as Default"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Set 'This PC' as the default view in File Explorer by removing Home and Gallery views. This provides a cleaner, more traditional file management experience."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Set This PC Default"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnSetThisPCDefaultClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Restore Classic Context Menu"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Restore the classic (full) right-click context menu from Windows 10, removing the extra 'Show more options' step. This provides immediate access to all context menu items."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Restore Classic Menu"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRestoreClassicMenuClick"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
