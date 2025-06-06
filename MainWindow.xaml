@@ -1581,6 +1581,36 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Restore Classic Context Menu"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Restore the classic (full) right-click context menu from Windows 10, removing the extra 'Show more options' step. This provides immediate access to all context menu items."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Restore Classic Menu"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRestoreClassicMenuClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>

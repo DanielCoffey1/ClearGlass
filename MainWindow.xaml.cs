@@ -1690,6 +1690,81 @@ namespace ClearGlass
             }
         }
 
+        private async void OnRestoreClassicMenuClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will restore the classic (full) right-click context menu, removing the 'Show more options' step. Do you want to continue?",
+                    "Confirm Context Menu Change",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Restore classic context menu
+                        if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32')) {
+                            New-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Force | Out-Null
+                        }
+                        Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Type String -Force
+
+                        # Restart Explorer to apply changes
+                        Stop-Process -Name explorer -Force
+                        Start-Process explorer
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenu.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "Classic context menu has been restored.\nExplorer has been restarted to apply the changes.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to restore classic context menu. Please try again or check system permissions.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error restoring classic context menu: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
         private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
         {
             try
