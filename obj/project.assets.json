@@ -784,7 +784,7 @@
     "C:\\Users\\Daniel\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "restore": {
       "projectUniqueName": "C:\\Users\\Daniel\\Documents\\GitHub\\ClearGlass\\ClearGlass.csproj",
       "projectName": "ClearGlass",

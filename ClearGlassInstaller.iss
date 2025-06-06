@@ -3,7 +3,7 @@
 
 [Setup]
 AppName=ClearGlass
-AppVersion=1.1.0
+AppVersion=2.0.0
 AppPublisher=Daniel Coffey
 AppPublisherURL=https://clearglass.app
 DefaultDirName={pf}\ClearGlass

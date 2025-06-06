@@ -3,7 +3,7 @@
     <Product Id="*" 
              Name="Clear Glass" 
              Language="1033" 
-             Version="1.0.0.0" 
+             Version="2.0.0.0" 
              Manufacturer="Clear Glass" 
              UpgradeCode="12345678-1234-1234-1234-123456789012">
         
