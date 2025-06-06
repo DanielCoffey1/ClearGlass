@@ -65,12 +65,14 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\CustomMessa
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\App.baml
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\CustomMessageBox.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\MainWindow.g.cs
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\BrowserChoiceDialog.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\App.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_Content.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_MarkupCompile.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_MarkupCompile.lref
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\MainWindow.baml
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\BrowserChoiceDialog.baml
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.g.resources
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.AssemblyInfoInputs.cache

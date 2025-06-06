@@ -1160,17 +1160,13 @@ namespace ClearGlass
                 DownloadBundleButton.IsEnabled = false;
                 DownloadBundleButton.Content = "Checking installations...";
 
-                var result = CustomMessageBox.Show(
-                    "This will install or update all recommended applications:\n\n" +
-                    "• LibreWolf Browser\n" +
-                    "• Brave Browser\n" +
-                    "• Revo Uninstaller Pro\n\n" +
-                    "Do you want to continue?",
-                    "Install All Applications",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                // Show the browser choice dialog
+                var dialog = new BrowserChoiceDialog
+                {
+                    Owner = this
+                };
 
-                if (result == MessageBoxResult.Yes)
+                if (dialog.ShowDialog() == true)
                 {
                     // Check and install winget if needed
                     if (!await _wingetService.IsWingetInstalled())
@@ -1179,27 +1175,35 @@ namespace ClearGlass
                         await _wingetService.InstallWinget();
                     }
 
-                    // Install/Update all apps, continue even if some fail
+                    // Install/Update selected apps, continue even if some fail
                     List<string> failedApps = new List<string>();
 
-                    try
+                    // Install browsers based on user choice
+                    if (dialog.Choice == BrowserChoice.Both || dialog.Choice == BrowserChoice.LibreWolf)
                     {
-                        await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", DownloadBundleButton);
-                    }
-                    catch (Exception ex)
-                    {
-                        failedApps.Add($"LibreWolf: {ex.Message}");
-                    }
-
-                    try
-                    {
-                        await InstallAppWithWinget("Brave.Brave", "Brave Browser", DownloadBundleButton);
-                    }
-                    catch (Exception ex)
-                    {
-                        failedApps.Add($"Brave Browser: {ex.Message}");
+                        try
+                        {
+                            await InstallAppWithWinget("LibreWolf.LibreWolf", "LibreWolf", DownloadBundleButton);
+                        }
+                        catch (Exception ex)
+                        {
+                            failedApps.Add($"LibreWolf: {ex.Message}");
+                        }
                     }
 
+                    if (dialog.Choice == BrowserChoice.Both || dialog.Choice == BrowserChoice.Brave)
+                    {
+                        try
+                        {
+                            await InstallAppWithWinget("Brave.Brave", "Brave Browser", DownloadBundleButton);
+                        }
+                        catch (Exception ex)
+                        {
+                            failedApps.Add($"Brave Browser: {ex.Message}");
+                        }
+                    }
+
+                    // Always install Revo Uninstaller
                     try
                     {
                         await InstallAppWithWinget("RevoUninstaller.RevoUninstallerPro", "Revo Uninstaller Pro", DownloadBundleButton);
@@ -1220,7 +1224,7 @@ namespace ClearGlass
                     else
                     {
                         CustomMessageBox.Show(
-                            "All applications have been installed/updated successfully!",
+                            "All selected applications have been installed/updated successfully!",
                             "Success",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);

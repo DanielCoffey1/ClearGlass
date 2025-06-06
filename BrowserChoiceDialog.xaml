@@ -1,0 +1,108 @@
+<Window x:Class="ClearGlass.BrowserChoiceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ClearGlass"
+        Title="Choose Browsers" 
+        Height="160" 
+        Width="420"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        AllowsTransparency="True"
+        WindowStyle="None"
+        BorderThickness="1">
+    <Window.Resources>
+        <SolidColorBrush x:Key="GlassBorder" Color="#40FFFFFF"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="PrimaryBlue" Color="#2196F3"/>
+        <SolidColorBrush x:Key="LightBlue" Color="#42A5F5"/>
+        <SolidColorBrush x:Key="DarkBlue" Color="#1976D2"/>
+        <SolidColorBrush x:Key="DialogBackground" Color="#80000000"/>
+        
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryBlue}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="18"
+                                BorderThickness="1"
+                                BorderBrush="{StaticResource GlassBorder}">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="0" BlurRadius="10" Color="#40000000"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"
+                                            Margin="15,5"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource LightBlue}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="{StaticResource DarkBlue}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="{StaticResource GlassBorder}" 
+            Background="{StaticResource DialogBackground}"
+            CornerRadius="10"
+            BorderThickness="1"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="15" ShadowDepth="0" Color="#40000000"/>
+        </Border.Effect>
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                      Text="Which browser(s) would you like to install?"
+                      FontSize="14"
+                      Foreground="{StaticResource TextPrimary}"
+                      TextAlignment="Center"
+                      TextWrapping="Wrap"
+                      Margin="0,0,0,20"/>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="Both"
+                        Style="{StaticResource ActionButton}"
+                        Width="110"
+                        Margin="0,0,5,0"
+                        Click="OnBothBrowsersClick"/>
+
+                <Button Grid.Column="1"
+                        Content="LibreWolf"
+                        Style="{StaticResource ActionButton}"
+                        Width="110"
+                        Margin="5,0"
+                        Click="OnLibreWolfClick"/>
+
+                <Button Grid.Column="2"
+                        Content="Brave"
+                        Style="{StaticResource ActionButton}"
+                        Width="110"
+                        Margin="5,0,0,0"
+                        Click="OnBraveClick"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window> 

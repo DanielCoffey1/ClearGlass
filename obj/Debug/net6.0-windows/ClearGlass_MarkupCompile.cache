@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET6_0;NETCOREAPP
 C:\Users\Daniel\Documents\GitHub\ClearGlass\App.xaml
-2-878903043
+3647151647
 1-849429555
-22-538757341
+2353649670
 209-688773562
-CustomMessageBox.xaml;MainWindow.xaml;
+CustomMessageBox.xaml;MainWindow.xaml;BrowserChoiceDialog.xaml;
 
 False
 
