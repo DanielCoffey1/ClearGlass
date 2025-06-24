@@ -41,6 +41,9 @@
     <EmbeddedResource Include="Resources\Wallpapers\glassbackground.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Assets\Start\start2.bin">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>

@@ -16,6 +16,7 @@ namespace ClearGlass.Services
         private const string POWERSHELL_PATH = "powershell.exe";
         private const string TEMP_SCRIPT_NAME = "ClearGlassBloatwareRemoval.ps1";
         private const string TEMP_GET_APPS_SCRIPT_NAME = "GetInstalledApps.ps1";
+        private const string TEMP_START_MENU_SCRIPT_NAME = "ClearStartMenu.ps1";
         private const string SCRIPTS_NAMESPACE = "ClearGlass.Scripts";
 
         private readonly LoggingService _logger;
@@ -175,6 +176,33 @@ namespace ClearGlass.Services
             }
         }
 
+        private async Task<string> LoadStartMenuScriptContent()
+        {
+            try
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceName = $"{SCRIPTS_NAMESPACE}.ClearStartMenu.ps1";
+
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    var error = $"Could not find embedded script: {resourceName}";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                using var reader = new StreamReader(stream);
+                var content = await reader.ReadToEndAsync();
+                _logger.LogInformation("Successfully loaded start menu script");
+                return content;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to load start menu script", ex);
+                throw;
+            }
+        }
+
         private async Task<string> CreateGetAppsScript()
         {
             try
@@ -203,6 +231,10 @@ namespace ClearGlass.Services
             {
                 await ExecuteRemovalScript(scriptPath);
                 _logger.LogOperationComplete("Removing Windows bloatware");
+                
+                // Clear start menu after bloatware removal
+                await ClearStartMenu();
+                
                 ShowSuccessMessage();
             }
             catch (Exception ex)
@@ -386,6 +418,7 @@ namespace ClearGlass.Services
         private void ShowSuccessMessage()
         {
             var message = "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
+                         "The start menu has also been cleared of all pinned applications.\n\n" +
                          "Some apps may require a system restart to be fully removed.";
             
             _logger.LogInformation("Showing success message to user");
@@ -416,6 +449,119 @@ namespace ClearGlass.Services
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+
+        private async Task ClearStartMenu()
+        {
+            _logger.LogOperationStart("Clearing start menu");
+            string scriptPath = await CreateStartMenuScript();
+
+            try
+            {
+                await ExecuteStartMenuScript(scriptPath);
+                _logger.LogOperationComplete("Clearing start menu");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error during start menu clearing", ex);
+                // Don't show error to user as this is a secondary operation
+            }
+            finally
+            {
+                CleanupScript(scriptPath);
+            }
+        }
+
+        private async Task<string> CreateStartMenuScript()
+        {
+            try
+            {
+                string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_START_MENU_SCRIPT_NAME);
+                string scriptContent = await LoadStartMenuScriptContent();
+                
+                // Extract the start2.bin file to the same directory as the script
+                string assetsPath = Path.Combine(Path.GetDirectoryName(scriptPath)!, "Assets", "Start");
+                Directory.CreateDirectory(assetsPath);
+                await ExtractStartMenuAssets(assetsPath);
+                
+                await File.WriteAllTextAsync(scriptPath, scriptContent);
+                _logger.LogInformation("Created start menu script at: {Path}", scriptPath);
+                return scriptPath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to create start menu script", ex);
+                throw;
+            }
+        }
+
+        private async Task ExtractStartMenuAssets(string assetsPath)
+        {
+            try
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourceName = "ClearGlass.Resources.Assets.Start.start2.bin";
+
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                {
+                    var error = $"Could not find embedded asset: {resourceName}";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                string binFilePath = Path.Combine(assetsPath, "start2.bin");
+                using var fileStream = File.Create(binFilePath);
+                await stream.CopyToAsync(fileStream);
+                
+                _logger.LogInformation("Extracted start2.bin to: {Path}", binFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to extract start menu assets", ex);
+                throw;
+            }
+        }
+
+        private async Task ExecuteStartMenuScript(string scriptPath)
+        {
+            try
+            {
+                _logger.LogInformation("Executing start menu script: {Path}", scriptPath);
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = POWERSHELL_PATH,
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Silent -AllUsers",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    var error = "Failed to start PowerShell process for start menu clearing";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Start menu script completed with non-zero exit code: {ExitCode}", process.ExitCode);
+                }
+                else
+                {
+                    _logger.LogInformation("Start menu script completed successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to execute start menu script", ex);
+                throw;
+            }
         }
     }
 } 

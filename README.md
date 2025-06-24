@@ -45,6 +45,7 @@ Comprehensive system optimization tools that:
   - Disable unwanted features (Copilot, suggestions)
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
+- **Clear Windows 11 start menu** (removes all pinned applications for all users)
 - Safely remove pre-installed software:
   - Microsoft 365 and Office products (all installation types)
   - Microsoft OneNote (Program Files and Store versions)
@@ -193,7 +194,7 @@ Additional system customization options:
    - Click "Windows Optimization" for system optimization options
    - Click "Run Clear Glass" for the complete experience
 4. Wait for the process to complete
-5. Review the success message for confirmation
+5. Review the success message for confirmation (includes bloatware removal and start menu clearing)
 
 ### Installing Recommended Addons
 
