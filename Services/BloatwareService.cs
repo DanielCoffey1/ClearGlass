@@ -254,6 +254,11 @@ namespace ClearGlass.Services
             await RemoveWindowsBloatware(apps);
         }
 
+        public async Task ClearStartMenuWithRecommendationsDisabled()
+        {
+            await ClearStartMenu();
+        }
+
         private async Task<string> CreateRemovalScript(IEnumerable<WindowsApp> appsToKeep)
         {
             try
@@ -418,8 +423,9 @@ namespace ClearGlass.Services
         private void ShowSuccessMessage()
         {
             var message = "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
-                         "The start menu has also been cleared of all pinned applications.\n\n" +
-                         "Some apps may require a system restart to be fully removed.";
+                         "The start menu has also been cleared of all pinned applications.";
+            
+            message += "\n\nSome apps may require a system restart to be fully removed.";
             
             _logger.LogInformation("Showing success message to user");
             CustomMessageBox.Show(
@@ -528,10 +534,12 @@ namespace ClearGlass.Services
             try
             {
                 _logger.LogInformation("Executing start menu script: {Path}", scriptPath);
+                var arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Silent -AllUsers";
+                
                 var startInfo = new ProcessStartInfo()
                 {
                     FileName = POWERSHELL_PATH,
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Silent -AllUsers",
+                    Arguments = arguments,
                     UseShellExecute = true,
                     Verb = "runas",
                     CreateNoWindow = false,

@@ -28,6 +28,53 @@ function GetUserName {
     return $env:USERNAME
 }
 
+# Disable Start Menu recommendations using registry modifications
+function DisableStartRecommendations {
+    Write-Output "> Disabling and hiding the start menu recommended section..."
+    
+    # Registry keys to disable recommendations
+    $registryKeys = @(
+        @{
+            Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+            Name = "HideRecommendedSection"
+            Value = 1
+            Type = "DWORD"
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Start"
+            Name = "HideRecommendedSection"
+            Value = 1
+            Type = "DWORD"
+        },
+        @{
+            Path = "HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Education"
+            Name = "IsEducationEnvironment"
+            Value = 1
+            Type = "DWORD"
+        },
+        @{
+            Path = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+            Name = "Start_Layout"
+            Value = 1
+            Type = "DWORD"
+        }
+    )
+    
+    foreach ($key in $registryKeys) {
+        # Create the registry path if it doesn't exist
+        if (-not (Test-Path $key.Path)) {
+            New-Item -Path $key.Path -Force | Out-Null
+        }
+        
+        # Set the registry value
+        Set-ItemProperty -Path $key.Path -Name $key.Name -Value $key.Value -Type $key.Type -Force
+        Write-Output "Set registry key: $($key.Path)\$($key.Name) = $($key.Value)"
+    }
+    
+    Write-Output "Start Menu recommendations disabled successfully."
+    Write-Output ""
+}
+
 # Replace the startmenu for all users, when using the default startmenuTemplate this clears all pinned apps
 # Credit: https://lazyadmin.nl/win-11/customize-windows-11-start-menu-layout/
 function ReplaceStartMenuForAllUsers {
@@ -124,6 +171,9 @@ function RestartExplorer {
 }
 
 # Main execution
+# Always disable recommendations by default
+DisableStartRecommendations
+
 if ($AllUsers) {
     ReplaceStartMenuForAllUsers
 } else {
@@ -135,7 +185,7 @@ if ($AllUsers) {
 RestartExplorer
 
 Write-Output ""
-Write-Output "Script completed! Start menu has been cleared."
+Write-Output "Script completed! Start menu has been cleared and recommendations have been disabled."
 Write-Output "Note: If you want to restore your previous start menu, look for .bak files in the LocalState folder."
 
 # Always run silently - no prompts
