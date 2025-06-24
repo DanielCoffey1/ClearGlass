@@ -45,7 +45,7 @@ Comprehensive system optimization tools that:
   - Disable unwanted features (Copilot, suggestions)
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
-- **Clear Windows 11 start menu** (removes all pinned applications for all users)
+- **Clear Windows 11 start menu** (removes all pinned applications and disables recommendations for all users)
 - Safely remove pre-installed software:
   - Microsoft 365 and Office products (all installation types)
   - Microsoft OneNote (Program Files and Store versions)
