@@ -220,7 +220,7 @@ namespace ClearGlass.Services
             }
         }
 
-        public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep)
+        public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep, bool clearStartMenu = true)
         {
             _logger.LogOperationStart("Removing Windows bloatware");
             ShowStartupMessage();
@@ -232,10 +232,13 @@ namespace ClearGlass.Services
                 await ExecuteRemovalScript(scriptPath);
                 _logger.LogOperationComplete("Removing Windows bloatware");
                 
-                // Clear start menu after bloatware removal
-                await ClearStartMenu();
+                // Clear start menu after bloatware removal if requested
+                if (clearStartMenu)
+                {
+                    await ClearStartMenu();
+                }
                 
-                ShowSuccessMessage();
+                ShowSuccessMessage(clearStartMenu);
             }
             catch (Exception ex)
             {
@@ -248,15 +251,43 @@ namespace ClearGlass.Services
             }
         }
 
-        public async Task RemoveWindowsBloatware()
+        public async Task RemoveWindowsBloatware(bool clearStartMenu = true)
         {
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatware(apps);
+            await RemoveWindowsBloatware(apps, clearStartMenu);
+        }
+
+        public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep)
+        {
+            bool clearStartMenu = await AskUserAboutStartMenuClearing();
+            await RemoveWindowsBloatware(appsToKeep, clearStartMenu);
+        }
+
+        public async Task RemoveWindowsBloatwareWithStartMenuChoice()
+        {
+            var apps = await GetInstalledApps();
+            await RemoveWindowsBloatwareWithStartMenuChoice(apps);
         }
 
         public async Task ClearStartMenuWithRecommendationsDisabled()
         {
             await ClearStartMenu();
+        }
+
+        private async Task<bool> AskUserAboutStartMenuClearing()
+        {
+            var result = CustomMessageBox.Show(
+                "Would you like to clear the Windows Start Menu and disable recommendations?\n\n" +
+                "This will:\n" +
+                "• Remove all pinned applications from the Start Menu\n" +
+                "• Disable personalized recommendations\n" +
+                "• Create a clean, minimal Start Menu experience\n\n" +
+                "You can always restore your previous Start Menu from backup files.",
+                "Clear Start Menu",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            
+            return result == MessageBoxResult.Yes;
         }
 
         private async Task<string> CreateRemovalScript(IEnumerable<WindowsApp> appsToKeep)
@@ -420,10 +451,14 @@ namespace ClearGlass.Services
                 MessageBoxImage.Information);
         }
 
-        private void ShowSuccessMessage()
+        private void ShowSuccessMessage(bool clearStartMenu)
         {
-            var message = "Windows bloatware has been successfully removed while keeping selected apps!\n\n" +
-                         "The start menu has also been cleared of all pinned applications.";
+            var message = "Windows bloatware has been successfully removed while keeping selected apps!";
+            
+            if (clearStartMenu)
+            {
+                message += "\n\nThe start menu has also been cleared of all pinned applications.";
+            }
             
             message += "\n\nSome apps may require a system restart to be fully removed.";
             
