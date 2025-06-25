@@ -36,10 +36,9 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.AssemblyInfoInputs.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.AssemblyInfo.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.CoreCompileInputs.cache
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.sourcelink.json
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.Up2Date
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.dll
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\refint\ClearGlass.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.pdb
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.genruntimeconfig.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ref\ClearGlass.dll
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ref\ClearGlass.dll
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.CopyComplete

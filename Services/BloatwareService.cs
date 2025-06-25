@@ -31,16 +31,9 @@ namespace ClearGlass.Services
             "Microsoft.Windows.Photos",
             "Microsoft.WindowsNotepad",
             "Microsoft.ScreenSketch",
-            "Microsoft.WindowsCalculator",
             "Microsoft.Windows.SecHealthUI", // Windows Security
             "Microsoft.MicrosoftEdge", // Edge is often required for Windows Updates
             "Microsoft.WindowsTerminal",
-            "Microsoft.WindowsSoundRecorder",
-            "Microsoft.WindowsCamera",
-            "Microsoft.WindowsAlarms",
-            "Microsoft.WindowsMaps",
-            "Microsoft.WindowsFeedbackHub", // Useful for reporting Windows issues
-            "Microsoft.GetHelp", // Windows Help app
             "Microsoft.Windows.CloudExperienceHost", // Required for Windows Hello and other features
             "Microsoft.Win32WebViewHost", // Required for various Windows components
             "Microsoft.UI.Xaml", // Required UI framework
