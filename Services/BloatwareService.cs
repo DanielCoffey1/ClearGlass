@@ -32,7 +32,6 @@ namespace ClearGlass.Services
             "Microsoft.WindowsNotepad",
             "Microsoft.ScreenSketch",
             "Microsoft.Windows.SecHealthUI", // Windows Security
-            "Microsoft.MicrosoftEdge", // Edge is often required for Windows Updates
             "Microsoft.WindowsTerminal",
             "Microsoft.Windows.CloudExperienceHost", // Required for Windows Hello and other features
             "Microsoft.Win32WebViewHost", // Required for various Windows components
@@ -218,12 +217,21 @@ namespace ClearGlass.Services
             _logger.LogOperationStart("Removing Windows bloatware");
             ShowStartupMessage();
             
+            // Ask user about Edge removal
+            bool removeEdge = await AskUserAboutEdgeRemoval();
+            
             string scriptPath = await CreateRemovalScript(appsToKeep);
 
             try
             {
                 await ExecuteRemovalScript(scriptPath);
                 _logger.LogOperationComplete("Removing Windows bloatware");
+                
+                // Remove Edge if user requested it
+                if (removeEdge)
+                {
+                    await RemoveMicrosoftEdge();
+                }
                 
                 // Clear start menu after bloatware removal if requested
                 if (clearStartMenu)
@@ -281,6 +289,130 @@ namespace ClearGlass.Services
                 MessageBoxImage.Question);
             
             return result == MessageBoxResult.Yes;
+        }
+
+        private async Task<bool> AskUserAboutEdgeRemoval()
+        {
+            var result = CustomMessageBox.Show(
+                "Would you like to remove Microsoft Edge during this cleanup?\n\n" +
+                "⚠️  WARNING: Removing Microsoft Edge may cause issues:\n" +
+                "• Some Windows features may not work properly\n" +
+                "• Windows Update may fail to download updates\n" +
+                "• Some applications may have compatibility issues\n" +
+                "• You may need to reinstall Edge later for system stability\n\n" +
+                "Microsoft Edge is often required for Windows Updates and system functionality.\n\n" +
+                "Do you want to proceed with Edge removal?",
+                "Remove Microsoft Edge",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            
+            return result == MessageBoxResult.Yes;
+        }
+
+        private async Task RemoveMicrosoftEdge()
+        {
+            try
+            {
+                _logger.LogInformation("Starting Microsoft Edge removal");
+                
+                // Get the directory where the executable is located
+                string exePath = Assembly.GetExecutingAssembly().Location;
+                string exeDir = Path.GetDirectoryName(exePath);
+                
+                _logger.LogInformation("Executable path: {Path}", exePath);
+                _logger.LogInformation("Executable directory: {Path}", exeDir);
+                _logger.LogInformation("Current working directory: {Path}", Directory.GetCurrentDirectory());
+                
+                // Look for Scripts folder in the same directory as the executable
+                string scriptsPath = Path.Combine(exeDir, "Scripts");
+                _logger.LogInformation("Trying scripts path 1: {Path}", scriptsPath);
+                
+                if (!Directory.Exists(scriptsPath))
+                {
+                    // Try the current working directory
+                    scriptsPath = Path.Combine(Directory.GetCurrentDirectory(), "Scripts");
+                    _logger.LogInformation("Trying scripts path 2: {Path}", scriptsPath);
+                    
+                    if (!Directory.Exists(scriptsPath))
+                    {
+                        _logger.LogWarning("Scripts folder not found. Tried: {Path1} and {Path2}", 
+                            Path.Combine(exeDir, "Scripts"), 
+                            Path.Combine(Directory.GetCurrentDirectory(), "Scripts"));
+                        CustomMessageBox.Show(
+                            "Scripts folder not found. Please ensure the 'Scripts' folder is present in the application directory.",
+                            "Scripts Folder Missing",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+
+                _logger.LogInformation("Found Scripts folder at: {Path}", scriptsPath);
+
+                // Find the Edge removal PowerShell script
+                string scriptPath = Path.Combine(scriptsPath, "RemoveEdge.ps1");
+                if (!File.Exists(scriptPath))
+                {
+                    _logger.LogWarning("RemoveEdge.ps1 not found at: {Path}", scriptPath);
+                    CustomMessageBox.Show(
+                        "Edge removal script not found. Please ensure RemoveEdge.ps1 is present in the 'Scripts' folder.",
+                        "Edge Removal Script Missing",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                _logger.LogInformation("Found RemoveEdge.ps1 at: {Path}", scriptPath);
+                _logger.LogInformation("Executing Edge removal script: {Path}", scriptPath);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = POWERSHELL_PATH,
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    var error = "Failed to start Edge removal PowerShell process";
+                    _logger.LogError(error);
+                    throw new InvalidOperationException(error);
+                }
+
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Edge removal script completed with non-zero exit code: {ExitCode}", process.ExitCode);
+                    CustomMessageBox.Show(
+                        "Edge removal completed with warnings. Some components may not have been removed successfully.",
+                        "Edge Removal Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+                else
+                {
+                    _logger.LogInformation("Edge removal script completed successfully");
+                    CustomMessageBox.Show(
+                        "Microsoft Edge has been successfully removed from your system.",
+                        "Edge Removal Complete",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to remove Microsoft Edge", ex);
+                CustomMessageBox.Show(
+                    $"Error removing Microsoft Edge: {ex.Message}",
+                    "Edge Removal Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         private async Task<string> CreateRemovalScript(IEnumerable<WindowsApp> appsToKeep)
