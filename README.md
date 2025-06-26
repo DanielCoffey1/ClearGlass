@@ -45,6 +45,7 @@ Comprehensive system optimization tools that:
   - Disable unwanted features (Copilot, suggestions)
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
+- **Optional Windows 11 start menu clearing** (user choice to remove all pinned applications and disable recommendations for all users)
 - Safely remove pre-installed software:
   - Microsoft 365 and Office products (all installation types)
   - Microsoft OneNote (Program Files and Store versions)
@@ -95,6 +96,27 @@ Steam games are detected automatically by their app ID (e.g., "Steam App 1091500
 - Automatically detects and lists installed Windows apps
 - Remembers essential system apps by default
 
+### Microsoft Edge Removal
+
+Optional Microsoft Edge removal during bloatware cleanup:
+
+- **User Choice**: Prompts user whether to remove Microsoft Edge
+- **Clear Warnings**: Detailed information about potential system impacts:
+  - Windows Update may fail to download updates
+  - Some Windows features may not work properly
+  - Applications may have compatibility issues
+  - System stability may be affected
+- **Safe Execution**: Runs after main bloatware removal completes
+- **Comprehensive Removal**: Uses advanced removal techniques:
+  - Standard WinGet removal (recommended)
+  - Force removal if standard method fails
+  - Registry cleanup and file removal
+  - Startup entry removal
+- **User Feedback**: Clear success/warning messages
+- **Logging**: Full operation logging for troubleshooting
+
+**Note**: Microsoft Edge is no longer protected by default and can be removed during cleanup. Users are strongly advised to consider the potential system impacts before choosing to remove Edge.
+
 ### Clear Glass Theme
 
 A modern, minimalist theme that includes:
@@ -107,6 +129,22 @@ A modern, minimalist theme that includes:
 - Custom wallpaper that complements the glass effect
 - Proper theme application sequencing for reliability
 - Automatic wallpaper download and caching
+
+### Enhanced Clear Glass Experience
+
+The complete Clear Glass experience now includes optional user choices:
+
+- **Optional System Tweaks**: Choose to apply additional system optimizations:
+  - Remove Microsoft OneDrive completely
+  - Disable search suggestions and Bing integration
+  - Disable privacy permissions and tracking
+  - Enable End Task in taskbar context menu
+  - Set File Explorer to show "This PC" by default
+  - Restore classic right-click context menu
+- **Optional Microsoft Edge Removal**: Choose whether to remove Microsoft Edge (with detailed warnings about potential system impacts)
+- **Optional Start Menu Clearing**: Choose whether to clear the Windows start menu and disable recommendations
+- **User Control**: All major changes are now user-controlled with clear explanations
+- **Progressive Enhancement**: Tweaks are applied before main Clear Glass functions for optimal system preparation
 
 ### Recommended Addons
 
@@ -191,7 +229,12 @@ Additional system customization options:
 3. Choose your optimization approach:
    - Click "Clear Glass Theme" for visual customization only
    - Click "Windows Optimization" for system optimization options
-   - Click "Run Clear Glass" for the complete experience
+   - Click "Run Clear Glass" for the complete experience:
+     - **Optional system tweaks**: Choose to apply additional tweaks (OneDrive removal, privacy settings, context menu, etc.)
+     - **Optional start menu clearing**: Choose whether to clear the Windows start menu and disable recommendations
+     - Windows settings optimization
+     - Bloatware removal with protected apps
+     - Clear Glass theme application
 4. Wait for the process to complete
 5. Review the success message for confirmation
 

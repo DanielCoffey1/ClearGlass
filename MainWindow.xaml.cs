@@ -354,7 +354,7 @@ namespace ClearGlass
                 "This will apply the complete Clear Glass experience:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
                 "2. Remove unnecessary Windows bloatware\n" +
-                "3. Apply the Clear Glass theme (dark mode, centered taskbar, etc.)\n\n" +
+                "3. Apply the Clear Glass theme (dark mode, left-aligned taskbar, etc.)\n\n" +
                 "A system restore point will be created before making changes.\n\n" +
                 "Do you want to continue?",
                 "Apply Complete Clear Glass Experience",
@@ -363,15 +363,36 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Ask user if they want to apply additional tweaks
+                var tweaksResult = CustomMessageBox.Show(
+                    "Would you like to apply additional system tweaks?\n\n" +
+                    "This will apply:\n" +
+                    "• Remove OneDrive\n" +
+                    "• Disable Search Suggestions\n" +
+                    "• Disable Privacy Permissions\n" +
+                    "• Enable End Task in Taskbar\n" +
+                    "• Set This PC as Default\n" +
+                    "• Restore Classic Context Menu\n\n" +
+                    "These tweaks will be applied before the main Clear Glass functions.",
+                    "Apply Additional Tweaks",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
                 try
                 {
                     ClearGlassButton.IsEnabled = false;
+
+                    // Apply tweaks first if user chose to
+                    if (tweaksResult == MessageBoxResult.Yes)
+                    {
+                        await ApplyAllTweaks();
+                    }
 
                     // Run Windows settings optimization
                     await _optimizationService.TweakWindowsSettings();
                     
                     // Run bloatware removal
-                    await _bloatwareService.RemoveWindowsBloatware();
+                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
 
                     // Show desktop icons first
                     DesktopIconsToggle.IsChecked = true;
@@ -437,6 +458,388 @@ namespace ClearGlass
             }
         }
 
+        private async Task ApplyAllTweaks()
+        {
+            try
+            {
+                // Show progress message
+                CustomMessageBox.Show(
+                    "Applying system tweaks...\n\n" +
+                    "This may take a few moments. Please wait.",
+                    "Applying Tweaks",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                // Apply all tweaks in sequence
+                await RemoveOneDrive();
+                await DisableSearchSuggestions();
+                await DisablePrivacyPermissions();
+                await EnableEndTask();
+                await SetThisPCDefault();
+                await RestoreClassicMenu();
+
+                CustomMessageBox.Show(
+                    "All system tweaks have been applied successfully!",
+                    "Tweaks Applied",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error applying tweaks: {ex.Message}\n\n" +
+                    "The main Clear Glass functions will continue.",
+                    "Tweak Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task RemoveOneDrive()
+        {
+            try
+            {
+                // Step 1: Kill OneDrive processes
+                foreach (var process in Process.GetProcessesByName("OneDrive"))
+                {
+                    process.Kill();
+                }
+
+                // Step 2: Try uninstalling via winget first
+                try
+                {
+                    if (await _wingetService.IsWingetInstalled())
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = "winget",
+                            Arguments = "uninstall \"Microsoft OneDrive\" --silent",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { } // Continue if winget fails
+
+                // Step 3: Try uninstalling via built-in uninstaller
+                try
+                {
+                    var oneDrivePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "OneDrive", "OneDrive.exe");
+                    if (File.Exists(oneDrivePath))
+                    {
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = oneDrivePath,
+                            Arguments = "/uninstall",
+                            UseShellExecute = true,
+                            Verb = "runas"
+                        };
+
+                        using (var process = Process.Start(startInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { } // Continue if uninstaller fails
+
+                // Step 4: Remove OneDrive from Windows Store if present
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = "Get-AppxPackage *Microsoft.OneDrive* | Remove-AppxPackage",
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+
+                    using (var process = Process.Start(startInfo))
+                    {
+                        if (process != null)
+                        {
+                            await process.WaitForExitAsync();
+                        }
+                    }
+                }
+                catch (Exception) { } // Continue if Store removal fails
+
+                // Step 5: Clean up registry entries
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "reg",
+                        Arguments = "delete \"HKEY_CLASSES_ROOT\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f",
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+
+                    using (var process = Process.Start(startInfo))
+                    {
+                        if (process != null)
+                        {
+                            await process.WaitForExitAsync();
+                        }
+                    }
+
+                    startInfo.Arguments = "delete \"HKEY_CLASSES_ROOT\\Wow6432Node\\CLSID\\{018D5C66-4533-4307-9B53-224DE2ED1FE6}\" /f";
+                    using (var process = Process.Start(startInfo))
+                    {
+                        if (process != null)
+                        {
+                            await process.WaitForExitAsync();
+                        }
+                    }
+                }
+                catch (Exception) { } // Continue if registry cleanup fails
+            }
+            catch (Exception) { } // Continue if OneDrive removal fails
+        }
+
+        private async Task DisableSearchSuggestions()
+        {
+            try
+            {
+                string script = @"
+                    Write-Host 'Disabling search suggestions...'
+                    
+                    # Disable web search in Windows Search
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'BingSearchEnabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'CortanaConsent' -Value 0 -Type DWord -Force
+                    
+                    # Disable search suggestions
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force
+                    
+                    # Disable web results in search
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowSearchToUseLocation' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowCortana' -Value 0 -Type DWord -Force
+                    
+                    Write-Host 'Search suggestions have been disabled successfully!'
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "ClearGlassDisableSearch.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false
+                };
+
+                using (var process = Process.Start(startInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                // Clean up
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { } // Continue if search suggestions disable fails
+        }
+
+        private async Task DisablePrivacyPermissions()
+        {
+            try
+            {
+                string script = @"
+                    # Disable advertising ID
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
+                    
+                    # Disable language list access
+                    Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
+                    
+                    # Disable app launch tracking
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
+                    
+                    # Disable suggested content in settings
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "DisablePrivacyPermissions.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                }
+
+                // Clean up
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { } // Continue if privacy permissions disable fails
+        }
+
+        private async Task EnableEndTask()
+        {
+            try
+            {
+                string script = @"
+                    # Enable End Task in Settings
+                    if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
+                        New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
+                    }
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTask.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                }
+
+                // Clean up
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { } // Continue if end task enable fails
+        }
+
+        private async Task SetThisPCDefault()
+        {
+            try
+            {
+                string script = @"
+                    # Remove Home and Gallery from File Explorer
+                    if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}')) {
+                        New-Item -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Force
+                    }
+                    Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{f874310e-b6b7-47dc-bc84-b9e6b38f5903}' -Name 'System.IsPinnedToNameSpaceTree' -Value 0 -Type DWord -Force
+
+                    # Disable Gallery View
+                    if (!(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced')) {
+                        New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Force
+                    }
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'LaunchTo' -Value 1 -Type DWord -Force
+
+                    # Restart Explorer to apply changes
+                    Stop-Process -Name explorer -Force
+                    Start-Process explorer
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "SetThisPCDefault.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                }
+
+                // Clean up
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { } // Continue if set this PC default fails
+        }
+
+        private async Task RestoreClassicMenu()
+        {
+            try
+            {
+                string script = @"
+                    # Restore classic context menu
+                    if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32')) {
+                        New-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Type String -Force
+
+                    # Restart Explorer to apply changes
+                    Stop-Process -Name explorer -Force
+                    Start-Process explorer
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenu.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process != null)
+                {
+                    await process.WaitForExitAsync();
+                }
+
+                // Clean up
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { } // Continue if restore classic menu fails
+        }
+
         private void OnWindowsOptimizationClick(object sender, RoutedEventArgs e)
         {
             OptimizationOverlay.Visibility = Visibility.Visible;
@@ -478,7 +881,7 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
-                await _bloatwareService.RemoveWindowsBloatware();
+                await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
             }
         }
 
@@ -502,7 +905,7 @@ namespace ClearGlass
                     await _optimizationService.TweakWindowsSettings();
                     
                     // Run bloatware removal
-                    await _bloatwareService.RemoveWindowsBloatware();
+                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
 
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
@@ -1828,77 +2231,6 @@ namespace ClearGlass
             }
         }
 
-        private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var result = CustomMessageBox.Show(
-                    "This will enable the 'End Task' option in taskbar context menu. Do you want to continue?",
-                    "Confirm End Task Feature",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    string script = @"
-                        # Enable End Task in Settings
-                        if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
-                            New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
-                        }
-                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
-                    ";
-
-                    // Save the script to a temporary file
-                    string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTask.ps1");
-                    await File.WriteAllTextAsync(scriptPath, script);
-
-                    // Run PowerShell with elevated privileges
-                    var startInfo = new ProcessStartInfo()
-                    {
-                        FileName = "powershell.exe",
-                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
-                        UseShellExecute = true,
-                        Verb = "runas",
-                        CreateNoWindow = false
-                    };
-
-                    using var process = Process.Start(startInfo);
-                    if (process != null)
-                    {
-                        await process.WaitForExitAsync();
-                        
-                        if (process.ExitCode == 0)
-                        {
-                            CustomMessageBox.Show(
-                                "End Task feature has been enabled in taskbar context menu.",
-                                "Success",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            CustomMessageBox.Show(
-                                "Failed to enable End Task feature.",
-                                "Warning",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
-                        }
-                    }
-
-                    // Clean up the temporary script file
-                    File.Delete(scriptPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error enabling End Task feature: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
-
         private void OnAppSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             var searchText = AppSearchBox.Text.ToLower();
@@ -2007,6 +2339,77 @@ namespace ClearGlass
             {
                 CustomMessageBox.Show(
                     $"Error opening Registry Editor: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void OnEnableEndTaskClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will enable the 'End Task' option in taskbar context menu. Do you want to continue?",
+                    "Confirm End Task Feature",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    string script = @"
+                        # Enable End Task in Settings
+                        if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
+                            New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
+                        }
+                        Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
+                    ";
+
+                    // Save the script to a temporary file
+                    string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTask.ps1");
+                    await File.WriteAllTextAsync(scriptPath, script);
+
+                    // Run PowerShell with elevated privileges
+                    var startInfo = new ProcessStartInfo()
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        CreateNoWindow = false
+                    };
+
+                    using var process = Process.Start(startInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        
+                        if (process.ExitCode == 0)
+                        {
+                            CustomMessageBox.Show(
+                                "End Task feature has been enabled in taskbar context menu.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "Failed to enable End Task feature.",
+                                "Warning",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+
+                    // Clean up the temporary script file
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error enabling End Task feature: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
