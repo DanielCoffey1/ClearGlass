@@ -183,10 +183,15 @@ namespace ClearGlass.Services
 
                 await process.WaitForExitAsync();
                 
+                // Remove Windows AI components last
+                CustomMessageBox.Show("Removing Windows AI components...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                await RemoveWindowsAIComponents();
+                
                 if (process.ExitCode == 0)
                 {
                     CustomMessageBox.Show(
-                        "Windows settings have been successfully optimized!",
+                        "Windows settings have been successfully optimized!\n\n" +
+                        "Windows AI components have been removed and all optimizations applied.",
                         "Success",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
@@ -210,6 +215,85 @@ namespace ClearGlass.Services
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+
+        public async Task RemoveWindowsAIOnly()
+        {
+            try
+            {
+                CustomMessageBox.Show("Starting Windows AI component removal...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                await RemoveWindowsAIComponents();
+                
+                CustomMessageBox.Show(
+                    "Windows AI components have been successfully removed!",
+                    "AI Removal Complete",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error during AI component removal: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async Task RemoveWindowsAIComponents()
+        {
+            try
+            {
+                // Get the path to the RemoveWindowsAi.ps1 script
+                string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts", "RemoveWindowsAi.ps1");
+                
+                // Check if the script exists
+                if (!File.Exists(scriptPath))
+                {
+                    CustomMessageBox.Show(
+                        "Windows AI removal script not found. Skipping AI component removal.",
+                        "Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Run the AI removal script with elevated privileges
+                ProcessStartInfo startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Force",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = false,
+                    RedirectStandardOutput = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process is null)
+                {
+                    throw new InvalidOperationException("Failed to start AI removal process");
+                }
+
+                await process.WaitForExitAsync();
+                
+                if (process.ExitCode != 0)
+                {
+                    CustomMessageBox.Show(
+                        "Windows AI removal completed with some warnings. This is normal for systems without AI components.",
+                        "AI Removal Complete",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show(
+                    $"Error during AI component removal: {ex.Message}\n\nContinuing with other optimizations...",
+                    "AI Removal Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
 

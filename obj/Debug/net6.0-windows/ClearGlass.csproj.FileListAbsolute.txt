@@ -46,3 +46,4 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\Cle
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\GetInstalledApps.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveBloatware.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveEdge.ps1
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveWindowsAi.ps1
