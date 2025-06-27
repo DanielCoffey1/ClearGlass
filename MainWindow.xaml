@@ -967,104 +967,111 @@
                             Click="OnCloseOptimizationClick"/>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1"
-                            VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled"
-                            Padding="0,0,5,0">
-                    <StackPanel VerticalAlignment="Top" 
-                              HorizontalAlignment="Center"
-                              Margin="0,0,0,10">
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,0,0,10">
+                    <CheckBox x:Name="RestorePointCheckBox"
+                              Content="Create a restore point before making changes"
+                              IsChecked="True"
+                              Margin="0,0,0,15"
+                              Foreground="{StaticResource TextPrimary}"/>
+                    <ScrollViewer Grid.Row="1"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled"
+                                Padding="0,0,5,0">
+                        <StackPanel VerticalAlignment="Top" 
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,0,10">
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Windows Settings Optimization"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="This will optimize various Windows settings including: disabling telemetry and data collection, optimizing visual effects for performance, adjusting power settings for better responsiveness, and configuring privacy settings. A system restore point will be created before making changes."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Optimize Settings"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnTweakSettingsClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Windows Settings Optimization"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="This will optimize various Windows settings including: disabling telemetry and data collection, optimizing visual effects for performance, adjusting power settings for better responsiveness, and configuring privacy settings. A system restore point will be created before making changes."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Optimize Settings"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnTweakSettingsClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Remove Windows Bloatware"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="This will remove unnecessary Windows apps while keeping essential system components and useful applications. A system restore point will be created before making changes."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Remove Bloatware"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnRemoveBloatwareClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Remove Windows Bloatware"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="This will remove unnecessary Windows apps while keeping essential system components and useful applications. A system restore point will be created before making changes."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Remove Bloatware"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnRemoveBloatwareClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                        <Border Background="#20FFFFFF"
-                                CornerRadius="10"
-                                Margin="0,0,0,15"
-                                Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                            <Border Background="#20FFFFFF"
+                                    CornerRadius="10"
+                                    Margin="0,0,0,15"
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- App Info -->
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Full System Optimization"
-                                             FontSize="16"
-                                             FontWeight="SemiBold"
-                                             Foreground="{StaticResource TextPrimary}"
-                                             Margin="0,0,0,5"/>
-                                    <TextBlock Text="This will perform a complete system optimization including Windows settings tweaks and bloatware removal. A system restore point will be created before making changes."
-                                             TextWrapping="Wrap"
-                                             Foreground="{StaticResource TextSecondary}"
-                                             LineHeight="20"/>
-                                    <Button Content="Run Optimization"
-                                            Style="{StaticResource TinyButton}"
-                                            Width="120"
-                                            Margin="0,10,0,0"
-                                            HorizontalAlignment="Left"
-                                            Click="OnRunOptimizationClick"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                                    <!-- App Info -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Full System Optimization"
+                                                 FontSize="16"
+                                                 FontWeight="SemiBold"
+                                                 Foreground="{StaticResource TextPrimary}"
+                                                 Margin="0,0,0,5"/>
+                                        <TextBlock Text="This will perform a complete system optimization including Windows settings tweaks and bloatware removal. A system restore point will be created before making changes."
+                                                 TextWrapping="Wrap"
+                                                 Foreground="{StaticResource TextSecondary}"
+                                                 LineHeight="20"/>
+                                        <Button Content="Run Optimization"
+                                                Style="{StaticResource TinyButton}"
+                                                Width="120"
+                                                Margin="0,10,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="OnRunOptimizationClick"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </StackPanel>
             </Grid>
         </Border>
 

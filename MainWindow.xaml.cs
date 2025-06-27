@@ -52,7 +52,7 @@ namespace ClearGlass
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
             var loggingService = new LoggingService();
-            _bloatwareService = new BloatwareService(loggingService);
+            _bloatwareService = new BloatwareService(loggingService, _optimizationService);
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
             _updateService = new UpdateService();
@@ -828,30 +828,30 @@ namespace ClearGlass
         private async void OnTweakSettingsClick(object sender, RoutedEventArgs e)
         {
             var result = CustomMessageBox.Show(
-                "This will modify various Windows settings to optimize your system. A restore point will be created before making changes. Do you want to continue?",
+                "This will modify various Windows settings to optimize your system. You can optionally create a restore point before making changes. Do you want to continue?",
                 "Confirm Windows Settings Optimization",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes)
             {
-                await _optimizationService.TweakWindowsSettings();
+                bool createRestorePoint = RestorePointCheckBox.IsChecked ?? true;
+                await _optimizationService.TweakWindowsSettings(createRestorePoint);
             }
         }
 
         private async void OnRemoveBloatwareClick(object sender, RoutedEventArgs e)
         {
             var result = CustomMessageBox.Show(
-                "This will remove unnecessary Windows apps while keeping essential system components and useful applications.\n\n" +
-                "A system restore point will be created before making changes.\n\n" +
-                "Do you want to continue?",
+                "This will remove unnecessary Windows apps while keeping essential system components and useful applications. You can optionally create a restore point before making changes.\n\nDo you want to continue?",
                 "Confirm Windows Bloatware Removal",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes)
             {
-                await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+                bool createRestorePoint = RestorePointCheckBox.IsChecked ?? true;
+                await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice(createRestorePoint);
             }
         }
 
@@ -861,7 +861,7 @@ namespace ClearGlass
                 "This will:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
                 "2. Remove unnecessary Windows bloatware\n\n" +
-                "A system restore point will be created before making changes.\n\n" +
+                "You can optionally create a restore point before making changes.\n\n" +
                 "Do you want to continue?",
                 "Confirm Full Windows Optimization",
                 MessageBoxButton.YesNo,
@@ -871,11 +871,11 @@ namespace ClearGlass
             {
                 try
                 {
+                    bool createRestorePoint = RestorePointCheckBox.IsChecked ?? true;
                     // Run Windows settings optimization
-                    await _optimizationService.TweakWindowsSettings();
-                    
+                    await _optimizationService.TweakWindowsSettings(createRestorePoint);
                     // Run bloatware removal
-                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice(createRestorePoint);
 
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
@@ -999,21 +999,38 @@ namespace ClearGlass
                 // Disable the button during operation
                 KeepAppsButton.IsEnabled = false;
 
+                string[] systemKeywords = new[]
+                {
+                    "Framework", "Runtime", "Content", "Workload", "Resource", "Language", "Speech", "Windows", "Host", "Support", "Extension", "Desktop", "AppInstaller", "AppRuntime"
+                };
+
                 // Load installed apps if not already loaded
                 if (_installedApps == null)
                 {
                     var loadedApps = await _bloatwareService.GetInstalledApps();
-                    var sortedApps = loadedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
-                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
+                    // Only show user-facing Store apps
+                    var removableApps = loadedApps
+                        .Where(app => !string.IsNullOrEmpty(app.PackageFullName))
+                        .Where(app => !string.IsNullOrEmpty(app.DisplayName))
+                        .Where(app => !systemKeywords.Any(k => app.DisplayName.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
+                        .Where(app => !_bloatwareService.EssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase)))
+                        .OrderBy(app => app.DisplayName).ToList();
+                    _installedApps = new ObservableCollection<WindowsApp>(removableApps);
                     AppsListView.ItemsSource = _installedApps;
-                    _originalKeepAppsList = sortedApps;
+                    _originalKeepAppsList = removableApps;
                 }
                 else
                 {
-                    var sortedApps = _installedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
-                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
+                    // Only show user-facing Store apps
+                    var removableApps = _installedApps
+                        .Where(app => !string.IsNullOrEmpty(app.PackageFullName))
+                        .Where(app => !string.IsNullOrEmpty(app.DisplayName))
+                        .Where(app => !systemKeywords.Any(k => app.DisplayName.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
+                        .Where(app => !_bloatwareService.EssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase)))
+                        .OrderBy(app => app.DisplayName).ToList();
+                    _installedApps = new ObservableCollection<WindowsApp>(removableApps);
                     AppsListView.ItemsSource = _installedApps;
-                    _originalKeepAppsList = sortedApps;
+                    _originalKeepAppsList = removableApps;
                 }
 
                 // Show the overlay

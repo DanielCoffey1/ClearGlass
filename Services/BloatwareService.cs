@@ -20,6 +20,7 @@ namespace ClearGlass.Services
         private const string SCRIPTS_NAMESPACE = "ClearGlass.Scripts";
 
         private readonly LoggingService _logger;
+        private readonly OptimizationService _optimizationService;
         private readonly string[] defaultEssentialApps = new[]
         {
             "Microsoft.Windows.ShellExperienceHost",
@@ -38,14 +39,17 @@ namespace ClearGlass.Services
             "Microsoft.UI.Xaml", // Required UI framework
             "Microsoft.VCLibs", // Visual C++ Runtime
             "Microsoft.Services.Store.Engagement", // Required for Store
-            "Microsoft.NET" // .NET Runtime
+            "Microsoft.NET", // .NET Runtime
+            "Microsoft.Paint", // Classic Paint app
+            "Microsoft.MSPaint" // Paint 3D
         };
 
         private List<string> _sessionEssentialApps = new();
 
-        public BloatwareService(LoggingService logger)
+        public BloatwareService(LoggingService logger, OptimizationService optimizationService)
         {
             _logger = logger;
+            _optimizationService = optimizationService;
             ResetToDefaultEssentialApps();
             _logger.LogInformation("BloatwareService initialized");
         }
@@ -212,10 +216,16 @@ namespace ClearGlass.Services
             }
         }
 
-        public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep, bool clearStartMenu = true)
+        public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep, bool clearStartMenu = true, bool createRestorePoint = true)
         {
             _logger.LogOperationStart("Removing Windows bloatware");
             ShowStartupMessage();
+
+            // Optionally create restore point
+            if (createRestorePoint)
+            {
+                await _optimizationService.CreateRestorePoint();
+            }
             
             // Ask user about Edge removal
             bool removeEdge = await AskUserAboutEdgeRemoval();
@@ -252,22 +262,22 @@ namespace ClearGlass.Services
             }
         }
 
-        public async Task RemoveWindowsBloatware(bool clearStartMenu = true)
+        public async Task RemoveWindowsBloatware(bool clearStartMenu = true, bool createRestorePoint = true)
         {
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatware(apps, clearStartMenu);
+            await RemoveWindowsBloatware(apps, clearStartMenu, createRestorePoint);
         }
 
-        public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep)
+        public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep, bool createRestorePoint = true)
         {
             bool clearStartMenu = await AskUserAboutStartMenuClearing();
-            await RemoveWindowsBloatware(appsToKeep, clearStartMenu);
+            await RemoveWindowsBloatware(appsToKeep, clearStartMenu, createRestorePoint);
         }
 
-        public async Task RemoveWindowsBloatwareWithStartMenuChoice()
+        public async Task RemoveWindowsBloatwareWithStartMenuChoice(bool createRestorePoint = true)
         {
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatwareWithStartMenuChoice(apps);
+            await RemoveWindowsBloatwareWithStartMenuChoice(apps, createRestorePoint);
         }
 
         public async Task ClearStartMenuWithRecommendationsDisabled()
@@ -421,15 +431,16 @@ namespace ClearGlass.Services
             {
                 string scriptPath = Path.Combine(Path.GetTempPath(), TEMP_SCRIPT_NAME);
                 string scriptContent = await LoadRemovalScriptContent();
-                
-                var selectedApps = appsToKeep.Where(a => a.IsSelected).Select(a => a.Name).ToList();
-                _logger.LogInformation("Creating removal script with {Count} apps to keep: {Apps}", 
-                    selectedApps.Count, 
-                    string.Join(", ", selectedApps));
+
+                // Use the full session essential apps list for apps to keep
+                var keepAppNames = EssentialApps;
+                _logger.LogInformation("Creating removal script with {Count} apps to keep: {Apps}",
+                    keepAppNames.Count,
+                    string.Join(", ", keepAppNames));
 
                 scriptContent = scriptContent.Replace(
-                    "__APP_NAMES_PLACEHOLDER__", 
-                    string.Join("','", selectedApps)
+                    "__APP_NAMES_PLACEHOLDER__",
+                    string.Join("','", keepAppNames)
                 );
 
                 await File.WriteAllTextAsync(scriptPath, scriptContent);

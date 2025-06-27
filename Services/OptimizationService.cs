@@ -9,15 +9,17 @@ namespace ClearGlass.Services
 {
     public class OptimizationService
     {
-        public async Task TweakWindowsSettings()
+        public async Task TweakWindowsSettings(bool createRestorePoint = true)
         {
             try
             {
                 CustomMessageBox.Show("Starting Windows optimization...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Create restore point
-                CustomMessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
-                await CreateRestorePoint();
+                if (createRestorePoint)
+                {
+                    CustomMessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await CreateRestorePoint();
+                }
 
                 // Run PowerShell commands with elevated privileges
                 string script = @"
@@ -26,8 +28,10 @@ namespace ClearGlass.Services
                     try {
                         Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore' -Name 'SystemRestorePointCreationFrequency' -Value 0 -Type DWord -Force
                         Enable-ComputerRestore -Drive 'C:\'
-                        Checkpoint-Computer -Description 'Before ClearGlass Optimization' -RestorePointType 'MODIFY_SETTINGS'
-                        Write-Host 'Restore point created successfully'
+                        if ($createRestorePoint) {
+                            Checkpoint-Computer -Description 'Before ClearGlass Optimization' -RestorePointType 'MODIFY_SETTINGS'
+                            Write-Host 'Restore point created successfully'
+                        }
                     } catch {
                         Write-Warning 'Could not create restore point. Continuing with optimization...'
                     }
@@ -206,14 +210,14 @@ namespace ClearGlass.Services
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error during optimization: {ex.Message}",
+                    $"Error optimizing Windows settings: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
         }
 
-        private async Task CreateRestorePoint()
+        public async Task CreateRestorePoint()
         {
             try
             {
