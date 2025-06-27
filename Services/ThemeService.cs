@@ -12,6 +12,7 @@ using ClearGlass.Services.Features;
 using ClearGlass.Services.Models;
 using ClearGlass.Services.Native;
 using ClearGlass.Services.Registry;
+using System.Collections.Generic;
 
 namespace ClearGlass.Services
 {
@@ -180,62 +181,119 @@ namespace ClearGlass.Services
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
+            var errorMessages = new List<string>();
+
+            // Apply all registry changes first
             try
             {
-                // Apply all registry changes first
                 if (settings.IsDarkMode != IsDarkMode)
                 {
-                    // Set accent color settings
-                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "EnableTransparency", 1, Microsoft.Win32.RegistryValueKind.DWord);
-                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "ColorPrevalence", 0, Microsoft.Win32.RegistryValueKind.DWord);
-                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColor", -1, Microsoft.Win32.RegistryValueKind.DWord);
-                    RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColorInactive", -1, Microsoft.Win32.RegistryValueKind.DWord);
+                    try
+                    {
+                        // Set accent color settings
+                        RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "EnableTransparency", 1, Microsoft.Win32.RegistryValueKind.DWord);
+                        RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "ColorPrevalence", 0, Microsoft.Win32.RegistryValueKind.DWord);
+                        RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColor", -1, Microsoft.Win32.RegistryValueKind.DWord);
+                        RegistryHelper.SetValueWithFallback(RegistryHelper.AccentColorSettingsPath, "AccentColorInactive", -1, Microsoft.Win32.RegistryValueKind.DWord);
 
-                    // Set system theme
-                    RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "SystemUsesLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
-                    RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "AppsUseLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+                        // Set system theme
+                        RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "SystemUsesLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+                        RegistryHelper.SetValue(RegistryHelper.PersonalizePath, "AppsUseLightTheme", settings.IsDarkMode ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessages.Add($"Error applying dark mode: {ex.Message}");
+                    }
                 }
 
                 // Batch taskbar changes
-                _taskbarService.ApplySettings(
-                    isTaskbarCentered: settings.IsTaskbarCentered,
-                    isTaskViewEnabled: settings.IsTaskViewEnabled,
-                    isSearchVisible: settings.IsSearchVisible,
-                    applyImmediately: false
-                );
-
-                // Apply other settings
-                if (settings.AreWidgetsEnabled != AreWidgetsEnabled)
+                try
                 {
-                    _widgetService.AreWidgetsEnabled = settings.AreWidgetsEnabled;
+                    _taskbarService.ApplySettings(
+                        isTaskbarCentered: settings.IsTaskbarCentered,
+                        isTaskViewEnabled: settings.IsTaskViewEnabled,
+                        isSearchVisible: settings.IsSearchVisible,
+                        applyImmediately: false
+                    );
+                }
+                catch (Exception ex)
+                {
+                    errorMessages.Add($"Error applying taskbar settings: {ex.Message}");
                 }
 
+                // Apply widgets
+                if (settings.AreWidgetsEnabled != AreWidgetsEnabled)
+                {
+                    try
+                    {
+                        _widgetService.AreWidgetsEnabled = settings.AreWidgetsEnabled;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessages.Add($"Error modifying widgets settings: {ex.Message}");
+                    }
+                }
+
+                // Apply desktop icons
                 if (settings.AreDesktopIconsVisible != AreDesktopIconsVisible)
                 {
-                    _desktopIconsService.AreDesktopIconsVisible = settings.AreDesktopIconsVisible;
+                    try
+                    {
+                        _desktopIconsService.AreDesktopIconsVisible = settings.AreDesktopIconsVisible;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessages.Add($"Error modifying desktop icons: {ex.Message}");
+                    }
                 }
 
                 // Set wallpaper if provided
                 if (!string.IsNullOrEmpty(settings.WallpaperPath))
                 {
-                    _wallpaperService.SetWallpaper(settings.WallpaperPath);
+                    try
+                    {
+                        _wallpaperService.SetWallpaper(settings.WallpaperPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessages.Add($"Error setting wallpaper: {ex.Message}");
+                    }
                 }
 
                 // Apply all changes at once
-                if (_taskbarService.HasPendingChanges)
+                try
                 {
-                    _taskbarService.ApplyPendingChanges();
+                    if (_taskbarService.HasPendingChanges)
+                    {
+                        _taskbarService.ApplyPendingChanges();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorMessages.Add($"Error restarting Explorer: {ex.Message}");
                 }
 
                 // Broadcast changes
-                BroadcastThemeChange();
+                try
+                {
+                    BroadcastThemeChange();
+                }
+                catch (Exception ex)
+                {
+                    errorMessages.Add($"Error broadcasting theme change: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
+                errorMessages.Add($"General error applying settings: {ex.Message}");
+            }
+
+            if (errorMessages.Count > 0)
+            {
                 throw new ThemeServiceException(
-                    $"Error applying settings: {ex.Message}",
-                    ThemeServiceOperation.RegistryAccess,
-                    ex);
+                    "One or more errors occurred while applying settings:\n" + string.Join("\n", errorMessages),
+                    ThemeServiceOperation.RegistryAccess
+                );
             }
         }
 

@@ -25,25 +25,72 @@ namespace ClearGlass.Services.Features
         }
 
         /// <summary>
-        /// Restarts the Windows Explorer process
+        /// Restarts the Windows Explorer process safely
         /// </summary>
         private void RestartExplorer()
         {
             try
             {
-                Process.Start(new ProcessStartInfo
+                // First, try to gracefully terminate Explorer
+                var explorerProcesses = Process.GetProcessesByName("explorer");
+                if (explorerProcesses.Length > 0)
                 {
-                    FileName = "cmd.exe",
-                    Arguments = "/c taskkill /f /im explorer.exe && start explorer.exe",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                });
+                    foreach (var process in explorerProcesses)
+                    {
+                        try
+                        {
+                            // Try graceful shutdown first
+                            process.CloseMainWindow();
+                            
+                            // Wait a bit for graceful shutdown
+                            if (!process.WaitForExit(3000)) // 3 seconds timeout
+                            {
+                                // If graceful shutdown fails, force kill
+                                process.Kill();
+                                process.WaitForExit(2000); // Wait up to 2 seconds for force kill
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Error terminating Explorer process: {ex.Message}");
+                        }
+                        finally
+                        {
+                            process.Dispose();
+                        }
+                    }
+                }
+
+                // Wait a moment for processes to fully terminate
+                System.Threading.Thread.Sleep(1000);
+
+                // Start Explorer with proper error handling
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    UseShellExecute = true,
+                    CreateNoWindow = false
+                };
+
+                var newExplorerProcess = Process.Start(startInfo);
+                if (newExplorerProcess == null)
+                {
+                    throw new ThemeServiceException(
+                        "Failed to start Explorer process",
+                        ThemeServiceOperation.ProcessManagement);
+                }
+
+                // Wait a moment for Explorer to initialize
+                System.Threading.Thread.Sleep(2000);
+
                 _restartPending = false;
+                Debug.WriteLine("Explorer restarted successfully");
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"Error restarting Explorer: {ex.Message}");
                 throw new ThemeServiceException(
-                    "Failed to restart Explorer",
+                    "Failed to restart Explorer safely",
                     ThemeServiceOperation.ProcessManagement,
                     ex);
             }

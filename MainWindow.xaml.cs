@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Threading.Tasks;
 using ClearGlass.Services;
+using ClearGlass.Services.Models;
 using System;
 using System.Windows.Threading;
 using System.Net.Http;
@@ -287,49 +288,34 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Show desktop icons first
-                DesktopIconsToggle.IsChecked = true;
-                _themeService.AreDesktopIconsVisible = true;
-                await Task.Delay(200);
+                // Create a single ThemeSettings object with all Clear Glass theme changes
+                var clearGlassSettings = new ThemeSettings
+                {
+                    IsDarkMode = true,
+                    IsTaskbarCentered = false,
+                    IsTaskViewEnabled = false,
+                    IsSearchVisible = false,
+                    AreDesktopIconsVisible = false,
+                    AreWidgetsEnabled = false,
+                    WallpaperPath = _wallpaperPath
+                };
 
-                // Apply dark theme first as it's a major change
+                // Apply all changes at once using the batched approach
+                await Task.Run(() => _themeService.ApplySettings(clearGlassSettings));
+
+                // Update UI to reflect the changes
                 ThemeToggle.IsChecked = true;
-                await Task.Run(() => _themeService.IsDarkMode = true);
-                await Task.Delay(500);
-
-                // First shell refresh after theme change
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay after major theme change
-
-                // Apply taskbar settings
                 TaskbarAlignmentToggle.IsChecked = false;
-                _themeService.IsTaskbarCentered = false;
-                await Task.Delay(200);
-
-                // Apply task view and search settings
                 TaskViewToggle.IsChecked = false;
-                _themeService.IsTaskViewEnabled = false;
-                await Task.Delay(100);
-
                 SearchToggle.IsChecked = false;
-                _themeService.IsSearchVisible = false;
-                await Task.Delay(100);
-
-                // Second shell refresh after UI changes
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay before wallpaper
-
-                // Hide desktop icons
                 DesktopIconsToggle.IsChecked = false;
-                _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(500); // Increased delay after hiding icons
 
-                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                // Ensure wallpaper is properly set
                 await EnsureWallpaperAsync();
 
                 CustomMessageBox.Show(
                     "Clear Glass Theme applied successfully!\n\n" +
-                    "Some changes may take a few seconds to fully apply.",
+                    "All changes have been applied in a single batch for better stability.",
                     "Success",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -394,50 +380,34 @@ namespace ClearGlass
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
 
-                    // Show desktop icons first
-                    DesktopIconsToggle.IsChecked = true;
-                    _themeService.AreDesktopIconsVisible = true;
-                    await Task.Delay(200);
+                    // Apply Clear Glass theme using batched approach for better stability
+                    var clearGlassSettings = new ThemeSettings
+                    {
+                        IsDarkMode = true,
+                        IsTaskbarCentered = false,
+                        IsTaskViewEnabled = false,
+                        IsSearchVisible = false,
+                        AreDesktopIconsVisible = false,
+                        AreWidgetsEnabled = false,
+                        WallpaperPath = _wallpaperPath
+                    };
 
-                    // Apply dark theme first as it's a major change
+                    // Apply all theme changes at once
+                    await Task.Run(() => _themeService.ApplySettings(clearGlassSettings));
+
+                    // Update UI to reflect the changes
                     ThemeToggle.IsChecked = true;
-                    await Task.Run(() => _themeService.IsDarkMode = true);
-                    await Task.Delay(500);
-
-                    // First shell refresh after theme change
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
-                    // Apply taskbar settings
                     TaskbarAlignmentToggle.IsChecked = false;
-                    _themeService.IsTaskbarCentered = false;
-                    await Task.Delay(200);
-
-                    // Apply task view and search settings
                     TaskViewToggle.IsChecked = false;
-                    _themeService.IsTaskViewEnabled = false;
-                    await Task.Delay(100);
-
                     SearchToggle.IsChecked = false;
-                    _themeService.IsSearchVisible = false;
-                    await Task.Delay(100);
-
-                    // Second shell refresh after UI changes
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
-                    // Hide desktop icons
                     DesktopIconsToggle.IsChecked = false;
-                    _themeService.AreDesktopIconsVisible = false;
-                    await Task.Delay(200);
 
-                    // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-                    await Task.Delay(300); // Give UI a moment to fully settle
+                    // Ensure wallpaper is properly set
                     await EnsureWallpaperAsync();
-                    await Task.Delay(200); // Short delay after wallpaper change
 
                     CustomMessageBox.Show(
                         "Clear Glass experience has been fully applied!\n\n" +
+                        "All theme changes have been applied in a single batch for better stability.\n" +
                         "Some changes may require a system restart to take full effect.",
                         "Success",
                         MessageBoxButton.OK,
