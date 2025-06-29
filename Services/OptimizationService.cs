@@ -228,6 +228,29 @@ namespace ClearGlass.Services
         {
             try
             {
+                var warningMessage = 
+                    "⚠️ **Important Information:**\n\n" +
+                    "This will remove Windows AI components including Copilot, Recall, and related features.\n\n" +
+                    "**What this does:**\n" +
+                    "• Kills AI processes\n" +
+                    "• Removes AppX packages\n" +
+                    "• Disables registry keys and policies\n" +
+                    "• Cleans up files and scheduled tasks\n\n" +
+                    "**Note:** The script has been improved to prevent Windows Update service conflicts.\n" +
+                    "If you experience any issues, the script will automatically attempt to restore services.\n\n" +
+                    "Do you want to continue?";
+                
+                var result = CustomMessageBox.Show(
+                    warningMessage,
+                    "Remove Windows AI Components",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                
+                if (result != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+                
                 CustomMessageBox.Show("Starting Windows AI component removal...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await RemoveWindowsAIComponents();
                 
@@ -238,7 +261,8 @@ namespace ClearGlass.Services
                     "• **If any AI features weren't removed successfully, restart your computer and click 'Remove AI Components' again.**\n\n" +
                     "• This is normal Windows behavior—running processes can lock files during removal.\n\n" +
                     "• A restart ensures all cleanup operations complete successfully.\n\n" +
-                    "💡 **Tip:**\nIf you plan to run additional cleanup operations, consider restarting first for best results.";
+                    "💡 **Tip:**\nIf you plan to run additional cleanup operations, consider restarting first for best results.\n\n" +
+                    "🔧 **Service Status:**\nWindows Update services have been automatically restored.";
                 
                 CustomMessageBox.Show(
                     message,
@@ -250,8 +274,10 @@ namespace ClearGlass.Services
             catch (Exception ex)
             {
                 CustomMessageBox.Show(
-                    $"Error during AI component removal: {ex.Message}",
-                    "Error",
+                    $"Error during AI component removal: {ex.Message}\n\n" +
+                    "The script has attempted to restore Windows Update services automatically.\n" +
+                    "If you experience issues with Windows Update, you may need to restart your computer.",
+                    "AI Removal Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }

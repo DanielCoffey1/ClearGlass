@@ -101,7 +101,7 @@ function Test-Administrator {
 }
 
 function Invoke-TrustedCommand {
-    param([string]$Command)
+    param([string]$Command, [int]$TimeoutSeconds = 300)
     
     try {
         Stop-Service -Name TrustedInstaller -Force -ErrorAction Stop -WarningAction Stop
@@ -126,8 +126,21 @@ function Invoke-TrustedCommand {
     # Change binary path to command
     sc.exe config TrustedInstaller binPath= "cmd.exe /c powershell.exe -encodedcommand $base64Command" | Out-Null
     
-    # Run the command
-    sc.exe start TrustedInstaller | Out-Null
+    # Run the command with timeout
+    $job = Start-Job -ScriptBlock {
+        param($serviceName)
+        sc.exe start $serviceName
+    } -ArgumentList "TrustedInstaller"
+    
+    # Wait for job completion with timeout
+    if (Wait-Job -Job $job -Timeout $TimeoutSeconds) {
+        Receive-Job -Job $job
+    } else {
+        Write-Status -Message "Command timed out after $TimeoutSeconds seconds" -IsError $true
+        Stop-Job -Job $job -ErrorAction SilentlyContinue
+    }
+    
+    Remove-Job -Job $job -ErrorAction SilentlyContinue
     
     # Restore original binary path
     sc.exe config TrustedInstaller binpath= "`"$defaultBinPath`"" | Out-Null
@@ -271,8 +284,7 @@ function Update-IntegratedServicesPolicy {
     
     if (-not (Test-Path $jsonPath)) { return }
     
-    Write-Host 'Disabling CoPilot Policies in ' -NoNewline
-    Write-Host "[$jsonPath]" -ForegroundColor Yellow
+    Write-Status -Message 'Disabling CoPilot Policies in IntegratedServicesRegionPolicySet.json...'
     
     # Take ownership
     takeown /f $jsonPath *>$null
@@ -298,14 +310,112 @@ function Update-IntegratedServicesPolicy {
 function Remove-AIPackages {
     Write-Status -Message 'Preparing for AI Appx Package Removal...'
     
-    # Disable Windows Update to prevent interference
-    Write-Status -Message 'Disabling Windows Update temporarily...'
+    # Initialize variables
+    $skipServiceManagement = $false
+    $originalStartupType = $null
+    
+    # Safety check: Ensure Windows Update services are in a good state before proceeding
+    Write-Status -Message 'Checking Windows Update service status...'
     try {
-        Set-Service -Name wuauserv -StartupType Disabled -ErrorAction SilentlyContinue
-        Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+        $wuauserv = Get-Service -Name wuauserv -ErrorAction Stop
+        $bits = Get-Service -Name BITS -ErrorAction Stop
+        
+        # If services are stuck in a problematic state, try to reset them
+        if ($wuauserv.Status -eq 'StartPending' -or $wuauserv.Status -eq 'StopPending') {
+            Write-Status -Message 'Windows Update service is in a pending state, attempting to reset...' -IsError $true
+            taskkill /im wuauserv.exe /f *>$null 2>&1
+            Start-Sleep 5
+        }
+        
+        if ($bits.Status -eq 'StartPending' -or $bits.Status -eq 'StopPending') {
+            Write-Status -Message 'BITS service is in a pending state, attempting to reset...' -IsError $true
+            taskkill /im svchost.exe /f *>$null 2>&1
+            Start-Sleep 5
+        }
+        
+        # Check if services are completely stuck
+        if ($wuauserv.Status -eq 'StartPending' -or $wuauserv.Status -eq 'StopPending') {
+            Write-Status -Message 'Windows Update service appears to be stuck, attempting reset...' -IsError $true
+            if (-not (Reset-StuckServices)) {
+                Write-Status -Message 'Service reset failed, skipping service management...' -IsError $true
+                $skipServiceManagement = $true
+            }
+        }
     }
     catch {
-        Write-Status -Message 'Could not disable Windows Update service' -IsError $true
+        Write-Status -Message 'Could not check Windows Update service status, skipping service management...' -IsError $true
+        $skipServiceManagement = $true
+    }
+    
+    # Only manage services if they're not stuck
+    if (-not $skipServiceManagement) {
+        # Instead of disabling Windows Update service completely, use a more targeted approach
+        Write-Status -Message 'Configuring Windows Update to prevent interference...'
+        try {
+            # Temporarily set Windows Update to manual start to prevent automatic interference
+            $originalStartupType = (Get-Service -Name wuauserv).StartupType
+            Set-Service -Name wuauserv -StartupType Manual -ErrorAction SilentlyContinue
+            
+            # Stop the service if it's running with timeout and force kill if needed
+            if ((Get-Service -Name wuauserv).Status -eq 'Running') {
+                Write-Status -Message 'Stopping Windows Update service...'
+                
+                # Try graceful stop first
+                Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+                
+                # Wait for service to stop with timeout
+                $timeout = 30
+                $elapsed = 0
+                while ((Get-Service -Name wuauserv).Status -eq 'Running' -and $elapsed -lt $timeout) {
+                    Start-Sleep 1
+                    $elapsed++
+                }
+                
+                # If service is still running, force kill the process
+                if ((Get-Service -Name wuauserv).Status -eq 'Running') {
+                    Write-Status -Message 'Windows Update service stuck, force killing...' -IsError $true
+                    taskkill /im wuauserv.exe /f *>$null 2>&1
+                    taskkill /im svchost.exe /f *>$null 2>&1
+                    Start-Sleep 3
+                }
+                
+                # Final check and wait
+                if ((Get-Service -Name wuauserv).Status -eq 'Running') {
+                    Write-Status -Message 'Windows Update service still running, continuing anyway...' -IsError $true
+                } else {
+                    Write-Status -Message 'Windows Update service stopped successfully'
+                }
+            }
+            
+            # Also stop related services that might interfere with timeout handling
+            $relatedServices = @('BITS', 'DoSvc', 'UsoSvc')
+            foreach ($service in $relatedServices) {
+                if ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -eq 'Running') {
+                    Write-Status -Message "Stopping $service service..."
+                    Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                    
+                    # Wait with timeout
+                    $timeout = 15
+                    $elapsed = 0
+                    while ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -eq 'Running' -and $elapsed -lt $timeout) {
+                        Start-Sleep 1
+                        $elapsed++
+                    }
+                    
+                    # Force kill if still running
+                    if ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -eq 'Running') {
+                        Write-Status -Message "$service service stuck, force killing..." -IsError $true
+                        taskkill /im svchost.exe /f *>$null 2>&1
+                        Start-Sleep 2
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Status -Message 'Could not configure Windows Update services' -IsError $true
+        }
+    } else {
+        Write-Status -Message 'Skipping Windows Update service management due to stuck services...'
     }
     
     # Clear package cache to remove stuck packages
@@ -422,7 +532,27 @@ foreach (`$choice in `$aipackages) {
         $retryCount++
         Write-Status -Message "Package removal attempt $retryCount of $maxRetries..."
         
-        Invoke-TrustedCommand -Command $command
+        # Try direct execution first, then fall back to trusted command if needed
+        try {
+            $job = Start-Job -ScriptBlock {
+                param($scriptPath)
+                & $scriptPath
+            } -ArgumentList $packageRemovalPath
+            
+            if (Wait-Job -Job $job -Timeout 120) {
+                Receive-Job -Job $job
+            } else {
+                Write-Status -Message "Direct execution timed out, trying trusted command..." -IsError $true
+                Stop-Job -Job $job -ErrorAction SilentlyContinue
+                Invoke-TrustedCommand -Command $command -TimeoutSeconds 180
+            }
+            
+            Remove-Job -Job $job -ErrorAction SilentlyContinue
+        }
+        catch {
+            Write-Status -Message "Direct execution failed, using trusted command..." -IsError $true
+            Invoke-TrustedCommand -Command $command -TimeoutSeconds 180
+        }
         
         # Check if packages still exist
         Start-Sleep (2 * $retryCount)  # Progressive delay: 2s, 4s, 6s
@@ -448,14 +578,74 @@ foreach (`$choice in `$aipackages) {
         Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d $script:originalExecutionPolicy /f *>$null
     }
     
-    # Re-enable Windows Update
-    Write-Status -Message 'Re-enabling Windows Update...'
-    try {
-        Set-Service -Name wuauserv -StartupType Automatic -ErrorAction SilentlyContinue
-        Start-Service -Name wuauserv -ErrorAction SilentlyContinue
-    }
-    catch {
-        Write-Status -Message 'Could not re-enable Windows Update service' -IsError $true
+    # Restore Windows Update services more safely
+    if (-not $skipServiceManagement) {
+        Write-Status -Message 'Restoring Windows Update services...'
+        try {
+            # Restore related services first
+            $relatedServices = @('BITS', 'DoSvc', 'UsoSvc')
+            foreach ($service in $relatedServices) {
+                if ((Get-Service -Name $service -ErrorAction SilentlyContinue).StartupType -eq 'Disabled') {
+                    Set-Service -Name $service -StartupType Automatic -ErrorAction SilentlyContinue
+                }
+                
+                # Try to start the service with timeout
+                if ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -ne 'Running') {
+                    Write-Status -Message "Starting $service service..."
+                    Start-Service -Name $service -ErrorAction SilentlyContinue
+                    
+                    # Wait for service to start
+                    $timeout = 20
+                    $elapsed = 0
+                    while ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -ne 'Running' -and $elapsed -lt $timeout) {
+                        Start-Sleep 1
+                        $elapsed++
+                    }
+                    
+                    if ((Get-Service -Name $service -ErrorAction SilentlyContinue).Status -ne 'Running') {
+                        Write-Status -Message "$service service failed to start properly" -IsError $true
+                    }
+                }
+            }
+            
+            # Restore Windows Update service with better handling
+            if ($originalStartupType -and $originalStartupType -ne 'Manual') {
+                Set-Service -Name wuauserv -StartupType $originalStartupType -ErrorAction SilentlyContinue
+            } else {
+                # Default to Automatic if we can't determine the original
+                Set-Service -Name wuauserv -StartupType Automatic -ErrorAction SilentlyContinue
+            }
+            
+            # Try to start Windows Update service with timeout
+            if ((Get-Service -Name wuauserv -ErrorAction SilentlyContinue).Status -ne 'Running') {
+                Write-Status -Message 'Starting Windows Update service...'
+                Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+                
+                # Wait for service to start with longer timeout
+                $timeout = 45
+                $elapsed = 0
+                while ((Get-Service -Name wuauserv -ErrorAction SilentlyContinue).Status -ne 'Running' -and $elapsed -lt $timeout) {
+                    Start-Sleep 1
+                    $elapsed++
+                }
+                
+                if ((Get-Service -Name wuauserv -ErrorAction SilentlyContinue).Status -ne 'Running') {
+                    Write-Status -Message 'Windows Update service failed to start properly' -IsError $true
+                    Write-Status -Message 'You may need to restart your computer to restore Windows Update' -IsError $true
+                } else {
+                    Write-Status -Message 'Windows Update service started successfully'
+                }
+            }
+            
+            Write-Status -Message 'Windows Update services restored successfully'
+        }
+        catch {
+            Write-Status -Message 'Could not fully restore Windows Update services' -IsError $true
+            Write-Status -Message 'You may need to manually restart Windows Update service or restart your computer' -IsError $true
+        }
+    } else {
+        Write-Status -Message 'Skipped Windows Update service restoration due to previous issues'
+        Write-Status -Message 'You may need to restart your computer to restore Windows Update services' -IsError $true
     }
 }
 
@@ -623,6 +813,48 @@ Remove-Item "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCac
     Remove-Item $subScript -Force -ErrorAction SilentlyContinue
 }
 
+function Reset-StuckServices {
+    Write-Status -Message 'Attempting to reset stuck Windows Update services...'
+    
+    # Kill all related processes
+    $processes = @('wuauserv.exe', 'svchost.exe', 'trustedinstaller.exe')
+    foreach ($proc in $processes) {
+        taskkill /im $proc /f *>$null 2>&1
+    }
+    
+    # Wait for processes to terminate
+    Start-Sleep 5
+    
+    # Reset service state using sc.exe
+    sc.exe stop wuauserv *>$null 2>&1
+    sc.exe stop bits *>$null 2>&1
+    sc.exe stop dosvc *>$null 2>&1
+    sc.exe stop usosvc *>$null 2>&1
+    
+    Start-Sleep 3
+    
+    # Try to start services fresh
+    sc.exe start bits *>$null 2>&1
+    sc.exe start wuauserv *>$null 2>&1
+    
+    Start-Sleep 5
+    
+    # Check if services are now responsive
+    try {
+        $wuauserv = Get-Service -Name wuauserv -ErrorAction Stop
+        if ($wuauserv.Status -ne 'StartPending' -and $wuauserv.Status -ne 'StopPending') {
+            Write-Status -Message 'Windows Update services reset successfully'
+            return $true
+        }
+    }
+    catch {
+        # Service still not responding
+    }
+    
+    Write-Status -Message 'Could not reset Windows Update services' -IsError $true
+    return $false
+}
+
 #endregion
 
 #region Main Execution
@@ -634,24 +866,51 @@ function Main {
         Exit
     }
     
-    # Execute removal steps
-    Stop-AIProcesses
-    Set-RegistryKeys
-    Remove-CopilotNudges
-    Update-IntegratedServicesPolicy
-    Remove-AIPackages
-    Remove-EndOfLifeKeys
-    Remove-RecallFeature
-    Remove-PackageFiles
-    Remove-MachineLearningDLLs
-    Remove-CopilotInstallers
-    Set-AdditionalSettings
-    Remove-RecallData
-    
-    # Completion
-    if (-not $Force) {
-        $input = Read-Host 'Done! Press Any Key to Exit'
-        if ($input) { exit }
+    try {
+        # Execute removal steps
+        Stop-AIProcesses
+        Set-RegistryKeys
+        Remove-CopilotNudges
+        Update-IntegratedServicesPolicy
+        Remove-AIPackages
+        Remove-EndOfLifeKeys
+        Remove-RecallFeature
+        Remove-PackageFiles
+        Remove-MachineLearningDLLs
+        Remove-CopilotInstallers
+        Set-AdditionalSettings
+        Remove-RecallData
+        
+        Write-Status -Message 'Windows AI removal completed successfully!'
+    }
+    catch {
+        Write-Status -Message "Error during AI removal: $($_.Exception.Message)" -IsError $true
+        Write-Status -Message 'Attempting emergency service restoration...' -IsError $true
+        
+        # Emergency service restoration
+        try {
+            if (-not (Reset-StuckServices)) {
+                # Fallback to manual restoration
+                $relatedServices = @('BITS', 'DoSvc', 'UsoSvc', 'wuauserv')
+                foreach ($service in $relatedServices) {
+                    if ((Get-Service -Name $service -ErrorAction SilentlyContinue).StartupType -eq 'Disabled') {
+                        Set-Service -Name $service -StartupType Automatic -ErrorAction SilentlyContinue
+                    }
+                    Start-Service -Name $service -ErrorAction SilentlyContinue
+                }
+            }
+            Write-Status -Message 'Emergency service restoration completed'
+        }
+        catch {
+            Write-Status -Message 'Emergency service restoration failed' -IsError $true
+        }
+    }
+    finally {
+        # Completion
+        if (-not $Force) {
+            $input = Read-Host 'Done! Press Any Key to Exit'
+            if ($input) { exit }
+        }
     }
 }
 
