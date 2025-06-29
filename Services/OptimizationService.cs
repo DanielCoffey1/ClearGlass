@@ -231,11 +231,21 @@ namespace ClearGlass.Services
                 CustomMessageBox.Show("Starting Windows AI component removal...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await RemoveWindowsAIComponents();
                 
+                var message =
+                    "✅ Windows AI components have been successfully removed!\n\n" +
+                    "🔄 **Restart Recommendation:**\n\n" +
+                    "• Some AI components may require a system restart to be fully removed.\n\n" +
+                    "• **If any AI features weren't removed successfully, restart your computer and click 'Remove AI Components' again.**\n\n" +
+                    "• This is normal Windows behavior—running processes can lock files during removal.\n\n" +
+                    "• A restart ensures all cleanup operations complete successfully.\n\n" +
+                    "💡 **Tip:**\nIf you plan to run additional cleanup operations, consider restarting first for best results.";
+                
                 CustomMessageBox.Show(
-                    "Windows AI components have been successfully removed!",
-                    "AI Removal Complete",
+                    message,
+                    "AI Removal Complete! 🎉",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    MessageBoxImage.Information,
+                    System.Windows.TextAlignment.Center);
             }
             catch (Exception ex)
             {

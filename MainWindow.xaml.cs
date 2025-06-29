@@ -2418,7 +2418,7 @@ namespace ClearGlass
 
         private async void OnRemoveWindowsAIClick(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = CustomMessageBox.Show(
                 "This will remove Windows AI components including Copilot, Recall, and related features.\n\nDo you want to continue?",
                 "Remove Windows AI Components",
                 MessageBoxButton.YesNo,
@@ -2434,7 +2434,7 @@ namespace ClearGlass
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error removing Windows AI components: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    CustomMessageBox.Show($"Error removing Windows AI components: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }

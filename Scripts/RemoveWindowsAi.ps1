@@ -33,6 +33,7 @@ $script:Config = @{
         'ClickToDo.exe'
         'aixhost.exe'
         'WorkloadsSessionHost.exe'
+        'wsaifabricsvc.exe'
     )
     
     AIPackages = @(
@@ -295,6 +296,60 @@ function Update-IntegratedServicesPolicy {
 }
 
 function Remove-AIPackages {
+    Write-Status -Message 'Preparing for AI Appx Package Removal...'
+    
+    # Disable Windows Update to prevent interference
+    Write-Status -Message 'Disabling Windows Update temporarily...'
+    try {
+        Set-Service -Name wuauserv -StartupType Disabled -ErrorAction SilentlyContinue
+        Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-Status -Message 'Could not disable Windows Update service' -IsError $true
+    }
+    
+    # Clear package cache to remove stuck packages
+    Write-Status -Message 'Clearing package cache...'
+    try {
+        Remove-Item "$env:LOCALAPPDATA\Packages\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:ProgramData\Packages\*" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-Status -Message 'Could not clear all package cache' -IsError $true
+    }
+    
+    # Set non-removable policies for all AI packages before removal
+    Write-Status -Message 'Setting package removal policies...'
+    $provisioned = Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue
+    $appxpackage = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+    
+    foreach ($package in $Config.AIPackages) {
+        # Handle provisioned packages
+        $provisionedPackages = $provisioned | Where-Object { $_.PackageName -like "*$package*" }
+        foreach ($provPkg in $provisionedPackages) {
+            $matchingAppx = $appxpackage | Where-Object { $_.Name -eq $provPkg.DisplayName }
+            if ($matchingAppx) {
+                try {
+                    Set-NonRemovableAppsPolicy -Online -PackageFamilyName $matchingAppx.PackageFamilyName -NonRemovable 0 -ErrorAction SilentlyContinue
+                }
+                catch {
+                    # Continue if this fails
+                }
+            }
+        }
+        
+        # Handle installed packages
+        $installedPackages = $appxpackage | Where-Object { $_.PackageFullName -like "*$package*" }
+        foreach ($instPkg in $installedPackages) {
+            try {
+                Set-NonRemovableAppsPolicy -Online -PackageFamilyName $instPkg.PackageFamilyName -NonRemovable 0 -ErrorAction SilentlyContinue
+            }
+            catch {
+                # Continue if this fails
+            }
+        }
+    }
+    
     Write-Status -Message 'Removing AI Appx Packages...'
     
     # Create package removal script
@@ -358,20 +413,32 @@ foreach (`$choice in `$aipackages) {
         Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d 'Unrestricted' /f *>$null
     }
     
-    # Execute package removal
+    # Execute package removal with improved retry logic
     $command = "&'$packageRemovalPath'"
-    Invoke-TrustedCommand -Command $command
+    $maxRetries = 3
+    $retryCount = 0
     
-    # Verify removal and retry if needed
     do {
-        Start-Sleep 1
+        $retryCount++
+        Write-Status -Message "Package removal attempt $retryCount of $maxRetries..."
+        
+        Invoke-TrustedCommand -Command $command
+        
+        # Check if packages still exist
+        Start-Sleep (2 * $retryCount)  # Progressive delay: 2s, 4s, 6s
         $packages = Get-AppxPackage -AllUsers | Where-Object { $Config.AIPackages -contains $_.Name }
-        if ($packages) {
-            Invoke-TrustedCommand -Command $command
+        
+        if ($packages -and $retryCount -lt $maxRetries) {
+            Write-Status -Message "Some packages remain, retrying..." -IsError $true
         }
-    } while ($packages)
+    } while ($packages -and $retryCount -lt $maxRetries)
     
-    Write-Status -Message 'Packages Removed Successfully...'
+    if ($packages) {
+        Write-Status -Message "Some packages could not be removed after $maxRetries attempts" -IsError $true
+        Write-Status -Message "Continuing with other removal methods..."
+    } else {
+        Write-Status -Message 'Packages Removed Successfully...'
+    }
     
     # Cleanup
     Remove-Item $packageRemovalPath -Force -ErrorAction SilentlyContinue
@@ -379,6 +446,16 @@ foreach (`$choice in `$aipackages) {
     # Restore execution policy
     if ($script:originalExecutionPolicy) {
         Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d $script:originalExecutionPolicy /f *>$null
+    }
+    
+    # Re-enable Windows Update
+    Write-Status -Message 'Re-enabling Windows Update...'
+    try {
+        Set-Service -Name wuauserv -StartupType Automatic -ErrorAction SilentlyContinue
+        Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-Status -Message 'Could not re-enable Windows Update service' -IsError $true
     }
 }
 
