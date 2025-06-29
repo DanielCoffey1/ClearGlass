@@ -1045,6 +1045,36 @@
 
                                 <!-- App Info -->
                                 <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Remove Windows AI Components"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="This will remove Windows AI components including Copilot, Recall, and related features. This includes killing AI processes, disabling registry keys, removing AppX packages, and cleaning up files and scheduled tasks."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Remove AI Components"
+                                            Style="{StaticResource TinyButton}"
+                                            Margin="0,10,0,0"
+                                            Padding="16,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnRemoveWindowsAIClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
                                     <TextBlock Text="Full System Optimization"
                                              FontSize="16"
                                              FontWeight="SemiBold"

@@ -183,15 +183,21 @@ namespace ClearGlass.Services
 
                 await process.WaitForExitAsync();
                 
-                // Remove Windows AI components last
-                CustomMessageBox.Show("Removing Windows AI components...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
-                await RemoveWindowsAIComponents();
+                // Ask user if they want to remove Windows AI components
+                var aiResult = CustomMessageBox.Show(
+                    "Would you like to remove Windows AI components (Copilot, Recall, etc.) from your system?\n\nThis will kill AI processes, remove AppX packages, and disable related features.",
+                    "Remove Windows AI Components",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                if (aiResult == MessageBoxResult.Yes)
+                {
+                    await RemoveWindowsAIComponents();
+                }
                 
                 if (process.ExitCode == 0)
                 {
                     CustomMessageBox.Show(
-                        "Windows settings have been successfully optimized!\n\n" +
-                        "Windows AI components have been removed and all optimizations applied.",
+                        "Windows settings have been successfully optimized!\n\nIf you chose to remove Windows AI components, those have also been removed.",
                         "Success",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);

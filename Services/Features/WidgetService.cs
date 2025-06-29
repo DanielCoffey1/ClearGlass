@@ -199,6 +199,7 @@ namespace ClearGlass.Services.Features
                     if (!value)
                     {
                         KillWidgetsProcess();
+                        ShowWidgetsDisabledMessage();
                     }
                     else
                     {

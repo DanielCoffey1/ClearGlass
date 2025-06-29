@@ -2415,5 +2415,28 @@ namespace ClearGlass
                     MessageBoxImage.Error);
             }
         }
+
+        private async void OnRemoveWindowsAIClick(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will remove Windows AI components including Copilot, Recall, and related features.\n\nDo you want to continue?",
+                "Remove Windows AI Components",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    // Adjust this to your actual AI removal service call if needed
+                    var optimizationService = new OptimizationService();
+                    await optimizationService.RemoveWindowsAIOnly();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error removing Windows AI components: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
     }
 } 

@@ -38,7 +38,8 @@ namespace ClearGlass.Services
             "Microsoft.UI.Xaml", // Required UI framework
             "Microsoft.VCLibs", // Visual C++ Runtime
             "Microsoft.Services.Store.Engagement", // Required for Store
-            "Microsoft.NET" // .NET Runtime
+            "Microsoft.NET", // .NET Runtime
+            "Microsoft.Paint" // Paint
         };
 
         private List<string> _sessionEssentialApps = new();
