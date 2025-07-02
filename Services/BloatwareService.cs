@@ -38,7 +38,8 @@ namespace ClearGlass.Services
             "Microsoft.UI.Xaml", // Required UI framework
             "Microsoft.VCLibs", // Visual C++ Runtime
             "Microsoft.Services.Store.Engagement", // Required for Store
-            "Microsoft.NET" // .NET Runtime
+            "Microsoft.NET", // .NET Runtime
+            "Microsoft.Paint" // Paint
         };
 
         private List<string> _sessionEssentialApps = new();
@@ -578,19 +579,24 @@ namespace ClearGlass.Services
 
         private void ShowSuccessMessage(bool clearStartMenu)
         {
-            var message = "Windows bloatware has been successfully removed while keeping selected apps!";
+            var message = "✅ Windows bloatware has been successfully removed while keeping selected apps!";
             
             if (clearStartMenu)
             {
-                message += "\n\nThe start menu has also been cleared of all pinned applications.";
+                message += "\n\n🗂️ The start menu has also been cleared of all pinned applications.";
             }
             
-            message += "\n\nSome apps may require a system restart to be fully removed.";
+            message += "\n\n🔄 **Restart Recommendation:**\n" +
+                      "• Some components may require a system restart to be fully removed\n" +
+                      "• If any apps weren't removed successfully, restart your computer and run this again\n" +
+                      "• This is normal Windows behavior - running processes can lock files during removal\n" +
+                      "• A restart ensures all cleanup operations complete successfully\n\n" +
+                      "💡 **Tip:** If you plan to run additional cleanup operations, consider restarting first for best results.";
             
             _logger.LogInformation("Showing success message to user");
             CustomMessageBox.Show(
                 message,
-                "Success",
+                "Cleanup Complete! 🎉",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }

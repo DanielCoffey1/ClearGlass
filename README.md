@@ -46,6 +46,7 @@ Comprehensive system optimization tools that:
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
 - **Optional Windows 11 start menu clearing** (user choice to remove all pinned applications and disable recommendations for all users)
+- **Optional Microsoft Edge removal** (with detailed warnings about potential system impacts)
 - Safely remove pre-installed software:
   - Microsoft 365 and Office products (all installation types)
   - Microsoft OneNote (Program Files and Store versions)
@@ -116,6 +117,31 @@ Optional Microsoft Edge removal during bloatware cleanup:
 - **Logging**: Full operation logging for troubleshooting
 
 **Note**: Microsoft Edge is no longer protected by default and can be removed during cleanup. Users are strongly advised to consider the potential system impacts before choosing to remove Edge.
+
+### Windows AI Components Removal
+
+Comprehensive removal of Windows AI features and components:
+
+- **Prerequisite Warning**: Before removing AI components, you **MUST** first remove Windows bloatware:
+  - Certain bloatware components can interfere with AI removal
+  - Some AI features are tied to bloatware packages
+  - Removing bloatware first ensures cleaner AI removal
+  - **Recommended order**: Run 'Remove Windows Bloatware' → Restart PC → Run 'Remove AI Components'
+- **Targeted AI Removal**: Removes Windows AI components including:
+  - Windows Copilot and related features
+  - Recall functionality and data
+  - AI-powered suggestions and recommendations
+  - Machine learning components and DLLs
+  - AI-enhanced features in applications (Paint, Notepad, etc.)
+- **Process Management**: Kills running AI processes before removal
+- **Registry Cleanup**: Disables AI-related registry keys and policies
+- **Package Removal**: Removes AI AppX packages and components
+- **File Cleanup**: Removes AI-related files, scheduled tasks, and data
+- **User Guidance**: Provides clear restart recommendations for complete removal
+- **Safe Execution**: Runs with elevated privileges and proper error handling
+- **Visual Feedback**: Custom-styled confirmation dialogs and success messages
+
+**Note**: Some AI components may require a system restart to be fully removed. If removal appears incomplete, restart your computer and run the removal again.
 
 ### Clear Glass Theme
 

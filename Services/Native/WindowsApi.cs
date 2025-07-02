@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace ClearGlass.Services.Native
 {
     /// <summary>
-    /// Provides access to Windows API functions through P/Invoke
+    /// Provides access to Windows API functions for theme operations
     /// </summary>
     internal static class WindowsApi
     {
@@ -31,12 +31,13 @@ namespace ClearGlass.Services.Native
 
         #region Window Management
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+        public static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
 
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
+        public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, string? lpszWindow);
 
         [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool IsWindowVisible(IntPtr hWnd);
 
         [DllImport("user32.dll")]
@@ -64,21 +65,30 @@ namespace ClearGlass.Services.Native
             uint uiParam,
             string? pvParam,
             uint fWinIni);
+
+        [DllImport("user32.dll")]
+        public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        public static extern bool SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
         #endregion
 
         /// <summary>
-        /// Broadcasts a theme change message to all windows
+        /// Broadcasts a message to all top-level windows
         /// </summary>
-        public static void BroadcastMessage(int msg, string? lParam = null)
+        public static void BroadcastMessage(uint message, string? lParam = null)
         {
-            SendMessageTimeout(
-                new IntPtr(HWND_BROADCAST),
-                msg,
-                IntPtr.Zero,
-                lParam,
-                SMTO_ABORTIFHUNG | SMTO_NORMAL,
-                300,
-                out _);
+            if (lParam != null)
+            {
+                SendMessage(new IntPtr(HWND_BROADCAST), message, IntPtr.Zero, lParam);
+            }
+            else
+            {
+                PostMessage(new IntPtr(HWND_BROADCAST), message, IntPtr.Zero, IntPtr.Zero);
+            }
         }
     }
 } 

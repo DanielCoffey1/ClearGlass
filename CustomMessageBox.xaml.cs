@@ -19,11 +19,12 @@ namespace ClearGlass
             };
         }
 
-        public static MessageBoxResult Show(string message, string title = "Clear Glass", MessageBoxButton buttons = MessageBoxButton.OK, MessageBoxImage icon = MessageBoxImage.None)
+        public static MessageBoxResult Show(string message, string title = "Clear Glass", MessageBoxButton buttons = MessageBoxButton.OK, MessageBoxImage icon = MessageBoxImage.None, System.Windows.TextAlignment alignment = System.Windows.TextAlignment.Left)
         {
             var msgBox = new CustomMessageBox();
             msgBox.Title = title;
             msgBox.MessageText.Text = message;
+            msgBox.MessageText.TextAlignment = alignment;
 
             // Configure buttons
             switch (buttons)
