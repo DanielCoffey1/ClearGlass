@@ -2,16 +2,16 @@
 
 <#
 .SYNOPSIS
-    Remove Windows AI components including Copilot, Recall, and related features.
+    Comprehensive Windows AI component removal script for Copilot, Recall, and related features.
 .DESCRIPTION
-    This script removes Windows AI components by:
-    - Killing AI processes
-    - Disabling registry keys and policies
-    - Removing AppX packages
-    - Cleaning up files and scheduled tasks
-    - Disabling optional features
+    This script performs a complete removal of Windows AI components by:
+    - Terminating AI-related processes
+    - Disabling registry keys and group policies
+    - Removing AppX packages and optional features
+    - Cleaning up files, scheduled tasks, and cached data
+    - Restoring Windows Update services to working state
 .PARAMETER Force
-    Skip confirmation prompts
+    Skip user confirmation prompts for automated execution
 .EXAMPLE
     .\RemoveWindowsAi.ps1
 .EXAMPLE
@@ -25,6 +25,7 @@ param(
 
 #region Configuration
 $script:Config = @{
+    # AI-related processes to terminate
     AIProcesses = @(
         'ai.exe'
         'Copilot.exe'
@@ -36,6 +37,7 @@ $script:Config = @{
         'wsaifabricsvc.exe'
     )
     
+    # AppX packages to remove (includes Copilot+ PC components)
     AIPackages = @(
         'MicrosoftWindows.Client.Photon'
         'MicrosoftWindows.Client.AIX'
@@ -44,7 +46,7 @@ $script:Config = @{
         'Microsoft.Copilot'
         'Microsoft.MicrosoftOfficeHub'
         'MicrosoftWindows.Client.CoreAI'
-        # AI component packages installed on Copilot+ PCs
+        # Copilot+ PC specific workload packages
         'WindowsWorkload.Data.Analysis.Stx.1'
         'WindowsWorkload.Manager.1'
         'WindowsWorkload.PSOnnxRuntime.Stx.2.7'
@@ -72,6 +74,7 @@ $script:Config = @{
         'WindowsWorkload.ImageTextSearch.Stx.3'
     )
     
+    # Machine Learning DLLs to remove
     MachineLearningDLLs = @(
         "$env:SystemRoot\System32\Windows.AI.MachineLearning.dll"
         "$env:SystemRoot\SysWOW64\Windows.AI.MachineLearning.dll"
@@ -83,6 +86,10 @@ $script:Config = @{
 
 #region Helper Functions
 
+<#
+.SYNOPSIS
+    Outputs status messages with consistent formatting and color coding.
+#>
 function Write-Status {
     param(
         [string]$Message,
@@ -94,15 +101,27 @@ function Write-Status {
     Write-Host "$prefix $Message" -ForegroundColor $color
 }
 
+<#
+.SYNOPSIS
+    Verifies that the script is running with administrator privileges.
+#>
 function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+<#
+.SYNOPSIS
+    Executes commands with system-level privileges using TrustedInstaller service.
+.DESCRIPTION
+    Temporarily modifies TrustedInstaller service to execute commands with elevated privileges,
+    then restores the service to its original state.
+#>
 function Invoke-TrustedCommand {
     param([string]$Command, [int]$TimeoutSeconds = 300)
     
+    # Stop TrustedInstaller service
     try {
         Stop-Service -Name TrustedInstaller -Force -ErrorAction Stop -WarningAction Stop
     }
@@ -110,7 +129,7 @@ function Invoke-TrustedCommand {
         taskkill /im trustedinstaller.exe /f *>$null
     }
     
-    # Get original binary path
+    # Get and validate original binary path
     $service = Get-WmiObject -Class Win32_Service -Filter "Name='TrustedInstaller'"
     $defaultBinPath = $service.PathName
     $trustedInstallerPath = "$env:SystemRoot\servicing\TrustedInstaller.exe"
@@ -119,20 +138,19 @@ function Invoke-TrustedCommand {
         $defaultBinPath = $trustedInstallerPath
     }
     
-    # Convert command to base64 to avoid errors with spaces
+    # Convert command to base64 to handle spaces and special characters
     $bytes = [System.Text.Encoding]::Unicode.GetBytes($Command)
     $base64Command = [Convert]::ToBase64String($bytes)
     
-    # Change binary path to command
+    # Temporarily modify service to execute our command
     sc.exe config TrustedInstaller binPath= "cmd.exe /c powershell.exe -encodedcommand $base64Command" | Out-Null
     
-    # Run the command with timeout
+    # Execute command with timeout
     $job = Start-Job -ScriptBlock {
         param($serviceName)
         sc.exe start $serviceName
     } -ArgumentList "TrustedInstaller"
     
-    # Wait for job completion with timeout
     if (Wait-Job -Job $job -Timeout $TimeoutSeconds) {
         Receive-Job -Job $job
     } else {
@@ -142,7 +160,7 @@ function Invoke-TrustedCommand {
     
     Remove-Job -Job $job -ErrorAction SilentlyContinue
     
-    # Restore original binary path
+    # Restore original service configuration
     sc.exe config TrustedInstaller binpath= "`"$defaultBinPath`"" | Out-Null
     
     try {
@@ -153,9 +171,14 @@ function Invoke-TrustedCommand {
     }
 }
 
+<#
+.SYNOPSIS
+    Removes files that require ownership changes or elevated privileges.
+#>
 function Remove-FileWithOwnership {
     param([string]$FilePath)
     
+    # Take ownership and grant full permissions
     takeown /f $FilePath *>$null
     icacls $FilePath /grant administrators:F /t *>$null
     
@@ -163,7 +186,7 @@ function Remove-FileWithOwnership {
         Remove-Item -Path $FilePath -Force -ErrorAction Stop
     }
     catch {
-        # If takeown didn't work, remove with system privileges
+        # Fallback to system-level removal if standard removal fails
         $command = "Remove-Item -Path '$FilePath' -Force"
         Invoke-TrustedCommand -Command $command
     }
@@ -173,8 +196,12 @@ function Remove-FileWithOwnership {
 
 #region Main Functions
 
+<#
+.SYNOPSIS
+    Terminates all AI-related processes to prevent interference during removal.
+#>
 function Stop-AIProcesses {
-    Write-Status -Message 'Killing AI Processes...'
+    Write-Status -Message 'Terminating AI processes...'
     
     foreach ($processName in $Config.AIProcesses) {
         try {
@@ -186,13 +213,21 @@ function Stop-AIProcesses {
     }
 }
 
+<#
+.SYNOPSIS
+    Disables Windows AI features through registry modifications and group policies.
+.DESCRIPTION
+    Sets registry keys to disable Copilot, Recall, and other AI features across
+    both machine and user contexts, including Paint AI features and related services.
+#>
 function Set-RegistryKeys {
-    Write-Status -Message 'Disabling Copilot and Recall...'
+    Write-Status -Message 'Disabling AI features via registry...'
     
-    # Set registry keys for both HKLM and HKCU
+    # Apply registry changes to both machine and user contexts
     $hives = @('HKLM', 'HKCU')
     
     foreach ($hive in $hives) {
+        # Core AI and Copilot policies
         Reg.exe add "$hive\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot" /v 'TurnOffWindowsCopilot' /t REG_DWORD /d '1' /f *>$null
         Reg.exe add "$hive\SOFTWARE\Policies\Microsoft\Windows\WindowsAI" /v 'DisableAIDataAnalysis' /t REG_DWORD /d '1' /f *>$null
         Reg.exe add "$hive\SOFTWARE\Policies\Microsoft\Windows\WindowsAI" /v 'AllowRecallEnablement' /t REG_DWORD /d '0' /f *>$null
@@ -202,11 +237,11 @@ function Set-RegistryKeys {
         Reg.exe add "$hive\SOFTWARE\Microsoft\Windows\Shell\Copilot" /v 'CopilotDisabledReason' /t REG_SZ /d 'FeatureIsDisabled' /f *>$null
     }
     
-    # User-specific registry keys
+    # User-specific AI settings
     Reg.exe add 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v 'ShowCopilotButton' /t REG_DWORD /d '0' /f *>$null
     Reg.exe add 'HKCU\Software\Microsoft\input\Settings' /v 'InsightsEnabled' /t REG_DWORD /d '0' /f *>$null
     
-    # Additional registry keys
+    # Additional AI and privacy policies
     Reg.exe add 'HKCU\SOFTWARE\Policies\Microsoft\Windows\Explorer' /v 'DisableSearchBoxSuggestions' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Edge' /v 'CopilotCDPPageContext' /t REG_DWORD /d '0' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Edge' /v 'CopilotPageContext' /t REG_DWORD /d '0' /f *>$null
@@ -217,8 +252,8 @@ function Set-RegistryKeys {
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy' /v 'LetAppsAccessSystemAIModels' /t REG_DWORD /d '2' /f *>$null
     Reg.exe add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsCopilot' /v 'AllowCopilotRuntime' /t REG_DWORD /d '0' /f *>$null
     
-    # Disable AI image creator in Paint
-    Write-Status -Message 'Disabling Image Creator In Paint...'
+    # Disable Paint AI features
+    Write-Status -Message 'Disabling Paint AI features...'
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'Behavior' /t REG_DWORD /d '1056800' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'highrange' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'lowrange' /t REG_DWORD /d '0' /f *>$null
@@ -231,16 +266,20 @@ function Set-RegistryKeys {
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableCocreator' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableGenerativeFill' /t REG_DWORD /d '1' /f *>$null
     
-    # Disable WSAIFabricSvc service
+    # Disable AI fabric service
     Reg.exe add "HKLM\SYSTEM\CurrentControlSet\Services\WSAIFabricSvc" /v "Start" /t REG_DWORD /d "4" /f *>$null
     Stop-Service -Name WSAIFabricSvc -Force -ErrorAction SilentlyContinue
     
-    Write-Status -Message 'Applying Registry Changes...'
+    Write-Status -Message 'Applying group policy changes...'
     gpupdate /force *>$null
 }
 
+<#
+.SYNOPSIS
+    Removes Copilot nudge registry entries that enable AI suggestions and prompts.
+#>
 function Remove-CopilotNudges {
-    Write-Status -Message 'Removing Copilot Nudges Registry Keys...'
+    Write-Status -Message 'Removing Copilot nudge registry entries...'
     
     $nudgeKeys = @(
         'registry::HKCR\Extensions\ContractId\Windows.BackgroundTasks\PackageId\MicrosoftWindows.Client.Core_*.*.*.*_x64__cw5n1h2txyewy\ActivatableClassId\Global.CopilotNudges.AppX*.wwa'
@@ -258,6 +297,7 @@ function Remove-CopilotNudges {
             $fullKeys = Get-Item -Path $key -ErrorAction Stop
             if ($null -eq $fullKeys) { continue }
             
+            # Handle multiple matching keys
             if ($fullKeys.Length -gt 1) {
                 foreach ($multiKey in $fullKeys) {
                     $command = "Remove-Item -Path 'registry::$multiKey' -Force -Recurse"
@@ -279,14 +319,18 @@ function Remove-CopilotNudges {
     }
 }
 
+<#
+.SYNOPSIS
+    Disables Copilot policies in the Windows integrated services policy configuration.
+#>
 function Update-IntegratedServicesPolicy {
     $jsonPath = "$env:windir\System32\IntegratedServicesRegionPolicySet.json"
     
     if (-not (Test-Path $jsonPath)) { return }
     
-    Write-Status -Message 'Disabling CoPilot Policies in IntegratedServicesRegionPolicySet.json...'
+    Write-Status -Message 'Disabling Copilot policies in integrated services configuration...'
     
-    # Take ownership
+    # Take ownership and set permissions
     takeown /f $jsonPath *>$null
     icacls $jsonPath /grant administrators:F /t *>$null
     
@@ -300,10 +344,10 @@ function Update-IntegratedServicesPolicy {
         
         $newJsonContent = $jsonContent | ConvertTo-Json -Depth 100
         Set-Content $jsonPath -Value $newJsonContent -Force
-        Write-Status -Message "$($copilotPolicies.Count) Copilot Policies Disabled"
+        Write-Status -Message "$($copilotPolicies.Count) Copilot policies disabled"
     }
     catch {
-        Write-Status -Message 'CoPilot Not Found in IntegratedServicesRegionPolicySet' -IsError $true
+        Write-Status -Message 'Copilot policies not found in integrated services configuration' -IsError $true
     }
 }
 
@@ -859,15 +903,22 @@ function Reset-StuckServices {
 
 #region Main Execution
 
+<#
+.SYNOPSIS
+    Main execution function that orchestrates the complete AI removal process.
+.DESCRIPTION
+    Performs all AI removal steps in sequence, with error handling and service restoration.
+    Includes emergency recovery procedures if the main process fails.
+#>
 function Main {
-    # Check for administrator privileges
+    # Verify administrator privileges
     if (-not (Test-Administrator)) {
         Start-Process PowerShell.exe -ArgumentList ("-NoProfile -ExecutionPolicy Bypass -File `"{0}`"" -f $PSCommandPath) -Verb RunAs
         Exit
     }
     
     try {
-        # Execute removal steps
+        # Execute AI removal steps in sequence
         Stop-AIProcesses
         Set-RegistryKeys
         Remove-CopilotNudges
@@ -885,12 +936,12 @@ function Main {
     }
     catch {
         Write-Status -Message "Error during AI removal: $($_.Exception.Message)" -IsError $true
-        Write-Status -Message 'Attempting emergency service restoration...' -IsError $true
+        Write-Status -Message 'Initiating emergency service restoration...' -IsError $true
         
-        # Emergency service restoration
+        # Emergency service restoration procedures
         try {
             if (-not (Reset-StuckServices)) {
-                # Fallback to manual restoration
+                # Manual service restoration fallback
                 $relatedServices = @('BITS', 'DoSvc', 'UsoSvc', 'wuauserv')
                 foreach ($service in $relatedServices) {
                     if ((Get-Service -Name $service -ErrorAction SilentlyContinue).StartupType -eq 'Disabled') {
@@ -906,7 +957,7 @@ function Main {
         }
     }
     finally {
-        # Completion
+        # Script completion handling
         if (-not $Force) {
             $input = Read-Host 'Done! Press Any Key to Exit'
             if ($input) { exit }

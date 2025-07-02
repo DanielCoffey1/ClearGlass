@@ -442,6 +442,20 @@ namespace ClearGlass
                         "Success",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
+
+                    // Show AI removal notification
+                    CustomMessageBox.Show(
+                        "💡 **Important AI Removal Notice:**\n\n" +
+                        "If you plan to use the 'Remove AI Components' button later:\n\n" +
+                        "🔄 **Please restart your PC first!**\n\n" +
+                        "• Running the AI removal script without a restart may cause it to get stuck\n" +
+                        "• A restart ensures all AI processes are fully stopped\n" +
+                        "• This prevents the script from hanging during removal\n\n" +
+                        "After restarting, you can safely use the 'Remove AI Components' button from the Windows Optimizations panel.",
+                        "AI Removal Recommendation",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information,
+                        System.Windows.TextAlignment.Left);
                 }
                 catch (Exception ex)
                 {
@@ -913,6 +927,20 @@ namespace ClearGlass
                         "Success",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
+
+                    // Show AI removal notification
+                    CustomMessageBox.Show(
+                        "💡 **Important AI Removal Notice:**\n\n" +
+                        "If you plan to use the 'Remove AI Components' button later:\n\n" +
+                        "🔄 **Please restart your PC first!**\n\n" +
+                        "• Running the AI removal script without a restart may cause it to get stuck\n" +
+                        "• A restart ensures all AI processes are fully stopped\n" +
+                        "• This prevents the script from hanging during removal\n\n" +
+                        "After restarting, you can safely use the 'Remove AI Components' button from the Windows Optimizations panel.",
+                        "AI Removal Recommendation",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information,
+                        System.Windows.TextAlignment.Left);
                 }
                 catch (Exception ex)
                 {
@@ -2418,8 +2446,42 @@ namespace ClearGlass
 
         private async void OnRemoveWindowsAIClick(object sender, RoutedEventArgs e)
         {
+            // First warning about bloatware removal
+            var bloatwareWarning = CustomMessageBox.Show(
+                "⚠️ **Important Prerequisite Warning:**\n\n" +
+                "Before removing Windows AI components, you **MUST** first remove Windows bloatware!\n\n" +
+                "**Why this is required:**\n" +
+                "• Certain bloatware components can interfere with AI removal\n" +
+                "• Some AI features are tied to bloatware packages\n" +
+                "• Removing bloatware first ensures cleaner AI removal\n\n" +
+                "**Recommended order:**\n" +
+                "1. Run 'Remove Windows Bloatware' first\n" +
+                "2. Restart your PC\n" +
+                "3. Then run 'Remove AI Components'\n\n" +
+                "Have you already removed Windows bloatware from your system?",
+                "Bloatware Removal Required",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (bloatwareWarning == MessageBoxResult.No)
+            {
+                CustomMessageBox.Show(
+                    "Please run 'Remove Windows Bloatware' first, then restart your PC before attempting to remove AI components.",
+                    "Action Required",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // Second confirmation for AI removal
             var result = CustomMessageBox.Show(
-                "This will remove Windows AI components including Copilot, Recall, and related features.\n\nDo you want to continue?",
+                "This will remove Windows AI components including Copilot, Recall, and related features.\n\n" +
+                "**What this does:**\n" +
+                "• Kills AI processes\n" +
+                "• Removes AppX packages\n" +
+                "• Disables registry keys and policies\n" +
+                "• Cleans up files and scheduled tasks\n\n" +
+                "Do you want to continue?",
                 "Remove Windows AI Components",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
