@@ -306,14 +306,19 @@ namespace ClearGlass
                 _themeService.IsTaskbarCentered = false;
                 await Task.Delay(200);
 
-                // Apply task view and search settings
+                // Apply task view settings
                 TaskViewToggle.IsChecked = false;
                 _themeService.IsTaskViewEnabled = false;
                 await Task.Delay(100);
 
+                // Show search first to ensure proper state, then hide
+                SearchToggle.IsChecked = true;
+                _themeService.IsSearchVisible = true;
+                await Task.Delay(200);
+
                 SearchToggle.IsChecked = false;
                 _themeService.IsSearchVisible = false;
-                await Task.Delay(100);
+                await Task.Delay(200);
 
                 // Second shell refresh after UI changes
                 _themeService.RefreshWindows();
@@ -413,14 +418,19 @@ namespace ClearGlass
                     _themeService.IsTaskbarCentered = false;
                     await Task.Delay(200);
 
-                    // Apply task view and search settings
+                    // Apply task view settings
                     TaskViewToggle.IsChecked = false;
                     _themeService.IsTaskViewEnabled = false;
                     await Task.Delay(100);
 
+                    // Show search first to ensure proper state, then hide
+                    SearchToggle.IsChecked = true;
+                    _themeService.IsSearchVisible = true;
+                    await Task.Delay(200);
+
                     SearchToggle.IsChecked = false;
                     _themeService.IsSearchVisible = false;
-                    await Task.Delay(100);
+                    await Task.Delay(200);
 
                     // Second shell refresh after UI changes
                     _themeService.RefreshWindows();
