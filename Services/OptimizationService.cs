@@ -217,29 +217,6 @@ namespace ClearGlass.Services
         {
             try
             {
-                var warningMessage = 
-                    "⚠️ **Important Information:**\n\n" +
-                    "This will remove Windows AI components including Copilot, Recall, and related features.\n\n" +
-                    "**What this does:**\n" +
-                    "• Kills AI processes\n" +
-                    "• Removes AppX packages\n" +
-                    "• Disables registry keys and policies\n" +
-                    "• Cleans up files and scheduled tasks\n\n" +
-                    "**Note:** The script has been improved to prevent Windows Update service conflicts.\n" +
-                    "If you experience any issues, the script will automatically attempt to restore services.\n\n" +
-                    "Do you want to continue?";
-                
-                var result = CustomMessageBox.Show(
-                    warningMessage,
-                    "Remove Windows AI Components",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-                
-                if (result != MessageBoxResult.Yes)
-                {
-                    return;
-                }
-                
                 CustomMessageBox.Show("Starting Windows AI component removal...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await RemoveWindowsAIComponents();
                 

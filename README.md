@@ -46,6 +46,7 @@ Comprehensive system optimization tools that:
 - Improve system performance
 - Remove Windows bloatware (with protected apps support)
 - **Optional Windows 11 start menu clearing** (user choice to remove all pinned applications and disable recommendations for all users)
+- **Optional Microsoft Edge removal** (with detailed warnings about potential system impacts)
 - Safely remove pre-installed software:
   - Microsoft 365 and Office products (all installation types)
   - Microsoft OneNote (Program Files and Store versions)
@@ -121,6 +122,11 @@ Optional Microsoft Edge removal during bloatware cleanup:
 
 Comprehensive removal of Windows AI features and components:
 
+- **Prerequisite Warning**: Before removing AI components, you **MUST** first remove Windows bloatware:
+  - Certain bloatware components can interfere with AI removal
+  - Some AI features are tied to bloatware packages
+  - Removing bloatware first ensures cleaner AI removal
+  - **Recommended order**: Run 'Remove Windows Bloatware' → Restart PC → Run 'Remove AI Components'
 - **Targeted AI Removal**: Removes Windows AI components including:
   - Windows Copilot and related features
   - Recall functionality and data
