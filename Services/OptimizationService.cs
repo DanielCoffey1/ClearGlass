@@ -13,10 +13,7 @@ namespace ClearGlass.Services
         {
             try
             {
-                CustomMessageBox.Show("Starting Windows optimization...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                // Create restore point
-                CustomMessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Create restore point silently
                 await CreateRestorePoint();
 
                 // Run PowerShell commands with elevated privileges
@@ -183,33 +180,14 @@ namespace ClearGlass.Services
 
                 await process.WaitForExitAsync();
                 
-                if (process.ExitCode == 0)
-                {
-                    CustomMessageBox.Show(
-                        "Windows settings have been successfully optimized!",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
-                else
-                {
-                    CustomMessageBox.Show(
-                        "Some optimizations may not have completed successfully. Please check the system logs for more information.",
-                        "Warning",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                }
+                // Silent operation - no pop-ups
 
                 // Clean up the temporary script file
                 File.Delete(scriptPath);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                CustomMessageBox.Show(
-                    $"Error during optimization: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                // Silent fail
             }
         }
 

@@ -16,6 +16,7 @@ using System.Windows.Controls;
 using System.Reflection;
 using System.Linq;
 using System.Text.RegularExpressions;
+using ClearGlass.Services.Models;
 
 namespace ClearGlass
 {
@@ -138,8 +139,6 @@ namespace ClearGlass
             }
         }
 
-
-
         private async Task EnsureWallpaperAsync()
         {
             const int maxRetries = 3;
@@ -207,31 +206,25 @@ namespace ClearGlass
         {
             try
             {
-                // Apply Clear Glass theme automatically
-                await Task.Run(() => _themeService.IsDarkMode = true);
-                await Task.Delay(500);
+                // Batch all theme settings including wallpaper
+                var themeSettings = new ThemeSettings
+                {
+                    IsDarkMode = true,
+                    IsTaskbarCentered = true, // or false if you want left-aligned
+                    IsTaskViewEnabled = false,
+                    IsSearchVisible = false,
+                    AreDesktopIconsVisible = false,
+                    AreWidgetsEnabled = false,
+                    WallpaperPath = _wallpaperPath
+                };
 
-                // Apply taskbar settings
-                _themeService.IsTaskbarCentered = false;
-                await Task.Delay(200);
-
-                // Apply task view settings
-                _themeService.IsTaskViewEnabled = false;
-                await Task.Delay(100);
-
-                // Hide search
-                _themeService.IsSearchVisible = false;
-                await Task.Delay(200);
-
-                // Hide desktop icons
-                _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(500);
-
-                // Refresh Windows
-                _themeService.RefreshWindows();
+                await Task.Run(() => _themeService.ApplySettings(themeSettings));
+                
                 await Task.Delay(1000);
 
-                // Apply Clear Glass wallpaper
+                await Task.Run(() => _themeService.RefreshWindows());
+                await Task.Delay(1000);
+
                 await EnsureWallpaperAsync();
 
                 CustomMessageBox.Show(
@@ -249,120 +242,51 @@ namespace ClearGlass
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
-            finally
-            {
-                // Button re-enabled automatically
-            }
         }
 
         private async void OnClearGlassClick(object sender, RoutedEventArgs e)
         {
-            var result = CustomMessageBox.Show(
-                "This will apply the complete Clear Glass experience:\n\n" +
-                "1. Optimize Windows settings (privacy, performance, services)\n" +
-                "2. Remove unnecessary Windows bloatware\n" +
-                "3. Apply the Clear Glass theme (dark mode, left-aligned taskbar, etc.)\n\n" +
-                "A system restore point will be created before making changes.\n\n" +
-                "Do you want to continue?",
-                "Apply Complete Clear Glass Experience",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
+            // Remove all pop-ups for silent operation
+            try
             {
-                // Ask user if they want to apply additional tweaks
-                var tweaksResult = CustomMessageBox.Show(
-                    "Would you like to apply additional system tweaks?\n\n" +
-                    "This will apply:\n" +
-                    "• Remove OneDrive\n" +
-                    "• Disable Search Suggestions\n" +
-                    "• Disable Privacy Permissions\n" +
-                    "• Enable End Task in Taskbar\n" +
-                    "• Set This PC as Default\n" +
-                    "• Restore Classic Context Menu\n\n" +
-                    "These tweaks will be applied before the main Clear Glass functions.",
-                    "Apply Additional Tweaks",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                ClearGlassButton.IsEnabled = false;
 
-                try
+                // Apply tweaks first (no prompt)
+                await ApplyAllTweaks();
+
+                // Run Windows settings optimization
+                await _optimizationService.TweakWindowsSettings();
+                
+                // Run bloatware removal
+                await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+
+                // Apply Clear Glass theme using batched approach
+                var themeSettings = new ThemeSettings
                 {
-                    ClearGlassButton.IsEnabled = false;
+                    IsDarkMode = true,
+                    IsTaskbarCentered = false,
+                    IsTaskViewEnabled = false,
+                    IsSearchVisible = false,
+                    AreDesktopIconsVisible = false,
+                    AreWidgetsEnabled = false,
+                    WallpaperPath = _wallpaperPath
+                };
 
-                    // Apply tweaks first if user chose to
-                    if (tweaksResult == MessageBoxResult.Yes)
-                    {
-                        await ApplyAllTweaks();
-                    }
+                await Task.Run(() => _themeService.ApplySettings(themeSettings));
+                await Task.Delay(1000);
 
-                    // Run Windows settings optimization
-                    await _optimizationService.TweakWindowsSettings();
-                    
-                    // Run bloatware removal
-                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+                await Task.Run(() => _themeService.RefreshWindows());
+                await Task.Delay(1000);
 
-                    // Apply Clear Glass theme automatically
-                    await Task.Run(() => _themeService.IsDarkMode = true);
-                    await Task.Delay(500);
-
-                    // Apply taskbar settings
-                    _themeService.IsTaskbarCentered = false;
-                    await Task.Delay(200);
-
-                    // Apply task view settings
-                    _themeService.IsTaskViewEnabled = false;
-                    await Task.Delay(100);
-
-                    // Hide search
-                    _themeService.IsSearchVisible = false;
-                    await Task.Delay(200);
-
-                    // Hide desktop icons
-                    _themeService.AreDesktopIconsVisible = false;
-                    await Task.Delay(200);
-
-                    // Refresh Windows
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
-                    // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-                    await Task.Delay(300); // Give UI a moment to fully settle
-                    await EnsureWallpaperAsync();
-                    await Task.Delay(200); // Short delay after wallpaper change
-
-                    CustomMessageBox.Show(
-                        "Clear Glass experience has been fully applied!\n\n" +
-                        "Some changes may require a system restart to take full effect.",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
-                    // Show AI removal notification
-                    CustomMessageBox.Show(
-                        "💡 **Important AI Removal Notice:**\n\n" +
-                        "If you plan to use the 'Remove AI Components' button later:\n\n" +
-                        "🔄 **Please restart your PC first!**\n\n" +
-                        "• Running the AI removal script without a restart may cause it to get stuck\n" +
-                        "• A restart ensures all AI processes are fully stopped\n" +
-                        "• This prevents the script from hanging during removal\n\n" +
-                        "After restarting, you can safely use the 'Remove AI Components' button from the Windows Optimizations panel.",
-                        "AI Removal Recommendation",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information,
-                        System.Windows.TextAlignment.Left);
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Show(
-                        $"Error applying Clear Glass experience: {ex.Message}",
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-                }
-                finally
-                {
-                    ClearGlassButton.IsEnabled = true;
-                }
+                await EnsureWallpaperAsync();
+            }
+            catch (Exception)
+            {
+                // Silent fail
+            }
+            finally
+            {
+                ClearGlassButton.IsEnabled = true;
             }
         }
 
@@ -370,36 +294,17 @@ namespace ClearGlass
         {
             try
             {
-                // Show progress message
-                CustomMessageBox.Show(
-                    "Applying system tweaks...\n\n" +
-                    "This may take a few moments. Please wait.",
-                    "Applying Tweaks",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-
-                // Apply all tweaks in sequence
+                // Apply all tweaks in sequence, no pop-ups
                 await RemoveOneDrive();
                 await DisableSearchSuggestions();
                 await DisablePrivacyPermissions();
                 await EnableEndTask();
                 await SetThisPCDefault();
                 await RestoreClassicMenu();
-
-                CustomMessageBox.Show(
-                    "All system tweaks have been applied successfully!",
-                    "Tweaks Applied",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                CustomMessageBox.Show(
-                    $"Error applying tweaks: {ex.Message}\n\n" +
-                    "The main Clear Glass functions will continue.",
-                    "Tweak Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                // Silent fail
             }
         }
 
@@ -865,11 +770,6 @@ namespace ClearGlass
         {
             Application.Current.Shutdown();
         }
-
-
-
-
-
 
         private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
         {
@@ -1505,8 +1405,6 @@ namespace ClearGlass
                     MessageBoxImage.Error);
             }
         }
-
-
 
         private async void OnDisablePrivacyPermissionsClick(object sender, RoutedEventArgs e)
         {

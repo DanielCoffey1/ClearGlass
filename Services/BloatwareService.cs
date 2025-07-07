@@ -216,10 +216,9 @@ namespace ClearGlass.Services
         public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep, bool clearStartMenu = true)
         {
             _logger.LogOperationStart("Removing Windows bloatware");
-            ShowStartupMessage();
             
-            // Ask user about Edge removal
-            bool removeEdge = await AskUserAboutEdgeRemoval();
+            // Silent operation - no Edge removal, no pop-ups
+            bool removeEdge = false;
             
             string scriptPath = await CreateRemovalScript(appsToKeep);
 
@@ -228,24 +227,18 @@ namespace ClearGlass.Services
                 await ExecuteRemovalScript(scriptPath);
                 _logger.LogOperationComplete("Removing Windows bloatware");
                 
-                // Remove Edge if user requested it
-                if (removeEdge)
-                {
-                    await RemoveMicrosoftEdge();
-                }
-                
                 // Clear start menu after bloatware removal if requested
                 if (clearStartMenu)
                 {
                     await ClearStartMenu();
                 }
                 
-                ShowSuccessMessage(clearStartMenu);
+                // Silent success
             }
             catch (Exception ex)
             {
                 _logger.LogError("Error during bloatware removal", ex);
-                ShowError("Error during bloatware removal", ex);
+                // Silent fail
             }
             finally
             {
@@ -261,8 +254,8 @@ namespace ClearGlass.Services
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep)
         {
-            bool clearStartMenu = await AskUserAboutStartMenuClearing();
-            await RemoveWindowsBloatware(appsToKeep, clearStartMenu);
+            // Silent operation - always clear start menu
+            await RemoveWindowsBloatware(appsToKeep, true);
         }
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice()
@@ -339,11 +332,7 @@ namespace ClearGlass.Services
                         _logger.LogWarning("Scripts folder not found. Tried: {Path1} and {Path2}", 
                             Path.Combine(exeDir, "Scripts"), 
                             Path.Combine(Directory.GetCurrentDirectory(), "Scripts"));
-                        CustomMessageBox.Show(
-                            "Scripts folder not found. Please ensure the 'Scripts' folder is present in the application directory.",
-                            "Scripts Folder Missing",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
+                        // Silent fail - scripts folder not found
                         return;
                     }
                 }
@@ -355,11 +344,7 @@ namespace ClearGlass.Services
                 if (!File.Exists(scriptPath))
                 {
                     _logger.LogWarning("RemoveEdge.ps1 not found at: {Path}", scriptPath);
-                    CustomMessageBox.Show(
-                        "Edge removal script not found. Please ensure RemoveEdge.ps1 is present in the 'Scripts' folder.",
-                        "Edge Removal Script Missing",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    // Silent fail - Edge removal script not found
                     return;
                 }
 
@@ -386,33 +371,12 @@ namespace ClearGlass.Services
 
                 await process.WaitForExitAsync();
                 
-                if (process.ExitCode != 0)
-                {
-                    _logger.LogWarning("Edge removal script completed with non-zero exit code: {ExitCode}", process.ExitCode);
-                    CustomMessageBox.Show(
-                        "Edge removal completed with warnings. Some components may not have been removed successfully.",
-                        "Edge Removal Warning",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                }
-                else
-                {
-                    _logger.LogInformation("Edge removal script completed successfully");
-                    CustomMessageBox.Show(
-                        "Microsoft Edge has been successfully removed from your system.",
-                        "Edge Removal Complete",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                // Silent operation - no pop-ups
             }
             catch (Exception ex)
             {
                 _logger.LogError("Failed to remove Microsoft Edge", ex);
-                CustomMessageBox.Show(
-                    $"Error removing Microsoft Edge: {ex.Message}",
-                    "Edge Removal Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                // Silent fail
             }
         }
 

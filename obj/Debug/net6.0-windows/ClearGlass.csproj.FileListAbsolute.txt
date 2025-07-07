@@ -9,11 +9,13 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_MarkupCompile.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_MarkupCompile.lref
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\SetWallpaper.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\ClearStartMenu.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\GetInstalledApps.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveBloatware.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveEdge.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\RemoveWindowsAi.ps1
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Scripts\SetWallpaperSimple.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.exe
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.deps.json
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\ClearGlass.runtimeconfig.json
