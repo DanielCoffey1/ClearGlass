@@ -107,9 +107,6 @@ namespace ClearGlass
             // Set the ItemsSource for the InstalledAppsList
             InstalledAppsList.ItemsSource = _installedAppsCollection;
 
-            // Load current system settings into toggle states
-            LoadCurrentSettings();
-
             CheckForUpdatesAsync();
         }
 
@@ -141,82 +138,7 @@ namespace ClearGlass
             }
         }
 
-        private void LoadCurrentSettings()
-        {
-            TaskbarAlignmentToggle.IsChecked = _themeService.IsTaskbarCentered;
-            TaskViewToggle.IsChecked = _themeService.IsTaskViewEnabled;
-            SearchToggle.IsChecked = _themeService.IsSearchVisible;
-            DesktopIconsToggle.IsChecked = _themeService.AreDesktopIconsVisible;
-            ThemeToggle.IsChecked = _themeService.IsDarkMode;
-        }
 
-        private void OnTaskbarAlignmentToggle(object sender, RoutedEventArgs e)
-        {
-            _themeService.IsTaskbarCentered = TaskbarAlignmentToggle.IsChecked ?? false;
-        }
-
-        private void OnTaskViewToggle(object sender, RoutedEventArgs e)
-        {
-            _themeService.IsTaskViewEnabled = TaskViewToggle.IsChecked ?? false;
-        }
-
-        private void OnSearchToggle(object sender, RoutedEventArgs e)
-        {
-            _themeService.IsSearchVisible = SearchToggle.IsChecked ?? false;
-        }
-
-        private void OnDesktopIconsToggle(object sender, RoutedEventArgs e)
-        {
-            _themeService.AreDesktopIconsVisible = DesktopIconsToggle.IsChecked ?? false;
-        }
-
-        private async void OnThemeToggle(object sender, RoutedEventArgs e)
-        {
-            if (_isThemeChanging)
-            {
-                e.Handled = true;
-                return;
-            }
-
-            _isThemeChanging = true;
-            bool isDarkMode = ThemeToggle.IsChecked ?? false;
-
-            try
-            {
-                // Disable only theme toggle during change
-                ThemeToggle.IsEnabled = false;
-
-                await Task.Run(() =>
-                {
-                    try
-                    {
-                        _themeService.IsDarkMode = isDarkMode;
-                    }
-                    catch (Exception ex)
-                    {
-                        Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
-                        {
-                            CustomMessageBox.Show(
-                                $"Error changing theme: {ex.Message}",
-                                "Theme Change Error",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
-
-                            // Revert the toggle state
-                            ThemeToggle.IsChecked = !isDarkMode;
-                        }));
-                    }
-                });
-
-                // Shorter delay to let the theme change settle
-                await Task.Delay(400);
-            }
-            finally
-            {
-                ThemeToggle.IsEnabled = true;
-                _isThemeChanging = false;
-            }
-        }
 
         private async Task EnsureWallpaperAsync()
         {
@@ -285,51 +207,31 @@ namespace ClearGlass
         {
             try
             {
-                ClearGlassThemeButton.IsEnabled = false;
-
-                // Show desktop icons first
-                DesktopIconsToggle.IsChecked = true;
-                _themeService.AreDesktopIconsVisible = true;
-                await Task.Delay(200);
-
-                // Apply dark theme first as it's a major change
-                ThemeToggle.IsChecked = true;
+                // Apply Clear Glass theme automatically
                 await Task.Run(() => _themeService.IsDarkMode = true);
                 await Task.Delay(500);
 
-                // First shell refresh after theme change
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay after major theme change
-
                 // Apply taskbar settings
-                TaskbarAlignmentToggle.IsChecked = false;
                 _themeService.IsTaskbarCentered = false;
                 await Task.Delay(200);
 
                 // Apply task view settings
-                TaskViewToggle.IsChecked = false;
                 _themeService.IsTaskViewEnabled = false;
                 await Task.Delay(100);
 
-                // Show search first to ensure proper state, then hide
-                SearchToggle.IsChecked = true;
-                _themeService.IsSearchVisible = true;
-                await Task.Delay(200);
-
-                SearchToggle.IsChecked = false;
+                // Hide search
                 _themeService.IsSearchVisible = false;
                 await Task.Delay(200);
 
-                // Second shell refresh after UI changes
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay before wallpaper
-
                 // Hide desktop icons
-                DesktopIconsToggle.IsChecked = false;
                 _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(500); // Increased delay after hiding icons
+                await Task.Delay(500);
 
-                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                // Refresh Windows
+                _themeService.RefreshWindows();
+                await Task.Delay(1000);
+
+                // Apply Clear Glass wallpaper
                 await EnsureWallpaperAsync();
 
                 CustomMessageBox.Show(
@@ -349,7 +251,7 @@ namespace ClearGlass
             }
             finally
             {
-                ClearGlassThemeButton.IsEnabled = true;
+                // Button re-enabled automatically
             }
         }
 
@@ -399,47 +301,29 @@ namespace ClearGlass
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
 
-                    // Show desktop icons first
-                    DesktopIconsToggle.IsChecked = true;
-                    _themeService.AreDesktopIconsVisible = true;
-                    await Task.Delay(200);
-
-                    // Apply dark theme first as it's a major change
-                    ThemeToggle.IsChecked = true;
+                    // Apply Clear Glass theme automatically
                     await Task.Run(() => _themeService.IsDarkMode = true);
                     await Task.Delay(500);
 
-                    // First shell refresh after theme change
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
                     // Apply taskbar settings
-                    TaskbarAlignmentToggle.IsChecked = false;
                     _themeService.IsTaskbarCentered = false;
                     await Task.Delay(200);
 
                     // Apply task view settings
-                    TaskViewToggle.IsChecked = false;
                     _themeService.IsTaskViewEnabled = false;
                     await Task.Delay(100);
 
-                    // Show search first to ensure proper state, then hide
-                    SearchToggle.IsChecked = true;
-                    _themeService.IsSearchVisible = true;
-                    await Task.Delay(200);
-
-                    SearchToggle.IsChecked = false;
+                    // Hide search
                     _themeService.IsSearchVisible = false;
                     await Task.Delay(200);
 
-                    // Second shell refresh after UI changes
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
                     // Hide desktop icons
-                    DesktopIconsToggle.IsChecked = false;
                     _themeService.AreDesktopIconsVisible = false;
                     await Task.Delay(200);
+
+                    // Refresh Windows
+                    _themeService.RefreshWindows();
+                    await Task.Delay(500);
 
                     // Final step: Apply Clear Glass wallpaper after all UI changes are complete
                     await Task.Delay(300); // Give UI a moment to fully settle
@@ -982,225 +866,10 @@ namespace ClearGlass
             Application.Current.Shutdown();
         }
 
-        private async void OnAutoLoginClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Disable the button during operation
-                AutoLoginButton.IsEnabled = false;
 
-                // Show a confirmation dialog
-                var result = CustomMessageBox.Show(
-                    "This will launch Microsoft's Autologon tool to configure automatic login.\n\n" +
-                    "Are you sure you want to continue?",
-                    "Auto Login Configuration",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
 
-                if (result == MessageBoxResult.Yes)
-                {
-                    try
-                    {
-                        // Create directory if it doesn't exist
-                        Directory.CreateDirectory(Path.GetDirectoryName(_autologonPath));
 
-                        // Download Autologon if it doesn't exist
-                        if (!File.Exists(_autologonPath))
-                        {
-                            using (var client = new HttpClient())
-                            {
-                                var response = await client.GetAsync("https://download.sysinternals.com/files/AutoLogon.zip");
-                                response.EnsureSuccessStatusCode();
 
-                                var zipPath = Path.Combine(Path.GetDirectoryName(_autologonPath), "Autologon.zip");
-                                using (var fs = new FileStream(zipPath, FileMode.Create))
-                                {
-                                    await response.Content.CopyToAsync(fs);
-                                }
-
-                                // Extract the zip
-                                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, Path.GetDirectoryName(_autologonPath), true);
-                                
-                                // Clean up zip file
-                                File.Delete(zipPath);
-                            }
-                        }
-
-                        // Launch Autologon
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = _autologonPath,
-                            UseShellExecute = true,
-                            Verb = "runas" // Run as administrator
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        CustomMessageBox.Show(
-                            $"Error downloading or launching Autologon: {ex.Message}\n\n" +
-                            "Please download and run Autologon manually from:\n" +
-                            "https://learn.microsoft.com/en-us/sysinternals/downloads/autologon",
-                            "Error",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error configuring auto login: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                AutoLoginButton.IsEnabled = true;
-            }
-        }
-
-        private async void OnKeepAppsClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Disable the button during operation
-                KeepAppsButton.IsEnabled = false;
-
-                // Load installed apps if not already loaded
-                if (_installedApps == null)
-                {
-                    var loadedApps = await _bloatwareService.GetInstalledApps();
-                    var sortedApps = loadedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
-                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
-                    AppsListView.ItemsSource = _installedApps;
-                    _originalKeepAppsList = sortedApps;
-                }
-                else
-                {
-                    var sortedApps = _installedApps.OrderBy(app => (app.DisplayName ?? app.Name)).ToList();
-                    _installedApps = new ObservableCollection<WindowsApp>(sortedApps);
-                    AppsListView.ItemsSource = _installedApps;
-                    _originalKeepAppsList = sortedApps;
-                }
-
-                // Show the overlay
-                KeepAppsOverlay.Visibility = Visibility.Visible;
-                _showKeepAppsOverlay.Begin();
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error configuring apps to keep: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                KeepAppsButton.IsEnabled = true;
-            }
-        }
-
-        private void OnCloseKeepAppsClick(object sender, RoutedEventArgs e)
-        {
-            _hideKeepAppsOverlay.Begin(this, isControllable: false);
-            _hideKeepAppsOverlay.Completed += (s, _) =>
-            {
-                KeepAppsOverlay.Visibility = Visibility.Collapsed;
-            };
-        }
-
-        private async void OnApplyKeepAppsClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Disable the button during operation
-                ApplyKeepAppsButton.IsEnabled = false;
-
-                var result = CustomMessageBox.Show(
-                    "This will update the list of protected apps for this session.\n\n" +
-                    "Protected apps will be kept when using:\n" +
-                    "- Remove Windows Bloatware\n" +
-                    "- Run Optimization\n" +
-                    "- Run Clear Glass\n\n" +
-                    "Note: Protected apps will reset to defaults when you restart the application.\n\n" +
-                    "Do you want to continue?",
-                    "Update Protected Apps",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
-
-                if (result == MessageBoxResult.Yes)
-                {
-                    // Update the essential apps list with selected apps
-                    _bloatwareService.UpdateSessionEssentialApps(_installedApps);
-
-                    CustomMessageBox.Show(
-                        "Protected apps list has been updated successfully!\n\n" +
-                        "These apps will be kept when removing bloatware.",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                    
-                    // Close the overlay after successful operation
-                    OnCloseKeepAppsClick(sender, e);
-                }
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error updating protected apps list: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                ApplyKeepAppsButton.IsEnabled = true;
-            }
-        }
-
-        private void OnSupportUsClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Disable the button during operation
-                SupportUsButton.IsEnabled = false;
-
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "https://ko-fi.com/daniel1017",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error opening Ko-fi page: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                SupportUsButton.IsEnabled = true;
-            }
-        }
-
-        private void OnTweaksClick(object sender, RoutedEventArgs e)
-        {
-            TweaksOverlay.Visibility = Visibility.Visible;
-            _showTweaksOverlay.Begin();
-        }
-
-        private void OnCloseTweaksClick(object sender, RoutedEventArgs e)
-        {
-            _hideTweaksOverlay.Begin(this, isControllable: false);
-            _hideTweaksOverlay.Completed += (s, _) =>
-            {
-                TweaksOverlay.Visibility = Visibility.Collapsed;
-            };
-        }
 
         private void OnOpenSettingsClick(object sender, RoutedEventArgs e)
         {
@@ -1837,199 +1506,7 @@ namespace ClearGlass
             }
         }
 
-        private async void OnRemoveAppsClick(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                Mouse.OverrideCursor = Cursors.Wait;
-                _installedAppsCollection.Clear();
-                _originalAppsList.Clear();
-                
-                var apps = await _wingetService.GetInstalledApps();
-                // Sort the apps alphabetically by name
-                var sortedApps = apps.OrderBy(app => app.Name).ToList();
-                foreach (var app in sortedApps)
-                {
-                    _installedAppsCollection.Add(app);
-                    _originalAppsList.Add(app);
-                }
 
-                _showRemoveAppsOverlay.Begin();
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error loading installed applications: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                Mouse.OverrideCursor = null;
-            }
-        }
-
-        private void OnCloseRemoveAppsClick(object sender, RoutedEventArgs e)
-        {
-            _hideRemoveAppsOverlay.Begin();
-        }
-
-        private async void OnUninstallAppsClick(object sender, RoutedEventArgs e)
-        {
-            // Use the full, unfiltered list to get all selected apps
-            var selectedApps = _originalAppsList.Where(app => app.IsSelected).ToList();
-            if (!selectedApps.Any())
-            {
-                CustomMessageBox.Show(
-                    "Please select at least one application to uninstall.",
-                    "No Selection",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
-            var result = CustomMessageBox.Show(
-                $"Are you sure you want to uninstall {selectedApps.Count} selected application(s)?\n\n" +
-                "The uninstallation process will:\n" +
-                "1. Create a system restore point\n" +
-                "2. Run the application's native uninstaller or platform-specific uninstaller\n" +
-                "3. Scan for and remove leftover files\n" +
-                "4. Scan for and remove leftover registry entries\n\n" +
-                "Would you like to automatically remove leftover files and registry entries?",
-                "Confirm Uninstall",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-            {
-                return;
-            }
-
-            try
-            {
-                Mouse.OverrideCursor = Cursors.Wait;
-                UninstallAppsButton.IsEnabled = false;
-
-                var progress = new Progress<string>(status =>
-                {
-                    UninstallAppsButton.Content = status;
-                });
-
-                var failedApps = new List<string>();
-                var steamApps = new List<string>();
-                bool restorePointCreated = false;
-                for (int i = 0; i < selectedApps.Count; i++)
-                {
-                    var app = selectedApps[i];
-
-                    // Detect Steam games by 'Steam App' in app.Id
-                    if (app.Id != null && app.Id.Contains("Steam App "))
-                    {
-                        // Extract the Steam App ID number
-                        var match = System.Text.RegularExpressions.Regex.Match(app.Id, @"Steam App (\d+)");
-                        if (match.Success)
-                        {
-                            string steamAppId = match.Groups[1].Value;
-                            string? steamExe = FindSteamExePath();
-                            if (!string.IsNullOrEmpty(steamExe))
-                            {
-                                try
-                                {
-                                    Process.Start(new ProcessStartInfo
-                                    {
-                                        FileName = steamExe,
-                                        Arguments = $"steam://uninstall/{steamAppId}",
-                                        UseShellExecute = true
-                                    });
-                                    steamApps.Add(app.Name);
-                                    _installedAppsCollection.Remove(app);
-                                    // Sequential prompt
-                                    CustomMessageBox.Show(
-                                        $"You can only uninstall one Steam game at a time. Click OK to continue to the next game.",
-                                        "Steam Uninstall Notice",
-                                        MessageBoxButton.OK,
-                                        MessageBoxImage.Information
-                                    );
-                                }
-                                catch (Exception ex)
-                                {
-                                    failedApps.Add($"{app.Name} (Steam): {ex.Message}");
-                                }
-                            }
-                            else
-                            {
-                                failedApps.Add($"{app.Name} (Steam): Could not find steam.exe. Please uninstall manually from Steam.");
-                            }
-                        }
-                        else
-                        {
-                            failedApps.Add($"{app.Name} (Steam): Could not extract Steam App ID. Please uninstall manually from Steam.");
-                        }
-                        continue;
-                    }
-
-                    // Handle non-Steam apps
-                    try
-                    {
-                        await _uninstallService.UninstallAppThoroughly(app.Id, app.Name, progress, !restorePointCreated, true);
-                        restorePointCreated = true;
-                        _installedAppsCollection.Remove(app);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Check for winget single-package error
-                        if (ex.Message.Contains("can only be used for single package") || ex.Message.Contains("only be used for single package"))
-                        {
-                            failedApps.Add($"{app.Name}: This application cannot be uninstalled automatically. Please uninstall it manually from its platform or the Windows Control Panel.");
-                        }
-                        else
-                        {
-                            failedApps.Add($"{app.Name}: {ex.Message}");
-                        }
-                    }
-                }
-
-                // Show summary
-                string summary = "";
-                if (steamApps.Any())
-                {
-                    summary += $"The following Steam games were opened in Steam for uninstallation:\n- {string.Join("\n- ", steamApps)}\n\n";
-                }
-                if (failedApps.Any())
-                {
-                    summary += $"Some applications could not be uninstalled automatically:\n- {string.Join("\n- ", failedApps)}\n\n";
-                }
-                if (string.IsNullOrWhiteSpace(summary))
-                {
-                    summary = "Selected applications have been uninstalled.";
-                }
-                else
-                {
-                    summary += "Other selected applications have been uninstalled.";
-                }
-
-                CustomMessageBox.Show(
-                    summary,
-                    "Uninstall Summary",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Show(
-                    $"Error during uninstallation: {ex.Message}",
-                    "Uninstall Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-            finally
-            {
-                Mouse.OverrideCursor = null;
-                UninstallAppsButton.IsEnabled = true;
-                UninstallAppsButton.Content = "Uninstall Selected";
-            }
-        }
 
         private async void OnDisablePrivacyPermissionsClick(object sender, RoutedEventArgs e)
         {
