@@ -82,9 +82,26 @@ function Write-Status {
 }
 
 # =============================================================================
+# PROGRESS TRACKING
+# =============================================================================
+
+# Simple progress tracking for console output
+$currentProgress = 0
+function Update-Progress {
+    param(
+        [string]$Status,
+        [int]$Progress
+    )
+    
+    $script:currentProgress = $Progress
+    Write-Status -msg "$Status ($Progress%)"
+}
+
+# =============================================================================
 # MAIN EXECUTION
 # =============================================================================
 
+Update-Progress -Status "Terminating AI-related processes..." -Progress 5
 Write-Status -msg 'Terminating AI-related processes...'
 # Terminate AI processes to prevent interference during removal
 $aiProcesses = @(
@@ -104,6 +121,7 @@ foreach ($procName in $aiProcesses) {
 # REGISTRY CONFIGURATION
 # =============================================================================
 
+Update-Progress -Status "Configuring registry to disable Copilot and Recall..." -Progress 15
 Write-Status -msg 'Configuring registry to disable Copilot and Recall...'
 # Apply registry changes to both local machine and current user
 $hives = @('HKLM', 'HKCU')
@@ -126,6 +144,7 @@ foreach ($hive in $hives) {
 Reg.exe add 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v 'ShowCopilotButton' /t REG_DWORD /d '0' /f *>$null
 Reg.exe add 'HKCU\Software\Microsoft\input\Settings' /v 'InsightsEnabled' /t REG_DWORD /d '0' /f *>$null
 
+Update-Progress -Status "Disabling Copilot integration in Windows Search and Edge..." -Progress 25
 Write-Status -msg 'Disabling Copilot integration in Windows Search...'
 Reg.exe add 'HKCU\SOFTWARE\Policies\Microsoft\Windows\Explorer' /v 'DisableSearchBoxSuggestions' /t REG_DWORD /d '1' /f *>$null
 
@@ -141,6 +160,7 @@ Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy' /v 'LetAppsAcc
 Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy' /v 'LetAppsAccessSystemAIModels' /t REG_DWORD /d '2' /f *>$null
 Reg.exe add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsCopilot' /v 'AllowCopilotRuntime' /t REG_DWORD /d '0' /f *>$null
 
+Update-Progress -Status "Disabling AI features in Paint and other applications..." -Progress 35
 Write-Status -msg 'Disabling AI features in Paint...'
 # Policy Manager configuration for Paint AI features
 Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'Behavior' /t REG_DWORD /d '1056800' /f *>$null
@@ -169,6 +189,7 @@ gpupdate /force >$null
 # COPILOT NUDGES REMOVAL
 # =============================================================================
 
+Update-Progress -Status "Removing Copilot nudges and registry keys..." -Progress 45
 Write-Status -msg 'Removing Copilot nudges registry keys...'
 # Registry paths for Copilot nudges components
 $keys = @(
@@ -382,6 +403,7 @@ catch {
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d 'Unrestricted' /f >$null
 }
 
+Update-Progress -Status "Removing AI Appx packages (this may take several minutes)..." -Progress 55
 Write-Status -msg 'Removing AI Appx packages...'
 $command = "&$env:TEMP\aiPackageRemoval.ps1"
 Run-Trusted -command $command
@@ -396,6 +418,7 @@ do {
     }
 }while ($packages)
 
+Update-Progress -Status "Appx packages removed successfully. Cleaning up registry..." -Progress 65
 Write-Status -msg 'Appx packages removed successfully'
 
 # =============================================================================
@@ -410,6 +433,7 @@ foreach ($path in $eolKeys) {
 }
 
 # Remove Recall optional feature
+Update-Progress -Status "Removing Recall optional feature..." -Progress 70
 Write-Status -msg 'Removing Recall optional feature...'
 $state = (Get-WindowsOptionalFeature -Online -FeatureName 'Recall').State
 if ($state -and $state -ne 'DisabledWithPayloadRemoved') {
@@ -423,6 +447,7 @@ if ($state -and $state -ne 'DisabledWithPayloadRemoved') {
 }
 
 # Remove additional hidden AI packages
+Update-Progress -Status "Removing additional hidden AI packages..." -Progress 75
 Write-Status -msg 'Removing additional hidden AI packages...'
 # Unhide packages from DISM and remove ownership subkeys for removal
 $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages'
@@ -441,6 +466,7 @@ Get-ChildItem $regPath | ForEach-Object {
 # FILE SYSTEM CLEANUP
 # =============================================================================
 
+Update-Progress -Status "Removing Appx package files from system..." -Progress 80
 Write-Status -msg 'Removing Appx package files...'
 $appsPath = 'C:\Windows\SystemApps'
 $appsPath2 = 'C:\Program Files\WindowsApps'
@@ -503,6 +529,7 @@ foreach ($path in $paths) {
 # INSTALLER CLEANUP
 # =============================================================================
 
+Update-Progress -Status "Removing hidden Copilot installers..." -Progress 85
 Write-Status -msg 'Removing hidden Copilot installers...'
 # Remove package installers from Edge directories
 $dir = "${env:ProgramFiles(x86)}\Microsoft"
@@ -542,6 +569,7 @@ foreach ($installer in $installers) {
 # ADDITIONAL CONFIGURATIONS
 # =============================================================================
 
+Update-Progress -Status "Hiding AI components in Settings and finalizing..." -Progress 90
 Write-Status -msg 'Hiding AI components in Settings...'
 Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' /v 'SettingsPageVisibility' /t REG_SZ /d 'hide:aicomponents;' /f >$null
 
@@ -572,6 +600,7 @@ Remove-Item -Path "$env:LOCALAPPDATA\CoreAIPlatform*" -Force -Recurse -ErrorActi
 # SCHEDULED TASK CLEANUP
 # =============================================================================
 
+Update-Progress -Status "Removing Recall scheduled tasks..." -Progress 95
 Write-Status -msg 'Removing Recall scheduled tasks...'
 # Create script for scheduled task removal with system privileges
 $code = @"
@@ -605,6 +634,47 @@ if ($ogExecutionPolicy) {
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d $ogExecutionPolicy /f >$null
 }
 
-# Script completion
-$input = Read-Host 'Removal completed successfully. Press any key to exit'
-if ($input) { exit }
+# =============================================================================
+# SELF-DESTRUCTION AND CLEANUP
+# =============================================================================
+
+Update-Progress -Status "Cleaning up ClearGlass scheduled tasks and temporary files..." -Progress 98
+Write-Status -msg 'Cleaning up ClearGlass scheduled tasks...'
+# Remove ClearGlass scheduled tasks
+$clearGlassTasks = @(
+    'ClearGlass_WindowsAIRemoval',
+    'ClearGlass_SelfDestruct'
+)
+
+foreach ($taskName in $clearGlassTasks) {
+    try {
+        schtasks.exe /delete /tn $taskName /f *>$null
+        Write-Status -msg "Removed scheduled task: $taskName"
+    }
+    catch {
+        # Task may not exist, continue
+    }
+}
+
+Write-Status -msg 'Cleaning up temporary files...'
+# Remove ClearGlass temporary files
+$tempFiles = @(
+    "$env:TEMP\ClearGlass_RemoveWindowsAi.ps1",
+    "$env:TEMP\ClearGlass_StartupTask.bat",
+    "$env:TEMP\ClearGlass_SelfDestruct.bat"
+)
+
+foreach ($file in $tempFiles) {
+    if (Test-Path $file) {
+        Remove-Item $file -Force -ErrorAction SilentlyContinue
+        Write-Status -msg "Removed temporary file: $file"
+    }
+}
+
+Update-Progress -Status "Windows AI removal completed successfully! System will restart in 10 seconds..." -Progress 100
+Write-Status -msg 'Windows AI removal completed successfully!'
+Write-Status -msg 'System will restart in 10 seconds to complete cleanup...'
+
+# Restart the computer
+Start-Sleep 5
+shutdown /r /t 10 /c "ClearGlass: Windows AI removal complete - restarting to finalize cleanup"

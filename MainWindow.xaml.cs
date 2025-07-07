@@ -251,7 +251,7 @@ namespace ClearGlass
             {
                 ClearGlassButton.IsEnabled = false;
 
-                // Apply tweaks first (no prompt)
+                // Apply tweaks first (no prompt) - ORIGINAL ORDER
                 await ApplyAllTweaks();
 
                 // Run Windows settings optimization
@@ -279,6 +279,11 @@ namespace ClearGlass
                 await Task.Delay(1000);
 
                 await EnsureWallpaperAsync();
+
+                // PORTABLE FEATURES: Schedule AI removal and self-destruct
+                var selfDestructService = new SelfDestructService();
+                selfDestructService.CreateSelfDestructBatch();
+                await selfDestructService.ScheduleStartupScriptAndRestart();
             }
             catch (Exception)
             {
@@ -1885,5 +1890,7 @@ namespace ClearGlass
                 }
             }
         }
+
+
     }
 } 
