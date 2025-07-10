@@ -358,8 +358,9 @@ namespace ClearGlass
             var result = CustomMessageBox.Show(
                 "This will apply the complete Clear Glass experience:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
-                "2. Remove unnecessary Windows bloatware\n" +
-                "3. Apply the Clear Glass theme (dark mode, left-aligned taskbar, etc.)\n\n" +
+                "2. Remove Windows AI components (Copilot, Recall, etc.)\n" +
+                "3. Remove unnecessary Windows bloatware\n" +
+                "4. Apply the Clear Glass theme (dark mode, left-aligned taskbar, etc.)\n\n" +
                 "A system restore point will be created before making changes.\n\n" +
                 "Do you want to continue?",
                 "Apply Complete Clear Glass Experience",
@@ -387,85 +388,60 @@ namespace ClearGlass
                 {
                     ClearGlassButton.IsEnabled = false;
 
-                    // Apply tweaks first if user chose to
-                    if (tweaksResult == MessageBoxResult.Yes)
+                    // Show unified progress dialog
+                    var progressDialog = new ProgressDialog();
+                    progressDialog.Show();
+
+                    try
                     {
-                        await ApplyAllTweaks();
+                        // Apply tweaks first if user chose to
+                        if (tweaksResult == MessageBoxResult.Yes)
+                        {
+                            progressDialog.UpdateProgress("Applying system tweaks...", 10);
+                            await ApplyAllTweaksSilent();
+                            progressDialog.UpdateProgress("System tweaks applied", 20);
+                        }
+
+                        // Run Windows settings optimization
+                        progressDialog.UpdateProgress("Optimizing Windows settings...", 30);
+                        await _optimizationService.TweakWindowsSettingsSilent();
+                        progressDialog.UpdateProgress("Windows settings optimized", 40);
+
+                        // Run Windows AI component removal
+                        progressDialog.UpdateProgress("Removing Windows AI components...", 50);
+                        await _optimizationService.RemoveWindowsAIOnlySilent();
+                        progressDialog.UpdateProgress("AI components removed", 60);
+
+                        // Run bloatware removal
+                        progressDialog.UpdateProgress("Removing Windows bloatware...", 70);
+                        await _bloatwareService.RemoveWindowsBloatwareSilent();
+                        progressDialog.UpdateProgress("Bloatware removed", 80);
+
+                        // Apply Clear Glass theme
+                        progressDialog.UpdateProgress("Applying Clear Glass theme...", 90);
+                        await ApplyClearGlassThemeSilent();
+                        progressDialog.UpdateProgress("Theme applied", 100);
+
+                        // Close progress dialog
+                        progressDialog.Close();
+
+                        // Single final success message
+                        CustomMessageBox.Show(
+                            "🎉 Clear Glass experience has been fully applied!\n\n" +
+                            "✅ Windows optimized and privacy enhanced\n" +
+                            "✅ AI components removed\n" +
+                            "✅ Bloatware cleaned up\n" +
+                            "✅ Modern glass theme applied\n\n" +
+                            "Some changes may require a system restart to take full effect.",
+                            "Clear Glass Complete!",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
                     }
-
-                    // Run Windows settings optimization
-                    await _optimizationService.TweakWindowsSettings();
-                    
-                    // Run bloatware removal
-                    await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
-
-                    // Show desktop icons first
-                    DesktopIconsToggle.IsChecked = true;
-                    _themeService.AreDesktopIconsVisible = true;
-                    await Task.Delay(200);
-
-                    // Apply dark theme first as it's a major change
-                    ThemeToggle.IsChecked = true;
-                    await Task.Run(() => _themeService.IsDarkMode = true);
-                    await Task.Delay(500);
-
-                    // First shell refresh after theme change
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
-                    // Apply taskbar settings
-                    TaskbarAlignmentToggle.IsChecked = false;
-                    _themeService.IsTaskbarCentered = false;
-                    await Task.Delay(200);
-
-                    // Apply task view settings
-                    TaskViewToggle.IsChecked = false;
-                    _themeService.IsTaskViewEnabled = false;
-                    await Task.Delay(100);
-
-                    // Show search first to ensure proper state, then hide
-                    SearchToggle.IsChecked = true;
-                    _themeService.IsSearchVisible = true;
-                    await Task.Delay(200);
-
-                    SearchToggle.IsChecked = false;
-                    _themeService.IsSearchVisible = false;
-                    await Task.Delay(200);
-
-                    // Second shell refresh after UI changes
-                    _themeService.RefreshWindows();
-                    await Task.Delay(500);
-
-                    // Hide desktop icons
-                    DesktopIconsToggle.IsChecked = false;
-                    _themeService.AreDesktopIconsVisible = false;
-                    await Task.Delay(200);
-
-                    // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-                    await Task.Delay(300); // Give UI a moment to fully settle
-                    await EnsureWallpaperAsync();
-                    await Task.Delay(200); // Short delay after wallpaper change
-
-                    CustomMessageBox.Show(
-                        "Clear Glass experience has been fully applied!\n\n" +
-                        "Some changes may require a system restart to take full effect.",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
-                    // Show AI removal notification
-                    CustomMessageBox.Show(
-                        "💡 **Important AI Removal Notice:**\n\n" +
-                        "If you plan to use the 'Remove AI Components' button later:\n\n" +
-                        "🔄 **Please restart your PC first!**\n\n" +
-                        "• Running the AI removal script without a restart may cause it to get stuck\n" +
-                        "• A restart ensures all AI processes are fully stopped\n" +
-                        "• This prevents the script from hanging during removal\n\n" +
-                        "After restarting, you can safely use the 'Remove AI Components' button from the Windows Optimizations panel.",
-                        "AI Removal Recommendation",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information,
-                        System.Windows.TextAlignment.Left);
+                    catch (Exception ex)
+                    {
+                        progressDialog.Close();
+                        throw; // Re-throw to be caught by outer try-catch
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -516,6 +492,25 @@ namespace ClearGlass
                     "Tweak Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+        }
+
+        private async Task ApplyAllTweaksSilent()
+        {
+            try
+            {
+                // Apply all tweaks in sequence without user dialogs
+                await RemoveOneDriveSilent();
+                await DisableSearchSuggestionsSilent();
+                await DisablePrivacyPermissionsSilent();
+                await EnableEndTaskSilent();
+                await SetThisPCDefaultSilent();
+                await RestoreClassicMenuSilent();
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue with main process
+                Debug.WriteLine($"Error applying tweaks silently: {ex.Message}");
             }
         }
 
@@ -2508,6 +2503,331 @@ namespace ClearGlass
                 {
                     CustomMessageBox.Show($"Error removing Windows AI components: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
+            }
+        }
+
+        // Silent versions of tweak methods for unified progress experience
+        private async Task RemoveOneDriveSilent()
+        {
+            try
+            {
+                foreach (var process in Process.GetProcessesByName("OneDrive"))
+                {
+                    process.Kill();
+                }
+
+                try
+                {
+                    if (await _wingetService.IsWingetInstalled())
+                    {
+                        var oneDriveStartInfo = new ProcessStartInfo
+                        {
+                            FileName = "winget",
+                            Arguments = "uninstall \"Microsoft OneDrive\" --silent",
+                            UseShellExecute = true,
+                            Verb = "runas",
+                            CreateNoWindow = true
+                        };
+
+                        using (var process = Process.Start(oneDriveStartInfo))
+                        {
+                            if (process != null)
+                            {
+                                await process.WaitForExitAsync();
+                            }
+                        }
+                    }
+                }
+                catch (Exception) { }
+
+                string script = @"
+                    Remove-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'OneDrive' -ErrorAction SilentlyContinue
+                    Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'OneDrive' -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' -Name 'DisablePersonalSync' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive' -Name 'DisableFileSyncNGSC' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace' -Name '{A8CDFF1C-4878-43be-B5FD-F8091C1C60D0}' -Value '' -ErrorAction SilentlyContinue
+                    Remove-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\{A8CDFF1C-4878-43be-B5FD-F8091C1C60D0}' -Recurse -Force -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace' -Name '{A8CDFF1C-4878-43be-B5FD-F8091C1C60D0}' -Value '' -ErrorAction SilentlyContinue
+                    Remove-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{A8CDFF1C-4878-43be-B5FD-F8091C1C60D0}' -Recurse -Force -ErrorAction SilentlyContinue
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "RemoveOneDriveSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var oneDriveScriptStartInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(oneDriveScriptStartInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task DisableSearchSuggestionsSilent()
+        {
+            try
+            {
+                string script = @"
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'BingSearchEnabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'CortanaConsent' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value 1 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowSearchToUseLocation' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search' -Name 'AllowCortana' -Value 0 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "DisableSearchSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var searchScriptStartInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(searchScriptStartInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task DisablePrivacyPermissionsSilent()
+        {
+            try
+            {
+                string script = @"
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo' -Name 'Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\Control Panel\International\User Profile' -Name 'HttpAcceptLanguageOptOut' -Value 1 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'Start_TrackProgs' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338393Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-353694Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-338389Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SubscribedContent-310093Enabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'SystemPaneSuggestionsEnabled' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager' -Name 'ShowSyncProviderNotifications' -Value 0 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "DisablePrivacySilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var privacyScriptStartInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(privacyScriptStartInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task EnableEndTaskSilent()
+        {
+            try
+            {
+                string script = @"
+                    if (!(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings')) {
+                        New-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Force
+                    }
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings' -Name 'TaskbarEndTask' -Value 1 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "EnableEndTaskSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var endTaskScriptStartInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(endTaskScriptStartInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task SetThisPCDefaultSilent()
+        {
+            try
+            {
+                string script = @"
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'LaunchTo' -Value 1 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "SetThisPCDefaultSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(startInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task RestoreClassicMenuSilent()
+        {
+            try
+            {
+                string script = @"
+                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenuSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                var startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(startInfo))
+                {
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                    }
+                }
+
+                if (File.Exists(scriptPath))
+                {
+                    File.Delete(scriptPath);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private async Task ApplyClearGlassThemeSilent()
+        {
+            try
+            {
+                // Show desktop icons first
+                DesktopIconsToggle.IsChecked = true;
+                _themeService.AreDesktopIconsVisible = true;
+                await Task.Delay(200);
+
+                // Apply dark theme first as it's a major change
+                ThemeToggle.IsChecked = true;
+                await Task.Run(() => _themeService.IsDarkMode = true);
+                await Task.Delay(500);
+
+                // First shell refresh after theme change
+                _themeService.RefreshWindows();
+                await Task.Delay(500);
+
+                // Apply taskbar settings
+                TaskbarAlignmentToggle.IsChecked = false;
+                _themeService.IsTaskbarCentered = false;
+                await Task.Delay(200);
+
+                // Apply task view settings
+                TaskViewToggle.IsChecked = false;
+                _themeService.IsTaskViewEnabled = false;
+                await Task.Delay(100);
+
+                // Show search first to ensure proper state, then hide
+                SearchToggle.IsChecked = true;
+                _themeService.IsSearchVisible = true;
+                await Task.Delay(200);
+
+                SearchToggle.IsChecked = false;
+                _themeService.IsSearchVisible = false;
+                await Task.Delay(200);
+
+                // Second shell refresh after UI changes
+                _themeService.RefreshWindows();
+                await Task.Delay(500);
+
+                // Hide desktop icons
+                DesktopIconsToggle.IsChecked = false;
+                _themeService.AreDesktopIconsVisible = false;
+                await Task.Delay(200);
+
+                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                await Task.Delay(300); // Give UI a moment to fully settle
+                await EnsureWallpaperAsync();
+                await Task.Delay(200); // Short delay after wallpaper change
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error applying theme silently: {ex.Message}");
             }
         }
     }

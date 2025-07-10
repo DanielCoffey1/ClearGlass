@@ -147,7 +147,9 @@ namespace ClearGlass.Services
                                 Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
                                 Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
                                 Write-Host ""Service $service configured""
-                            } catch {}
+                            } catch {
+                                Write-Warning ""Could not configure service: $service""
+                            }
                         }
                     }
                     Write-Host 'Services configured'
@@ -213,6 +215,102 @@ namespace ClearGlass.Services
             }
         }
 
+        public async Task TweakWindowsSettingsSilent()
+        {
+            try
+            {
+                await CreateRestorePoint();
+
+                string script = @"
+                    Enable-ComputerRestore -Drive 'C:\' -ErrorAction SilentlyContinue
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore' -Name 'SystemRestorePointCreationFrequency' -Value 0 -Type DWord -Force
+                    Checkpoint-Computer -Description 'Before ClearGlass Optimization' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent' -Name 'DisableWindowsConsumerFeatures' -Value 1 -Type DWord -Force
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection' -Name 'AllowTelemetry' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection' -Name 'AllowTelemetry' -Value 0 -Type DWord -Force
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Name 'EnableActivityFeed' -Value 0 -Type DWord -Force
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\System' -Name 'PublishUserActivities' -Value 0 -Type DWord -Force
+                    
+                    Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'AutoCheckSelect' -Value 0 -Type DWord -Force
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' -Name 'AllowGameDVR' -Value 0 -Type DWord -Force
+                    
+                    powercfg /hibernate off
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Sensor\Overrides\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Sensor\Overrides\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}' -Name 'SensorPermissionState' -Value 0 -Type DWord -Force
+                    New-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc\Service\Configuration' -Name 'Status' -Value 0 -Type DWord -Force
+                    
+                    Remove-Item -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\StorageSense\Parameters\StoragePolicy' -Recurse -ErrorAction SilentlyContinue
+                    
+                    New-Item -Path 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config' -Force | Out-Null
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config' -Name 'AutoConnectAllowedOEM' -Value 0 -Type DWord -Force
+                    
+                    Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'TaskbarRightClickMenu' -Value 1 -Type DWord -Force
+                    
+                    Start-Process -FilePath cleanmgr -ArgumentList '/sagerun:1' -NoNewWindow -Wait
+                    
+                    [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', 'Machine')
+                    
+                    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\ReCall') {
+                        Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\ReCall' -Name 'Enabled' -Value 0 -Type DWord -Force
+                    }
+                    
+                    $servicesToManual = @(
+                        'DiagTrack', 'dmwappushservice', 'lfsvc', 'MapsBroker', 'NetTcpPortSharing',
+                        'RemoteAccess', 'RemoteRegistry', 'SharedAccess', 'TrkWks', 'WbioSrvc',
+                        'WMPNetworkSvc', 'WSearch'
+                    )
+
+                    foreach ($service in $servicesToManual) {
+                        if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
+                            try {
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
+                            } catch {}
+                        }
+                    }
+                    
+                    Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore' -Name 'SystemRestorePointCreationFrequency' -Value 1440 -Type DWord -Force
+                ";
+
+                string scriptPath = Path.Combine(Path.GetTempPath(), "ClearGlassOptimizationSilent.ps1");
+                await File.WriteAllTextAsync(scriptPath, script);
+
+                ProcessStartInfo startInfo = new ProcessStartInfo()
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = false
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process is null)
+                {
+                    throw new InvalidOperationException("Failed to start PowerShell process");
+                }
+
+                await process.WaitForExitAsync();
+                File.Delete(scriptPath);
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue with main process
+                System.Diagnostics.Debug.WriteLine($"Error during silent optimization: {ex.Message}");
+            }
+        }
+
         public async Task RemoveWindowsAIOnly()
         {
             try
@@ -246,6 +344,19 @@ namespace ClearGlass.Services
                     "AI Removal Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+
+        public async Task RemoveWindowsAIOnlySilent()
+        {
+            try
+            {
+                await RemoveWindowsAIComponents();
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue with main process
+                System.Diagnostics.Debug.WriteLine($"Error during silent AI component removal: {ex.Message}");
             }
         }
 
@@ -341,11 +452,8 @@ namespace ClearGlass.Services
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show(
-                    $"Failed to create restore point: {ex.Message}\nProceeding with optimization...",
-                    "Warning",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                // Log the error but continue with optimization
+                System.Diagnostics.Debug.WriteLine($"Error creating restore point: {ex.Message}");
             }
         }
     }

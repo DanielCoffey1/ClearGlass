@@ -271,6 +271,45 @@ namespace ClearGlass.Services
             await RemoveWindowsBloatwareWithStartMenuChoice(apps);
         }
 
+        public async Task RemoveWindowsBloatwareSilent()
+        {
+            try
+            {
+                _logger.LogOperationStart("Removing Windows bloatware silently");
+                
+                // Use default settings for silent operation
+                bool removeEdge = false; // Default to not removing Edge in silent mode
+                bool clearStartMenu = true; // Default to clearing start menu
+                
+                var apps = await GetInstalledApps();
+                string scriptPath = await CreateRemovalScript(apps);
+
+                try
+                {
+                    await ExecuteRemovalScript(scriptPath);
+                    _logger.LogOperationComplete("Removing Windows bloatware silently");
+                    
+                    // Clear start menu after bloatware removal
+                    if (clearStartMenu)
+                    {
+                        await ClearStartMenu();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error during silent bloatware removal", ex);
+                }
+                finally
+                {
+                    CleanupScript(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error during silent bloatware removal", ex);
+            }
+        }
+
         public async Task ClearStartMenuWithRecommendationsDisabled()
         {
             await ClearStartMenu();

@@ -26,10 +26,12 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Serilog.Ext
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Debug\net6.0-windows\Serilog.Sinks.File.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass.csproj.AssemblyReference.cache
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\CustomMessageBox.baml
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ProgressDialog.baml
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\App.baml
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\BrowserChoiceDialog.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\CustomMessageBox.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\MainWindow.g.cs
+C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ProgressDialog.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\App.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\ClearGlass_Content.g.cs
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Debug\net6.0-windows\GeneratedInternalTypeHelper.g.cs
