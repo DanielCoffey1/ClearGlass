@@ -178,6 +178,19 @@ The complete Clear Glass experience now includes optional user choices:
 - **User Control**: All major changes are now user-controlled with clear explanations
 - **Progressive Enhancement**: Tweaks are applied before main Clear Glass functions for optimal system preparation
 
+### Unified Progress Experience
+
+Modern, streamlined progress tracking for all system operations:
+
+- **Full-Screen Overlay**: Elegant full-screen progress dialog with dimmed background
+- **Glass Effect Progress Panel**: Sleek, transparent progress panel at bottom center
+- **Click-Through Design**: Interact with pop-ups, PowerShell windows, and other applications during operations
+- **Real-Time Updates**: Live progress tracking with step-by-step status updates
+- **Silent Operation Modes**: Background processing with minimal user interruption
+- **Fade Animations**: Smooth fade-in/fade-out transitions for professional appearance
+- **Crisp Text Display**: Clear, readable progress information without blur effects
+- **Unified Workflow**: Single progress interface for all optimization steps (tweaks, optimization, AI removal, bloatware removal, theme application)
+
 ### Recommended Addons
 
 Curated selection of privacy-focused and performance-enhancing applications:
@@ -246,6 +259,9 @@ Additional system customization options:
 - **Professional Progress Screens**: Windows Update-style interfaces for system operations
 - **Real-time Status Updates**: Live progress tracking with detailed operation logs
 - **Enhanced User Feedback**: Professional dialogs and notifications throughout the application
+- **Unified Progress Experience**: Modern full-screen overlay with glass-effect progress panel
+- **Click-through Overlay**: Interact with pop-ups and PowerShell windows during operations
+- **Silent Operation Modes**: Background processing with minimal user interruption
 
 ## Requirements
 

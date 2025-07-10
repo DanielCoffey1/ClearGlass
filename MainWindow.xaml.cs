@@ -389,7 +389,11 @@ namespace ClearGlass
                     ClearGlassButton.IsEnabled = false;
 
                     // Show unified progress dialog
-                    var progressDialog = new ProgressDialog();
+                    ProgressDialog progressDialog = null!;
+                    progressDialog = new ProgressDialog(
+                        (step) => progressDialog?.UpdateProgress(step, 0), // This will be updated in the try block
+                        () => { } // Empty completion action
+                    );
                     progressDialog.Show();
 
                     try
