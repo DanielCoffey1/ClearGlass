@@ -913,7 +913,8 @@ namespace ClearGlass
             var result = CustomMessageBox.Show(
                 "This will:\n\n" +
                 "1. Optimize Windows settings (privacy, performance, services)\n" +
-                "2. Remove unnecessary Windows bloatware\n\n" +
+                "2. Remove Windows AI components (Copilot, Recall, etc.)\n" +
+                "3. Remove unnecessary Windows bloatware\n\n" +
                 "A system restore point will be created before making changes.\n\n" +
                 "Do you want to continue?",
                 "Confirm Full Windows Optimization",
@@ -927,29 +928,22 @@ namespace ClearGlass
                     // Run Windows settings optimization
                     await _optimizationService.TweakWindowsSettings();
                     
+                    // Run Windows AI components removal
+                    await _optimizationService.RemoveWindowsAIOnly();
+                    
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
 
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
+                        "The optimization included:\n" +
+                        "• Windows settings optimization\n" +
+                        "• Windows AI components removal\n" +
+                        "• Windows bloatware removal\n\n" +
                         "Some changes may require a system restart to take full effect.",
                         "Success",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
-
-                    // Show AI removal notification
-                    CustomMessageBox.Show(
-                        "💡 **Important AI Removal Notice:**\n\n" +
-                        "If you plan to use the 'Remove AI Components' button later:\n\n" +
-                        "🔄 **Please restart your PC first!**\n\n" +
-                        "• Running the AI removal script without a restart may cause it to get stuck\n" +
-                        "• A restart ensures all AI processes are fully stopped\n" +
-                        "• This prevents the script from hanging during removal\n\n" +
-                        "After restarting, you can safely use the 'Remove AI Components' button from the Windows Optimizations panel.",
-                        "AI Removal Recommendation",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information,
-                        System.Windows.TextAlignment.Left);
                 }
                 catch (Exception ex)
                 {
