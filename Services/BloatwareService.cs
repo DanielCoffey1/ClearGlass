@@ -271,6 +271,51 @@ namespace ClearGlass.Services
             await RemoveWindowsBloatwareWithStartMenuChoice(apps);
         }
 
+        public async Task RemoveWindowsBloatwareSilent()
+        {
+            try
+            {
+                _logger.LogOperationStart("Removing Windows bloatware silently");
+                
+                // Use default settings for silent operation
+                bool removeEdge = true; // Default to removing Edge in silent mode for complete Clear Glass experience
+                bool clearStartMenu = true; // Default to clearing start menu
+                
+                var apps = await GetInstalledApps();
+                string scriptPath = await CreateRemovalScript(apps);
+
+                try
+                {
+                    await ExecuteRemovalScript(scriptPath);
+                    _logger.LogOperationComplete("Removing Windows bloatware silently");
+                    
+                    // Remove Edge if enabled
+                    if (removeEdge)
+                    {
+                        await RemoveMicrosoftEdge();
+                    }
+                    
+                    // Clear start menu after bloatware removal
+                    if (clearStartMenu)
+                    {
+                        await ClearStartMenu();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error during silent bloatware removal", ex);
+                }
+                finally
+                {
+                    CleanupScript(scriptPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error during silent bloatware removal", ex);
+            }
+        }
+
         public async Task ClearStartMenuWithRecommendationsDisabled()
         {
             await ClearStartMenu();
@@ -364,12 +409,12 @@ namespace ClearGlass.Services
                 }
 
                 _logger.LogInformation("Found RemoveEdge.ps1 at: {Path}", scriptPath);
-                _logger.LogInformation("Executing Edge removal script: {Path}", scriptPath);
+                _logger.LogInformation("Executing Edge removal script with force removal: {Path}", scriptPath);
 
                 var startInfo = new ProcessStartInfo()
                 {
                     FileName = POWERSHELL_PATH,
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\"",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -Force -Silent",
                     UseShellExecute = true,
                     Verb = "runas",
                     CreateNoWindow = false,

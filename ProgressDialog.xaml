@@ -1,0 +1,55 @@
+<Window x:Class="ClearGlass.ProgressDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Clear Glass Progress"
+        Width="800"
+        Height="200"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Topmost="True"
+        WindowState="Maximized"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Fade In Animation -->
+        <Storyboard x:Key="FadeInAnimation">
+            <DoubleAnimation 
+                Storyboard.TargetName="MainOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="0" To="1" Duration="0:0:0.3"/>
+        </Storyboard>
+        
+        <!-- Fade Out Animation -->
+        <Storyboard x:Key="FadeOutAnimation">
+            <DoubleAnimation 
+                Storyboard.TargetName="MainOverlay"
+                Storyboard.TargetProperty="Opacity"
+                From="1" To="0" Duration="0:0:0.3"/>
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- Full Screen Overlay -->
+    <Grid x:Name="MainOverlay" Opacity="0">
+        
+        <!-- Semi-transparent background with blur effect -->
+        <Rectangle Fill="#80000000" IsHitTestVisible="True"/>
+        
+        <!-- Progress Panel (Bottom Center) -->
+        <Border
+            x:Name="ProgressPanel"
+            CornerRadius="16"
+            Padding="32,24"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Margin="0,0,0,48"
+            >
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="ProgressTitle" Text="Working..." FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="ProgressDescription" Text="Please wait while we optimize your system." FontSize="14" Foreground="White" Margin="0,8,0,0" HorizontalAlignment="Center"/>
+                <ProgressBar x:Name="ProgressBar" Height="18" Width="320" Margin="0,24,0,0" Foreground="White" Background="#40FFFFFF"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window> 

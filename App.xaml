@@ -16,5 +16,6 @@
         <!-- Text Colors -->
         <SolidColorBrush x:Key="TextPrimary" Color="#E6FFFFFF"/>
         <SolidColorBrush x:Key="TextSecondary" Color="#CCFFFFFF"/>
+        <BlurEffect x:Key="GlassEffect" Radius="12"/>
     </Application.Resources>
 </Application> 
