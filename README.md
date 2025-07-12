@@ -120,7 +120,7 @@ Optional Microsoft Edge removal during bloatware cleanup:
 
 ### Windows AI Components Removal
 
-Comprehensive removal of Windows AI features and components with professional progress tracking:
+Comprehensive removal of Windows AI features and components with enhanced reliability and professional progress tracking:
 
 - **Prerequisite Warning**: Before removing AI components, you **MUST** first remove Windows bloatware:
   - Certain bloatware components can interfere with AI removal
@@ -133,6 +133,12 @@ Comprehensive removal of Windows AI features and components with professional pr
   - AI-powered suggestions and recommendations
   - Machine learning components and DLLs
   - AI-enhanced features in applications (Paint, Notepad, etc.)
+- **Enhanced Reliability Features**:
+  - **Robust Service Management**: Advanced handling of WSAIFabricSvc service with graceful fallback
+  - **No Mid-Process Restarts**: Uses DISM disable instead of immediate package removal to prevent restart prompts
+  - **Improved Error Recovery**: Handles manually terminated services and inconsistent states
+  - **Eliminated Hanging Issues**: Removed verification loops that could cause script to hang
+  - **Better Process Termination**: Graceful service stopping with fallback to process killing
 - **Professional Progress Interface**: Windows Update-style progress screen featuring:
   - Real-time progress bar with completion percentage
   - Detailed status messages for each operation
@@ -141,13 +147,13 @@ Comprehensive removal of Windows AI features and components with professional pr
   - "Please do not turn off your computer" guidance
 - **Process Management**: Kills running AI processes before removal
 - **Registry Cleanup**: Disables AI-related registry keys and policies
-- **Package Removal**: Removes AI AppX packages and components
+- **Package Removal**: Removes AI AppX packages and components using reliable methods
 - **File Cleanup**: Removes AI-related files, scheduled tasks, and data
 - **User Guidance**: Provides clear restart recommendations for complete removal
-- **Safe Execution**: Runs with elevated privileges and proper error handling
+- **Safe Execution**: Runs with elevated privileges and comprehensive error handling
 - **Enhanced Feedback**: Professional completion dialogs and error notifications
 
-**Note**: Some AI components may require a system restart to be fully removed. If removal appears incomplete, restart your computer and run the removal again.
+**Note**: The script now completes without requiring mid-process restarts. Some AI components will be marked for removal on the next restart, ensuring a smooth user experience while maintaining complete removal effectiveness.
 
 ### Clear Glass Theme
 
