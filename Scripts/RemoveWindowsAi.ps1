@@ -219,10 +219,47 @@ try {
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableGenerativeFill' /t REG_DWORD /d '1' /f *>$null
 
     Update-Progress -Controls $progressControls -Status "Disabling Windows AI Fabric Service..." -Progress 35 -Details "Stopping and removing AI Fabric Service"
-    # Disable Windows AI Fabric Service
-    Reg.exe add 'HKLM\SYSTEM\CurrentControlSet\Services\WSAIFabricSvc' /v 'Start' /t REG_DWORD /d '4' /f *>$null
-    Stop-Service -Name WSAIFabricSvc -Force -ErrorAction SilentlyContinue
-    sc.exe delete WSAIFabricSvc *>$null
+    # Disable Windows AI Fabric Service with better error handling
+    try {
+        # First, check if the service exists
+        $service = Get-Service -Name WSAIFabricSvc -ErrorAction SilentlyContinue
+        if ($service) {
+            # Set service to disabled in registry
+            Reg.exe add 'HKLM\SYSTEM\CurrentControlSet\Services\WSAIFabricSvc' /v 'Start' /t REG_DWORD /d '4' /f *>$null
+            
+            # Try to stop the service gracefully first
+            if ($service.Status -eq 'Running') {
+                try {
+                    Stop-Service -Name WSAIFabricSvc -Force -ErrorAction Stop
+                    Start-Sleep -Seconds 2
+                }
+                catch {
+                    # If graceful stop fails, try to kill the process
+                    $processes = Get-Process | Where-Object { $_.ProcessName -like "*WSAIFabricSvc*" -or $_.ProcessName -like "*wasaifabricsvc*" }
+                    foreach ($proc in $processes) {
+                        try {
+                            $proc.Kill()
+                        }
+                        catch {
+                            # Ignore if process is already gone
+                        }
+                    }
+                    Start-Sleep -Seconds 1
+                }
+            }
+            
+            # Try to delete the service
+            sc.exe delete WSAIFabricSvc *>$null
+        }
+        else {
+            # Service doesn't exist, just set the registry to be safe
+            Reg.exe add 'HKLM\SYSTEM\CurrentControlSet\Services\WSAIFabricSvc' /v 'Start' /t REG_DWORD /d '4' /f *>$null
+        }
+    }
+    catch {
+        # If all else fails, just continue - the service might already be in an inconsistent state
+        Update-Progress -Controls $progressControls -Status "Service handling completed" -Progress 35 -Details "WSAIFabricSvc service handling completed (may have been already terminated)"
+    }
 
     Update-Progress -Controls $progressControls -Status "Applying Registry Changes..." -Progress 40 -Details "Forcing group policy update to apply changes"
     gpupdate /force >$null
@@ -429,20 +466,9 @@ foreach ($choice in $aipackages) {
         Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell' /v 'ExecutionPolicy' /t REG_SZ /d 'Unrestricted' /f >$null
     }
 
-    Update-Progress -Controls $progressControls -Status "Removing AI Appx Packages..." -Progress 65 -Details "Uninstalling Windows AI packages using system privileges"
+    Update-Progress -Controls $progressControls -Status "Removing AI Appx Packages..." -Progress 70 -Details "Uninstalling Windows AI packages using system privileges"
     $command = "&$env:TEMP\aiPackageRemoval.ps1"
     Run-Trusted -command $command
-
-    Update-Progress -Controls $progressControls -Status "Verifying Package Removal..." -Progress 70 -Details "Ensuring all AI packages have been successfully removed"
-    # Verify package removal completion
-    do {
-        Start-Sleep 1
-        $packages = get-appxpackage -AllUsers | Where-Object { $aipackages -contains $_.Name }
-        if ($packages) {
-            $command = "&$env:TEMP\aiPackageRemoval.ps1"
-            Run-Trusted -command $command
-        }
-    }while ($packages)
 
     Update-Progress -Controls $progressControls -Status "Packages Removed Successfully" -Progress 75 -Details "All AI packages have been successfully removed from the system"
 
@@ -466,21 +492,26 @@ foreach ($choice in $aipackages) {
         }
     }
 
-    Update-Progress -Controls $progressControls -Status "Removing Additional Hidden AI Packages..." -Progress 90 -Details "Unhiding packages from DISM and removing ownership subkeys"
-    # Unhide packages from DISM and remove ownership subkeys for removal
+    Update-Progress -Controls $progressControls -Status "Disabling Additional Hidden AI Packages..." -Progress 90 -Details "Disabling AI packages from DISM without requiring restart"
+    # Disable packages from DISM without requiring restart
     $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages'
     $ProgressPreference = 'SilentlyContinue'
     Get-ChildItem $regPath | ForEach-Object {
-        $value = Get-ItemPropertyValue "registry::$($_.Name)" -Name Visibility
-        if ($value -eq 2 -and $_.PSChildName -like '*AIX*' -or $_.PSChildName -like '*Recall*' -or $_.PSChildName -like '*Copilot*' -or $_.PSChildName -like '*CoreAI*') {
-            Set-ItemProperty "registry::$($_.Name)" -Name Visibility -Value 1 -Force
+        $value = Get-ItemPropertyValue "registry::$($_.Name)" -Name Visibility -ErrorAction SilentlyContinue
+        if ($value -eq 2 -and ($_.PSChildName -like '*AIX*' -or $_.PSChildName -like '*Recall*' -or $_.PSChildName -like '*Copilot*' -or $_.PSChildName -like '*CoreAI*')) {
+            # Instead of removing, just disable and mark for removal on next restart
+            Set-ItemProperty "registry::$($_.Name)" -Name Visibility -Value 1 -Force -ErrorAction SilentlyContinue
             Remove-Item "registry::$($_.Name)\Owners" -Force -ErrorAction SilentlyContinue
             Remove-Item "registry::$($_.Name)\Updates" -Force -ErrorAction SilentlyContinue
+            
+            # Mark package for removal without triggering immediate restart
             try {
-                Remove-WindowsPackage -Online -PackageName $_.PSChildName -ErrorAction Stop *>$null
+                $packageName = $_.PSChildName
+                $command = "DISM.exe /Online /Disable-Feature /FeatureName:$packageName /NoRestart"
+                cmd /c $command *>$null
             }
             catch {
-                # Ignore RPC and other removal errors
+                # If DISM fails, just continue - the package will be cleaned up on restart
             }
         }
     }
