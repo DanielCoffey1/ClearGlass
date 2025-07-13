@@ -369,6 +369,23 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
                 // Ask user if they want to apply additional tweaks
                 var tweaksResult = CustomMessageBox.Show(
                     "Would you like to apply additional system tweaks?\n\n" +
