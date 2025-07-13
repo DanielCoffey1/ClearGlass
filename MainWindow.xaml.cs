@@ -957,8 +957,29 @@ namespace ClearGlass
                 if (copilotWarning == MessageBoxResult.Cancel)
                     return;
 
+                // Ask user if they want to apply additional tweaks
+                var tweaksResult = CustomMessageBox.Show(
+                    "Would you like to apply additional system tweaks?\n\n" +
+                    "This will apply:\n" +
+                    "• Remove OneDrive\n" +
+                    "• Disable Search Suggestions\n" +
+                    "• Disable Privacy Permissions\n" +
+                    "• Enable End Task in Taskbar\n" +
+                    "• Set This PC as Default\n" +
+                    "• Restore Classic Context Menu\n\n" +
+                    "These tweaks will be applied before the main optimization functions.",
+                    "Apply Additional Tweaks",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
                 try
                 {
+                    // Apply tweaks first if user chose to
+                    if (tweaksResult == MessageBoxResult.Yes)
+                    {
+                        await ApplyAllTweaksSilent();
+                    }
+
                     // Run Windows settings optimization
                     await _optimizationService.TweakWindowsSettings();
                     
@@ -971,6 +992,7 @@ namespace ClearGlass
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
                         "The optimization included:\n" +
+                        (tweaksResult == MessageBoxResult.Yes ? "• System tweaks applied\n" : "") +
                         "• Windows settings optimization\n" +
                         "• Windows AI components removal\n" +
                         "• Windows bloatware removal\n\n" +
