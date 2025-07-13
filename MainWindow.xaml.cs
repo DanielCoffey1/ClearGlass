@@ -940,6 +940,23 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
                 try
                 {
                     // Run Windows settings optimization
@@ -2466,34 +2483,7 @@ namespace ClearGlass
 
         private async void OnRemoveWindowsAIClick(object sender, RoutedEventArgs e)
         {
-            // First warning about bloatware removal
-            var bloatwareWarning = CustomMessageBox.Show(
-                "⚠️ **Important Prerequisite Warning:**\n\n" +
-                "Before removing Windows AI components, you **MUST** first remove Windows bloatware!\n\n" +
-                "**Why this is required:**\n" +
-                "• Certain bloatware components can interfere with AI removal\n" +
-                "• Some AI features are tied to bloatware packages\n" +
-                "• Removing bloatware first ensures cleaner AI removal\n\n" +
-                "**Recommended order:**\n" +
-                "1. Run 'Remove Windows Bloatware' first\n" +
-                "2. Restart your PC\n" +
-                "3. Then run 'Remove AI Components'\n\n" +
-                "Have you already removed Windows bloatware from your system?",
-                "Bloatware Removal Required",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (bloatwareWarning == MessageBoxResult.No)
-            {
-                CustomMessageBox.Show(
-                    "Please run 'Remove Windows Bloatware' first, then restart your PC before attempting to remove AI components.",
-                    "Action Required",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
-            // Second confirmation for AI removal
+            // Confirmation for AI removal
             var result = CustomMessageBox.Show(
                 "This will remove Windows AI components including Copilot, Recall, and related features.\n\n" +
                 "**What this does:**\n" +
@@ -2508,11 +2498,28 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
                 try
                 {
-                    // Adjust this to your actual AI removal service call if needed
+                    // Use the silent version to avoid popups
                     var optimizationService = new OptimizationService();
-                    await optimizationService.RemoveWindowsAIOnly();
+                    await optimizationService.RemoveWindowsAIOnlySilent();
                 }
                 catch (Exception ex)
                 {
