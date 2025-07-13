@@ -2765,7 +2765,15 @@ namespace ClearGlass
             try
             {
                 string script = @"
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Force
+                    # Restore classic context menu
+                    if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32')) {
+                        New-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Type String -Force
+
+                    # Restart Explorer to apply changes
+                    Stop-Process -Name explorer -Force
+                    Start-Process explorer
                 ";
 
                 string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenuSilent.ps1");
