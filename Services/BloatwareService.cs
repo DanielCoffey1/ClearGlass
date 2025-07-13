@@ -216,7 +216,6 @@ namespace ClearGlass.Services
         public async Task RemoveWindowsBloatware(IEnumerable<WindowsApp> appsToKeep, bool clearStartMenu = true)
         {
             _logger.LogOperationStart("Removing Windows bloatware");
-            ShowStartupMessage();
             
             // Ask user about Edge removal
             bool removeEdge = await AskUserAboutEdgeRemoval();

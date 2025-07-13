@@ -13,10 +13,7 @@ namespace ClearGlass.Services
         {
             try
             {
-                CustomMessageBox.Show("Starting Windows optimization...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
-
                 // Create restore point
-                CustomMessageBox.Show("Creating system restore point...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await CreateRestorePoint();
 
                 // Run PowerShell commands with elevated privileges
@@ -315,25 +312,7 @@ namespace ClearGlass.Services
         {
             try
             {
-                CustomMessageBox.Show("Starting Windows AI component removal...", "Progress", MessageBoxButton.OK, MessageBoxImage.Information);
                 await RemoveWindowsAIComponents();
-                
-                var message =
-                    "✅ Windows AI components have been successfully removed!\n\n" +
-                    "🔄 **Restart Recommendation:**\n\n" +
-                    "• Some AI components may require a system restart to be fully removed.\n\n" +
-                    "• **If any AI features weren't removed successfully, restart your computer and click 'Remove AI Components' again.**\n\n" +
-                    "• This is normal Windows behavior—running processes can lock files during removal.\n\n" +
-                    "• A restart ensures all cleanup operations complete successfully.\n\n" +
-                    "💡 **Tip:**\nIf you plan to run additional cleanup operations, consider restarting first for best results.\n\n" +
-                    "🔧 **Service Status:**\nWindows Update services have been automatically restored.";
-                
-                CustomMessageBox.Show(
-                    message,
-                    "AI Removal Complete! 🎉",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information,
-                    System.Windows.TextAlignment.Center);
             }
             catch (Exception ex)
             {

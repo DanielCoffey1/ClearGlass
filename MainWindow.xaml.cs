@@ -369,6 +369,23 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
                 // Ask user if they want to apply additional tweaks
                 var tweaksResult = CustomMessageBox.Show(
                     "Would you like to apply additional system tweaks?\n\n" +
@@ -923,8 +940,46 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
+                // Ask user if they want to apply additional tweaks
+                var tweaksResult = CustomMessageBox.Show(
+                    "Would you like to apply additional system tweaks?\n\n" +
+                    "This will apply:\n" +
+                    "• Remove OneDrive\n" +
+                    "• Disable Search Suggestions\n" +
+                    "• Disable Privacy Permissions\n" +
+                    "• Enable End Task in Taskbar\n" +
+                    "• Set This PC as Default\n" +
+                    "• Restore Classic Context Menu\n\n" +
+                    "These tweaks will be applied before the main optimization functions.",
+                    "Apply Additional Tweaks",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
                 try
                 {
+                    // Apply tweaks first if user chose to
+                    if (tweaksResult == MessageBoxResult.Yes)
+                    {
+                        await ApplyAllTweaksSilent();
+                    }
+
                     // Run Windows settings optimization
                     await _optimizationService.TweakWindowsSettings();
                     
@@ -937,6 +992,7 @@ namespace ClearGlass
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
                         "The optimization included:\n" +
+                        (tweaksResult == MessageBoxResult.Yes ? "• System tweaks applied\n" : "") +
                         "• Windows settings optimization\n" +
                         "• Windows AI components removal\n" +
                         "• Windows bloatware removal\n\n" +
@@ -2449,34 +2505,7 @@ namespace ClearGlass
 
         private async void OnRemoveWindowsAIClick(object sender, RoutedEventArgs e)
         {
-            // First warning about bloatware removal
-            var bloatwareWarning = CustomMessageBox.Show(
-                "⚠️ **Important Prerequisite Warning:**\n\n" +
-                "Before removing Windows AI components, you **MUST** first remove Windows bloatware!\n\n" +
-                "**Why this is required:**\n" +
-                "• Certain bloatware components can interfere with AI removal\n" +
-                "• Some AI features are tied to bloatware packages\n" +
-                "• Removing bloatware first ensures cleaner AI removal\n\n" +
-                "**Recommended order:**\n" +
-                "1. Run 'Remove Windows Bloatware' first\n" +
-                "2. Restart your PC\n" +
-                "3. Then run 'Remove AI Components'\n\n" +
-                "Have you already removed Windows bloatware from your system?",
-                "Bloatware Removal Required",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (bloatwareWarning == MessageBoxResult.No)
-            {
-                CustomMessageBox.Show(
-                    "Please run 'Remove Windows Bloatware' first, then restart your PC before attempting to remove AI components.",
-                    "Action Required",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
-            // Second confirmation for AI removal
+            // Confirmation for AI removal
             var result = CustomMessageBox.Show(
                 "This will remove Windows AI components including Copilot, Recall, and related features.\n\n" +
                 "**What this does:**\n" +
@@ -2491,11 +2520,28 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Show Copilot+ PC warning
+                var copilotWarning = CustomMessageBox.Show(
+                    "Windows Copilot+ PC Warning\n\n" +
+                    "If you have a Windows Copilot+ PC with Recall enabled, you may need to manually terminate a service during AI removal:\n\n" +
+                    "1. Right-click the taskbar → Task Manager\n" +
+                    "2. Search for 'wsaifabricsvc' \n" +
+                    "3. Right-click it → End Task\n" +
+                    "4. Click 'Shut down' on the Windows warning popup\n" +
+                    "5. Return here and click OK\n\n" +
+                    "If you don't have a Copilot+ PC or Recall enabled, you can safely click OK to continue.",
+                    "Windows Copilot+ PC Warning",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Information);
+
+                if (copilotWarning == MessageBoxResult.Cancel)
+                    return;
+
                 try
                 {
-                    // Adjust this to your actual AI removal service call if needed
+                    // Use the silent version to avoid popups
                     var optimizationService = new OptimizationService();
-                    await optimizationService.RemoveWindowsAIOnly();
+                    await optimizationService.RemoveWindowsAIOnlySilent();
                 }
                 catch (Exception ex)
                 {
@@ -2741,7 +2787,15 @@ namespace ClearGlass
             try
             {
                 string script = @"
-                    Set-ItemProperty -Path 'HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Force
+                    # Restore classic context menu
+                    if (!(Test-Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32')) {
+                        New-Item -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Force | Out-Null
+                    }
+                    Set-ItemProperty -Path 'HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' -Name '(Default)' -Value '' -Type String -Force
+
+                    # Restart Explorer to apply changes
+                    Stop-Process -Name explorer -Force
+                    Start-Process explorer
                 ";
 
                 string scriptPath = Path.Combine(Path.GetTempPath(), "RestoreClassicMenuSilent.ps1");

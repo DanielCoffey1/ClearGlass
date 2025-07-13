@@ -135,6 +135,7 @@ Comprehensive removal of Windows AI features and components with enhanced reliab
   - AI-enhanced features in applications (Paint, Notepad, etc.)
 - **Enhanced Reliability Features**:
   - **Robust Service Management**: Advanced handling of WSAIFabricSvc service with graceful fallback
+  - **Copilot+ PC Warning**: Proactive warning for users with Windows Copilot+ PCs about potential manual service termination
   - **No Mid-Process Restarts**: Uses DISM disable instead of immediate package removal to prevent restart prompts
   - **Improved Error Recovery**: Handles manually terminated services and inconsistent states
   - **Eliminated Hanging Issues**: Removed verification loops that could cause script to hang
