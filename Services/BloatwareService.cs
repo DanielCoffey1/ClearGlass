@@ -59,23 +59,36 @@ namespace ClearGlass.Services
 
         public void UpdateSessionEssentialApps(IEnumerable<WindowsApp> selectedApps)
         {
+            // Start with default essential apps
             _sessionEssentialApps = new List<string>(defaultEssentialApps);
-            var newApps = selectedApps
+            
+            // Get all selected apps from the UI
+            var selectedAppNames = selectedApps
                 .Where(a => a.IsSelected)
                 .Select(a => a.Name)
+                .ToList();
+            
+            // Add selected apps that aren't already in the default list
+            var newApps = selectedAppNames
                 .Where(name => !_sessionEssentialApps.Contains(name))
                 .ToList();
 
             _sessionEssentialApps.AddRange(newApps);
             
             _logger.LogInformation(
-                "Updated essential apps list. Added {Count} new apps: {Apps}", 
+                "Updated essential apps list. Total apps to keep: {Count}. Added {NewCount} new apps: {Apps}", 
+                _sessionEssentialApps.Count,
                 newApps.Count, 
                 string.Join(", ", newApps)
             );
         }
 
         public IReadOnlyList<string> EssentialApps => _sessionEssentialApps;
+
+        public void LogCurrentEssentialApps()
+        {
+            _logger.LogInformation("Current essential apps list: {Apps}", string.Join(", ", _sessionEssentialApps));
+        }
 
         public async Task<ObservableCollection<WindowsApp>> GetInstalledApps()
         {
@@ -94,7 +107,9 @@ namespace ClearGlass.Services
                         foreach (var app in appList.OrderBy(a => a.Name))
                         {
                             app.DisplayName = GetDisplayName(app.Name);
-                            app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
+                            // Check both default essential apps and session essential apps
+                            app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase)) ||
+                                           _sessionEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
                             apps.Add(app);
                         }
                         _logger.LogInformation("Found {Count} installed apps", appList.Count);
@@ -217,6 +232,14 @@ namespace ClearGlass.Services
         {
             _logger.LogOperationStart("Removing Windows bloatware");
             
+            // Log the apps that will be kept
+            var appsToKeepList = appsToKeep.ToList();
+            _logger.LogInformation("Apps to keep during bloatware removal: {Count} apps", appsToKeepList.Count);
+            foreach (var app in appsToKeepList)
+            {
+                _logger.LogInformation("Keeping app: {AppName} (Selected: {IsSelected})", app.Name, app.IsSelected);
+            }
+            
             // Ask user about Edge removal
             bool removeEdge = await AskUserAboutEdgeRemoval();
             
@@ -255,7 +278,15 @@ namespace ClearGlass.Services
         public async Task RemoveWindowsBloatware(bool clearStartMenu = true)
         {
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatware(apps, clearStartMenu);
+            
+            // Filter apps to only include the ones marked as essential in the session
+            var essentialApps = apps.Where(app => 
+                _sessionEssentialApps.Any(essential => 
+                    app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                )
+            ).ToList();
+            
+            await RemoveWindowsBloatware(essentialApps, clearStartMenu);
         }
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep)
@@ -266,8 +297,17 @@ namespace ClearGlass.Services
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice()
         {
+            // Use the session's essential apps list instead of all apps
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatwareWithStartMenuChoice(apps);
+            
+            // Filter apps to only include the ones marked as essential in the session
+            var essentialApps = apps.Where(app => 
+                _sessionEssentialApps.Any(essential => 
+                    app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                )
+            ).ToList();
+            
+            await RemoveWindowsBloatwareWithStartMenuChoice(essentialApps);
         }
 
         public async Task RemoveWindowsBloatwareSilent()
@@ -281,7 +321,15 @@ namespace ClearGlass.Services
                 bool clearStartMenu = true; // Default to clearing start menu
                 
                 var apps = await GetInstalledApps();
-                string scriptPath = await CreateRemovalScript(apps);
+                
+                // Filter apps to only include the ones marked as essential in the session
+                var essentialApps = apps.Where(app => 
+                    _sessionEssentialApps.Any(essential => 
+                        app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                    )
+                ).ToList();
+                
+                string scriptPath = await CreateRemovalScript(essentialApps);
 
                 try
                 {
