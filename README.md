@@ -96,6 +96,9 @@ Steam games are detected automatically by their app ID (e.g., "Steam App 1091500
 - Easy-to-use interface with checkboxes for selection
 - Automatically detects and lists installed Windows apps
 - Remembers essential system apps by default
+- **Smart filtering**: Only shows user-facing, removable apps (filters out system services, frameworks, and non-removable components)
+- **Clean interface**: Removes clutter from internal Windows components and system services
+- **Search functionality**: Quickly find specific apps in the list
 
 ### Microsoft Edge Removal
 
