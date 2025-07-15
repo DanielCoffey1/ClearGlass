@@ -493,7 +493,8 @@ try {
 # Get all installed UWP apps for all users
 $apps = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object {
     $app = $_.Name
-    $keep = @('__APP_NAMES_PLACEHOLDER__')
+    $keepString = '__APP_NAMES_PLACEHOLDER__'
+    $keep = @($keepString.Split("','") | ForEach-Object { $_.Trim("'") })
     -not ($keep -contains $app)
 }
 
