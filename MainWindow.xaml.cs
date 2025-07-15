@@ -921,6 +921,9 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                // Log the current essential apps before removal
+                _bloatwareService.LogCurrentEssentialApps();
+                
                 await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
             }
         }
@@ -1181,8 +1184,19 @@ namespace ClearGlass
 
                 if (result == MessageBoxResult.Yes)
                 {
+                    // Log the current state before updating
+                    var selectedApps = _installedApps?.Where(app => app.IsSelected).ToList() ?? new List<WindowsApp>();
+                    System.Diagnostics.Debug.WriteLine($"Selected apps count: {selectedApps.Count}");
+                    foreach (var app in selectedApps)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Selected app: {app.Name} (Display: {app.DisplayName})");
+                    }
+                    
                     // Update the essential apps list with selected apps
                     _bloatwareService.UpdateSessionEssentialApps(_installedApps);
+                    
+                    // Log the updated state
+                    _bloatwareService.LogCurrentEssentialApps();
 
                     CustomMessageBox.Show(
                         "Protected apps list has been updated successfully!\n\n" +

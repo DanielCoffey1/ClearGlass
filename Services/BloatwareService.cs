@@ -59,23 +59,36 @@ namespace ClearGlass.Services
 
         public void UpdateSessionEssentialApps(IEnumerable<WindowsApp> selectedApps)
         {
+            // Start with default essential apps
             _sessionEssentialApps = new List<string>(defaultEssentialApps);
-            var newApps = selectedApps
+            
+            // Get all selected apps from the UI
+            var selectedAppNames = selectedApps
                 .Where(a => a.IsSelected)
                 .Select(a => a.Name)
+                .ToList();
+            
+            // Add selected apps that aren't already in the default list
+            var newApps = selectedAppNames
                 .Where(name => !_sessionEssentialApps.Contains(name))
                 .ToList();
 
             _sessionEssentialApps.AddRange(newApps);
             
             _logger.LogInformation(
-                "Updated essential apps list. Added {Count} new apps: {Apps}", 
+                "Updated essential apps list. Total apps to keep: {Count}. Added {NewCount} new apps: {Apps}", 
+                _sessionEssentialApps.Count,
                 newApps.Count, 
                 string.Join(", ", newApps)
             );
         }
 
         public IReadOnlyList<string> EssentialApps => _sessionEssentialApps;
+
+        public void LogCurrentEssentialApps()
+        {
+            _logger.LogInformation("Current essential apps list: {Apps}", string.Join(", ", _sessionEssentialApps));
+        }
 
         public async Task<ObservableCollection<WindowsApp>> GetInstalledApps()
         {
@@ -91,10 +104,23 @@ namespace ClearGlass.Services
                     var appList = System.Text.Json.JsonSerializer.Deserialize<List<WindowsApp>>(output);
                     if (appList != null)
                     {
-                        foreach (var app in appList.OrderBy(a => a.Name))
+                        foreach (var app in appList.OrderBy(a => a.DisplayName ?? a.Name))
                         {
-                            app.DisplayName = GetDisplayName(app.Name);
-                            app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
+                            // Use PowerShell DisplayName if available, otherwise fall back to the custom parsing
+                            if (string.IsNullOrWhiteSpace(app.DisplayName))
+                            {
+                                app.DisplayName = GetDisplayName(app.Name);
+                            }
+                            
+                            // Filter out weird apps with GUID-like names or corrupted display names
+                            if (ShouldFilterOutApp(app.DisplayName, app.Name))
+                            {
+                                continue; // Skip this app
+                            }
+                            
+                            // Check both default essential apps and session essential apps
+                            app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase)) ||
+                                           _sessionEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
                             apps.Add(app);
                         }
                         _logger.LogInformation("Found {Count} installed apps", appList.Count);
@@ -217,6 +243,14 @@ namespace ClearGlass.Services
         {
             _logger.LogOperationStart("Removing Windows bloatware");
             
+            // Log the apps that will be kept
+            var appsToKeepList = appsToKeep.ToList();
+            _logger.LogInformation("Apps to keep during bloatware removal: {Count} apps", appsToKeepList.Count);
+            foreach (var app in appsToKeepList)
+            {
+                _logger.LogInformation("Keeping app: {AppName} (Selected: {IsSelected})", app.Name, app.IsSelected);
+            }
+            
             // Ask user about Edge removal
             bool removeEdge = await AskUserAboutEdgeRemoval();
             
@@ -255,7 +289,15 @@ namespace ClearGlass.Services
         public async Task RemoveWindowsBloatware(bool clearStartMenu = true)
         {
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatware(apps, clearStartMenu);
+            
+            // Filter apps to only include the ones marked as essential in the session
+            var essentialApps = apps.Where(app => 
+                _sessionEssentialApps.Any(essential => 
+                    app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                )
+            ).ToList();
+            
+            await RemoveWindowsBloatware(essentialApps, clearStartMenu);
         }
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice(IEnumerable<WindowsApp> appsToKeep)
@@ -266,8 +308,17 @@ namespace ClearGlass.Services
 
         public async Task RemoveWindowsBloatwareWithStartMenuChoice()
         {
+            // Use the session's essential apps list instead of all apps
             var apps = await GetInstalledApps();
-            await RemoveWindowsBloatwareWithStartMenuChoice(apps);
+            
+            // Filter apps to only include the ones marked as essential in the session
+            var essentialApps = apps.Where(app => 
+                _sessionEssentialApps.Any(essential => 
+                    app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                )
+            ).ToList();
+            
+            await RemoveWindowsBloatwareWithStartMenuChoice(essentialApps);
         }
 
         public async Task RemoveWindowsBloatwareSilent()
@@ -281,7 +332,15 @@ namespace ClearGlass.Services
                 bool clearStartMenu = true; // Default to clearing start menu
                 
                 var apps = await GetInstalledApps();
-                string scriptPath = await CreateRemovalScript(apps);
+                
+                // Filter apps to only include the ones marked as essential in the session
+                var essentialApps = apps.Where(app => 
+                    _sessionEssentialApps.Any(essential => 
+                        app.Name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)
+                    )
+                ).ToList();
+                
+                string scriptPath = await CreateRemovalScript(essentialApps);
 
                 try
                 {
@@ -596,15 +655,197 @@ namespace ClearGlass.Services
 
         private string GetDisplayName(string appName)
         {
+            // Handle Microsoft apps
             if (appName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase))
             {
                 appName = appName.Substring("Microsoft.".Length);
             }
 
-            var parts = System.Text.RegularExpressions.Regex.Split(appName, @"(?<!^)(?=[A-Z])|[.]")
+            // Split by dots first to separate publisher from app name
+            var dotParts = appName.Split('.');
+            if (dotParts.Length >= 2)
+            {
+                // If we have a publisher.appname format, try to extract just the app name
+                var appNamePart = dotParts[dotParts.Length - 1]; // Take the last part as the app name
+                
+                // Handle common patterns
+                if (appNamePart.Contains("Netflix"))
+                    return "Netflix";
+                if (appNamePart.Contains("Spotify"))
+                    return "Spotify";
+                if (appNamePart.Contains("Discord"))
+                    return "Discord";
+                if (appNamePart.Contains("Steam"))
+                    return "Steam";
+                if (appNamePart.Contains("Calculator"))
+                    return "Calculator";
+                if (appNamePart.Contains("Photos"))
+                    return "Photos";
+                if (appNamePart.Contains("Mail"))
+                    return "Mail";
+                if (appNamePart.Contains("Calendar"))
+                    return "Calendar";
+                if (appNamePart.Contains("Weather"))
+                    return "Weather";
+                if (appNamePart.Contains("Maps"))
+                    return "Maps";
+                if (appNamePart.Contains("Store"))
+                    return "Microsoft Store";
+                if (appNamePart.Contains("Edge"))
+                    return "Microsoft Edge";
+                if (appNamePart.Contains("Teams"))
+                    return "Microsoft Teams";
+                if (appNamePart.Contains("Office"))
+                    return "Microsoft Office";
+                
+                // For other apps, use a better regex that doesn't split on consecutive capitals
+                var parts = System.Text.RegularExpressions.Regex.Split(appNamePart, @"(?<!^)(?=[A-Z][a-z])|[.]")
+                    .Where(p => !string.IsNullOrWhiteSpace(p));
+                
+                return string.Join(" ", parts);
+            }
+            
+            // Fallback to original logic for apps without dots
+            var fallbackParts = System.Text.RegularExpressions.Regex.Split(appName, @"(?<!^)(?=[A-Z][a-z])|[.]")
                 .Where(p => !string.IsNullOrWhiteSpace(p));
+            
+            return string.Join(" ", fallbackParts);
+        }
 
-            return string.Join(" ", parts);
+        private static readonly HashSet<string> BlacklistedAppNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Common system/internal apps and services
+            "Accounts Service",
+            "Async Text Service",
+            "CBS",
+            "CBS Preview",
+            "Chx App",
+            "Cloud Experience Host",
+            "Cloud Store",
+            "Contact Data",
+            "Data Store",
+            "Device Census",
+            "Input Service",
+            "Install Service",
+            "LockApp",
+            "Messaging Service",
+            "People Experience Host",
+            "Phone Service",
+            "Print 3D",
+            "Search",
+            "Secure Assessment Browser",
+            "Security Center",
+            "Settings",
+            "Shell Experience Host",
+            "Start Menu Experience Host",
+            "Store Experience Host",
+            "Text Input Host",
+            "User Data Access",
+            "User Data Storage",
+            "Web Experience Pack",
+            "Windows Alarms",
+            "Windows Calculator",
+            "Windows Camera",
+            "Windows Maps",
+            "Windows Sound Recorder",
+            "Windows Terminal",
+            "Xbox Game Bar",
+            "Xbox Identity Provider",
+            // Add more as needed
+        };
+
+        private static readonly string[] BlacklistPatterns = new[]
+        {
+            "service",
+            "host",
+            "framework",
+            "runtime",
+            "platform",
+            "experience",
+            "data",
+            "input",
+            "census",
+            "assessment",
+            "provisioning",
+            "cloud",
+            "store",
+            "install",
+            "lock",
+            "text",
+            "user",
+            "device",
+            "contact",
+            "messaging",
+            "phone",
+            "print",
+            "search",
+            "shell",
+            "start menu",
+            "settings",
+            "security",
+            "xbox",
+            "windows",
+            "microsoft",
+            "web",
+            "appinstaller",
+            "appx",
+            "uwp",
+            "preview",
+            "test",
+            "sample",
+            "demo",
+            "host",
+            "cbs",
+            "chx",
+            // Add more as needed
+        };
+
+        private bool ShouldFilterOutApp(string displayName, string appName)
+        {
+            // Filter out apps with GUID-like names (like "1527c705-839a-4832-9118-54d4 Bd6a0c89")
+            if (System.Text.RegularExpressions.Regex.IsMatch(displayName, @"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
+            
+            // Filter out apps with very short or meaningless names
+            if (displayName.Length <= 2)
+            {
+                return true;
+            }
+            
+            // Filter out apps that are just numbers or random characters
+            if (System.Text.RegularExpressions.Regex.IsMatch(displayName, @"^[0-9a-f\s-]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) && displayName.Length > 10)
+            {
+                return true;
+            }
+            
+            // Filter out apps with names that look like hashes or random strings
+            if (System.Text.RegularExpressions.Regex.IsMatch(displayName, @"^[a-f0-9]{16,}", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
+            
+            // Filter out apps with names that contain mostly special characters or are clearly corrupted
+            var normalChars = displayName.Count(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c));
+            var totalChars = displayName.Length;
+            if (totalChars > 0 && (double)normalChars / totalChars < 0.5)
+            {
+                return true;
+            }
+
+            // Blacklist by exact name
+            if (BlacklistedAppNames.Contains(displayName.Trim()))
+                return true;
+
+            // Blacklist by pattern
+            foreach (var pattern in BlacklistPatterns)
+            {
+                if (displayName.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+
+            return false;
         }
 
         private void ShowStartupMessage()
