@@ -59,7 +59,7 @@ namespace ClearGlass.Services
 
         public void UpdateSessionEssentialApps(IEnumerable<WindowsApp> selectedApps)
         {
-            // Start with default essential apps
+            // Start with default essential apps (these should always be protected)
             _sessionEssentialApps = new List<string>(defaultEssentialApps);
             
             // Get all selected apps from the UI
@@ -70,7 +70,7 @@ namespace ClearGlass.Services
             
             // Add selected apps that aren't already in the default list
             var newApps = selectedAppNames
-                .Where(name => !_sessionEssentialApps.Contains(name))
+                .Where(name => !_sessionEssentialApps.Any(essential => name.StartsWith(essential, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
             _sessionEssentialApps.AddRange(newApps);
@@ -121,6 +121,9 @@ namespace ClearGlass.Services
                             // Check both default essential apps and session essential apps
                             app.IsSelected = defaultEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase)) ||
                                            _sessionEssentialApps.Any(e => app.Name.StartsWith(e, StringComparison.OrdinalIgnoreCase));
+                            
+
+                            
                             apps.Add(app);
                         }
                         _logger.LogInformation("Found {Count} installed apps", appList.Count);
@@ -250,6 +253,9 @@ namespace ClearGlass.Services
             {
                 _logger.LogInformation("Keeping app: {AppName} (Selected: {IsSelected})", app.Name, app.IsSelected);
             }
+            
+            // Log the current session essential apps for comparison
+            _logger.LogInformation("Current session essential apps: {Apps}", string.Join(", ", _sessionEssentialApps));
             
             // Ask user about Edge removal
             bool removeEdge = await AskUserAboutEdgeRemoval();
