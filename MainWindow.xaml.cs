@@ -548,6 +548,9 @@ namespace ClearGlass
                             "Clear Glass Complete!",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);
+
+                        // Now offer GlassBar addon as a bonus enhancement
+                        await OfferGlassBarAddon();
                     }
                     catch (Exception ex)
                     {
@@ -2915,6 +2918,96 @@ namespace ClearGlass
                 }
             }
             catch (Exception) { }
+        }
+
+        /// <summary>
+        /// Offers the GlassBar addon as a bonus enhancement after Clear Glass workflow completes
+        /// </summary>
+        private async Task OfferGlassBarAddon()
+        {
+            try
+            {
+                // Check if GlassBar is already installed
+                if (_glassBarService.IsGlassBarInstalled())
+                {
+                    // GlassBar is already installed, no need to prompt
+                    return;
+                }
+
+                // Prompt user about GlassBar installation as a bonus enhancement
+                var glassBarResult = CustomMessageBox.Show(
+                    "🌟 Complete Your Clear Glass Experience!\n\n" +
+                    "Would you like to add the GlassBar addon for even more visual enhancement?\n\n" +
+                    "GlassBar adds a beautiful translucent taskbar effect that perfectly complements your new Clear Glass theme. " +
+                    "It uses minimal system resources and provides stunning visual effects.\n\n" +
+                    "✨ Translucent taskbar with glass effect\n" +
+                    "⚡ Lightweight and efficient\n" +
+                    "🎨 Perfectly matches Clear Glass theme\n" +
+                    "🔧 Automatic installation and configuration\n\n" +
+                    "Install GlassBar addon?",
+                    "GlassBar Addon - Bonus Enhancement",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (glassBarResult == MessageBoxResult.Yes)
+                {
+                    // Show separate progress dialog for GlassBar installation
+                    var glassBarProgressDialog = new ProgressDialog(
+                        (message) => { /* Update progress action - handled by UpdateProgress method */ },
+                        () => { /* On complete action - will be handled manually */ }
+                    );
+                    glassBarProgressDialog.Owner = this;
+                    glassBarProgressDialog.Show();
+                    
+                    try
+                    {
+                        glassBarProgressDialog.UpdateProgress("Installing and configuring GlassBar addon...", 70);
+                        
+                        // Install GlassBar using the service
+                        var installSuccess = await _glassBarService.InstallGlassBarAsync();
+                        
+                        glassBarProgressDialog.UpdateProgress("GlassBar setup completed!", 100);
+                        await Task.Delay(1000);
+                        glassBarProgressDialog.Close();
+                        
+                        if (installSuccess)
+                        {
+                            CustomMessageBox.Show(
+                                "🎉 GlassBar addon installed successfully!\n\n" +
+                                "The translucent taskbar effect is now active and perfectly complements your Clear Glass theme.\n\n" +
+                                "Your Clear Glass experience is now complete with enhanced visual effects!",
+                                "GlassBar Addon Complete!",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            CustomMessageBox.Show(
+                                "GlassBar addon installation encountered an issue.\n\n" +
+                                "Your Clear Glass theme is still fully functional. You can try installing GlassBar manually later if needed.\n\n" +
+                                "Check the application logs for more details.",
+                                "GlassBar Installation Issue",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        glassBarProgressDialog.Close();
+                        CustomMessageBox.Show(
+                            $"An error occurred while installing GlassBar addon:\n\n{ex.Message}\n\n" +
+                            "Your Clear Glass theme is still fully functional. You can try installing GlassBar manually later if needed.",
+                            "GlassBar Installation Error",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't show it to user since main Clear Glass workflow was successful
+                Debug.WriteLine($"Error in OfferGlassBarAddon: {ex.Message}");
+            }
         }
 
         private async Task ApplyClearGlassThemeSilent()
