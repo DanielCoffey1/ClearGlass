@@ -112,6 +112,39 @@ if (-not (Test-Path $InstallerPath)) {
     exit 1
 }
 
+# Install Visual C++ Redistributable first if needed
+Write-Log "Checking and installing Visual C++ Redistributable if needed..."
+$vcRedistPath = Join-Path (Split-Path $InstallerPath -Parent) "VC_redist.x64.exe"
+
+if (Test-Path $vcRedistPath) {
+    Write-Log "Found VC_redist.x64.exe at: $vcRedistPath"
+    
+    # Get the path to our VC++ Redistributable installation script
+    $scriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
+    $vcRedistScriptPath = Join-Path $scriptDir "InstallVCRedistSilently.ps1"
+    
+    if (Test-Path $vcRedistScriptPath) {
+        Write-Log "Installing Visual C++ Redistributable silently..."
+        try {
+            $vcRedistLogPath = "$env:TEMP\ClearGlass_VCRedist_Install.log"
+            $vcRedistProcess = Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$vcRedistScriptPath`" -InstallerPath `"$vcRedistPath`" -LogPath `"$vcRedistLogPath`"" -Wait -PassThru -NoNewWindow -ErrorAction Stop
+            
+            if ($vcRedistProcess.ExitCode -eq 0) {
+                Write-Log "Visual C++ Redistributable installation completed successfully"
+            } else {
+                Write-Log "WARNING: Visual C++ Redistributable installation may have failed (exit code: $($vcRedistProcess.ExitCode)), but proceeding with GlassBar installation"
+            }
+        }
+        catch {
+            Write-Log "WARNING: Error installing Visual C++ Redistributable: $($_.Exception.Message), but proceeding with GlassBar installation"
+        }
+    } else {
+        Write-Log "WARNING: VC++ Redistributable installation script not found at: $vcRedistScriptPath"
+    }
+} else {
+    Write-Log "VC_redist.x64.exe not found at: $vcRedistPath, proceeding without VC++ Redistributable installation"
+}
+
 # Start the error dialog killer job
 Write-Log "Starting error dialog killer..."
 $errorKillerJob = Start-ErrorDialogKiller

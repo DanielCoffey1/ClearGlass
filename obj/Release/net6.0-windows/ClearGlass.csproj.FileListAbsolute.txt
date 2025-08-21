@@ -50,3 +50,6 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\R
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\StartGlassBar.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\InstallGlassBarSilently.ps1
 C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\InstallGlassBarWithErrorSuppression.ps1
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\InstallVCRedistSilently.ps1
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\System.Management.dll
+C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\runtimes\win\lib\net6.0\System.Management.dll
