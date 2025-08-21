@@ -169,6 +169,21 @@ A modern, minimalist theme that includes:
 - Proper theme application sequencing for reliability
 - Automatic wallpaper download and caching
 
+#### GlassBar Addon Integration
+
+The Clear Glass theme now includes optional GlassBar addon integration for enhanced visual effects:
+
+- **Translucent Taskbar**: Beautiful glass effect applied directly to the Windows taskbar
+- **Seamless Integration**: Automatically prompted during Clear Glass theme application
+- **Silent Installation**: GlassBar installs and configures automatically with error suppression
+- **User Choice**: Optional installation - users can choose whether to include GlassBar
+- **Lightweight**: Minimal system resource usage while providing stunning visual enhancements
+- **Smart Context Handling**: Launches in proper user context to avoid compatibility issues
+- **Error Recovery**: Comprehensive error handling and automatic dialog dismissal during installation
+- **Perfect Complement**: Designed to work harmoniously with Clear Glass theme settings
+
+**How it works**: When applying the Clear Glass theme, users are prompted whether they'd like to install the GlassBar addon. If accepted, GlassBar is automatically downloaded, installed, and configured to provide translucent taskbar effects that perfectly complement the Clear Glass aesthetic.
+
 ### Enhanced Clear Glass Experience
 
 The complete Clear Glass experience now includes optional user choices:
