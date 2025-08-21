@@ -295,13 +295,18 @@ namespace ClearGlass.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\" -InstallerPath \"{installerPath}\" -LogPath \"{logPath}\"",
+                    Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -NonInteractive -File \"{scriptPath}\" -InstallerPath \"{installerPath}\" -LogPath \"{logPath}\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 };
+
+                // Set environment variables for silent operation
+                startInfo.EnvironmentVariables["SUPPRESS_OS_NOTIFICATIONS"] = "1";
+                startInfo.EnvironmentVariables["POWERSHELL_TELEMETRY_OPTOUT"] = "1";
+                startInfo.EnvironmentVariables["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
 
                 _loggingService.LogInformation($"Executing PowerShell installation script with error suppression: {scriptPath}");
 

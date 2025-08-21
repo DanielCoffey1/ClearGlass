@@ -64,13 +64,28 @@ catch {
     Write-Log "Note: No existing GlassBar processes found"
 }
 
-# Try different silent installation flags
+# Suppress any potential UAC prompts and make installation completely silent
+Write-Log "Setting up for completely silent installation..."
+try {
+    # Set process priority to below normal to minimize impact
+    $currentProcess = Get-Process -Id $PID
+    $currentProcess.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+    Write-Log "Set process priority to BelowNormal for silent operation"
+}
+catch {
+    Write-Log "Note: Could not adjust process priority"
+}
+
+# Try different silent installation flags - ordered from most silent to least
 $silentFlags = @(
+    "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP- /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS",
+    "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP-",
     "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL",
+    "/S /NOCANCEL /SP-",
     "/S /NOCANCEL",
-    "/silent",
-    "/quiet",
-    "/q"
+    "/silent /norestart",
+    "/quiet /norestart",
+    "/q /norestart"
 )
 
 $installSuccess = $false
@@ -164,8 +179,8 @@ Start-Sleep -Seconds 5
 Write-Log "Starting GlassBar from: $glassBarPath"
 
 try {
-    # Method 1: Start as a normal user process
-    $process = Start-Process -FilePath $glassBarPath -WorkingDirectory (Split-Path $glassBarPath) -PassThru -ErrorAction Stop
+    # Method 1: Start as a normal user process with minimal window
+    $process = Start-Process -FilePath $glassBarPath -WorkingDirectory (Split-Path $glassBarPath) -PassThru -WindowStyle Minimized -ErrorAction Stop
     Write-Log "GlassBar started successfully (PID: $($process.Id))"
     
     # Wait to see if it stays running
