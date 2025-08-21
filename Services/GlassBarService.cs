@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Management;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +28,13 @@ namespace ClearGlass.Services
             try
             {
                 _loggingService.LogInformation("Starting GlassBar installation via PowerShell...");
+
+                // First, check if we need to install VC++ Redistributable
+                var vcRedistSuccess = await InstallVCRedistributableIfNeededAsync();
+                if (!vcRedistSuccess)
+                {
+                    _loggingService.LogWarning("VC++ Redistributable installation may have failed, but proceeding with GlassBar installation");
+                }
 
                 // Extract the embedded exe to a temporary file
                 tempFilePath = await ExtractGlassBarInstallerAsync();
@@ -74,6 +82,199 @@ namespace ClearGlass.Services
         }
 
         /// <summary>
+        /// Checks if VC++ Redistributable is needed and installs it silently if required
+        /// </summary>
+        /// <returns>True if installation was successful or not needed, false if installation failed</returns>
+        private async Task<bool> InstallVCRedistributableIfNeededAsync()
+        {
+            try
+            {
+                _loggingService.LogInformation("Checking if Visual C++ Redistributable is needed...");
+                
+                // Check if VC++ Redistributable is already installed
+                if (IsVCRedistributableInstalled())
+                {
+                    _loggingService.LogInformation("Visual C++ Redistributable is already installed");
+                    return true;
+                }
+
+                // Look for VC_redist.x64.exe in the same directory as our embedded GlassBar installer
+                var assembly = Assembly.GetExecutingAssembly();
+                var resourcePath = "ClearGlass.Resources.ClearGlassAddons.VC_redist.x64.exe";
+                
+                // Check if the resource exists
+                using var resourceStream = assembly.GetManifestResourceStream(resourcePath);
+                if (resourceStream == null)
+                {
+                    _loggingService.LogWarning("VC_redist.x64.exe resource not found, skipping VC++ Redistributable installation");
+                    return true; // Not an error, just not available
+                }
+
+                // Extract VC_redist.x64.exe to a temporary file
+                var tempPath = Path.GetTempPath();
+                var tempFileName = $"VC_redist_{Guid.NewGuid():N}.exe";
+                var tempFilePath = Path.Combine(tempPath, tempFileName);
+
+                using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write))
+                {
+                    await resourceStream.CopyToAsync(fileStream);
+                }
+
+                _loggingService.LogInformation($"VC_redist.x64.exe extracted to: {tempFilePath}");
+
+                try
+                {
+                    // Use PowerShell script to install VC++ Redistributable silently
+                    var scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Scripts", "InstallVCRedistSilently.ps1");
+                    
+                    if (!File.Exists(scriptPath))
+                    {
+                        _loggingService.LogWarning($"VC++ Redistributable installation script not found at: {scriptPath}");
+                        return true; // Not an error, just not available
+                    }
+
+                    var logPath = Path.Combine(Path.GetTempPath(), "ClearGlass_VCRedist_Install.log");
+                    
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\" -InstallerPath \"{tempFilePath}\" -LogPath \"{logPath}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                    };
+
+                    _loggingService.LogInformation("Installing Visual C++ Redistributable silently...");
+
+                    using var process = Process.Start(startInfo);
+                    if (process == null)
+                    {
+                        _loggingService.LogError("Failed to start PowerShell process for VC++ Redistributable installation");
+                        return false;
+                    }
+
+                    // Read output for logging
+                    var output = await process.StandardOutput.ReadToEndAsync();
+                    var error = await process.StandardError.ReadToEndAsync();
+
+                    await process.WaitForExitAsync();
+
+                    var exitCode = process.ExitCode;
+                    _loggingService.LogInformation($"VC++ Redistributable installation completed with exit code: {exitCode}");
+
+                    if (!string.IsNullOrEmpty(output))
+                    {
+                        _loggingService.LogInformation($"PowerShell output: {output}");
+                    }
+
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        _loggingService.LogWarning($"PowerShell error: {error}");
+                    }
+
+                    // Also read the log file if it exists
+                    try
+                    {
+                        if (File.Exists(logPath))
+                        {
+                            var logContent = await File.ReadAllTextAsync(logPath);
+                            _loggingService.LogInformation($"VC++ Redistributable installation log:\n{logContent}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.LogWarning($"Could not read VC++ Redistributable installation log file: {ex.Message}");
+                    }
+
+                    return exitCode == 0;
+                }
+                finally
+                {
+                    // Clean up the temporary VC_redist.x64.exe file
+                    try
+                    {
+                        if (File.Exists(tempFilePath))
+                        {
+                            File.Delete(tempFilePath);
+                            _loggingService.LogInformation("Cleaned up temporary VC_redist.x64.exe file");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _loggingService.LogWarning($"Failed to delete temporary VC_redist.x64.exe file: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogError($"Error during VC++ Redistributable installation: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks if Visual C++ Redistributable is already installed
+        /// </summary>
+        /// <returns>True if installed, false otherwise</returns>
+        private bool IsVCRedistributableInstalled()
+        {
+            try
+            {
+                // Check for common VC++ Redistributable registry entries
+                var registryPaths = new[]
+                {
+                    @"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
+                    @"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
+                    @"SOFTWARE\Microsoft\VisualStudio\12.0\VC\Runtimes\x64",
+                    @"SOFTWARE\WOW6432Node\Microsoft\VisualStudio\12.0\VC\Runtimes\x64"
+                };
+
+                foreach (var regPath in registryPaths)
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(regPath);
+                    if (key != null)
+                    {
+                        var installed = key.GetValue("Installed");
+                        if (installed != null && installed.ToString() == "1")
+                        {
+                            _loggingService.LogInformation($"Found VC++ Redistributable in registry: {regPath}");
+                            return true;
+                        }
+                    }
+                }
+
+                // Also check for installed programs
+                try
+                {
+                    var searcher = new System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Product WHERE Name LIKE '%Visual C++%' OR Name LIKE '%Microsoft Visual C++%'");
+                    var installedPrograms = searcher.Get();
+                    foreach (var program in installedPrograms)
+                    {
+                        var name = program["Name"]?.ToString();
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            _loggingService.LogInformation($"Found installed VC++ Redistributable: {name}");
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _loggingService.LogWarning($"Error checking installed programs: {ex.Message}");
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.LogWarning($"Error checking VC++ Redistributable installation: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Runs the PowerShell script to install and start GlassBar
         /// </summary>
         private async Task<bool> RunGlassBarInstallationScript(string installerPath)
@@ -94,13 +295,18 @@ namespace ClearGlass.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = $"-ExecutionPolicy Bypass -File \"{scriptPath}\" -InstallerPath \"{installerPath}\" -LogPath \"{logPath}\"",
+                    Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -NonInteractive -File \"{scriptPath}\" -InstallerPath \"{installerPath}\" -LogPath \"{logPath}\"",
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     WindowStyle = ProcessWindowStyle.Hidden,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 };
+
+                // Set environment variables for silent operation
+                startInfo.EnvironmentVariables["SUPPRESS_OS_NOTIFICATIONS"] = "1";
+                startInfo.EnvironmentVariables["POWERSHELL_TELEMETRY_OPTOUT"] = "1";
+                startInfo.EnvironmentVariables["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
 
                 _loggingService.LogInformation($"Executing PowerShell installation script with error suppression: {scriptPath}");
 

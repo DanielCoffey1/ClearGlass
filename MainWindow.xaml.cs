@@ -339,7 +339,6 @@ namespace ClearGlass
                             CustomMessageBox.Show(
                                 "Clear Glass Theme and GlassBar addon applied successfully!\n\n" +
                                 "GlassBar has been installed and started. The translucent taskbar effect should now be active.\n\n" +
-                                "Any error dialogs that appeared during installation were automatically dismissed.\n\n" +
                                 "Some changes may take a few seconds to fully apply.",
                                 "Success",
                                 MessageBoxButton.OK,

@@ -20,6 +20,39 @@ if (-not (Test-Path $InstallerPath)) {
     exit 1
 }
 
+# Install Visual C++ Redistributable first if needed
+Write-Log "Checking and installing Visual C++ Redistributable if needed..."
+$vcRedistPath = Join-Path (Split-Path $InstallerPath -Parent) "VC_redist.x64.exe"
+
+if (Test-Path $vcRedistPath) {
+    Write-Log "Found VC_redist.x64.exe at: $vcRedistPath"
+    
+    # Get the path to our VC++ Redistributable installation script
+    $scriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
+    $vcRedistScriptPath = Join-Path $scriptDir "InstallVCRedistSilently.ps1"
+    
+    if (Test-Path $vcRedistScriptPath) {
+        Write-Log "Installing Visual C++ Redistributable silently..."
+        try {
+            $vcRedistLogPath = "$env:TEMP\ClearGlass_VCRedist_Install.log"
+            $vcRedistProcess = Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$vcRedistScriptPath`" -InstallerPath `"$vcRedistPath`" -LogPath `"$vcRedistLogPath`"" -Wait -PassThru -NoNewWindow -ErrorAction Stop
+            
+            if ($vcRedistProcess.ExitCode -eq 0) {
+                Write-Log "Visual C++ Redistributable installation completed successfully"
+            } else {
+                Write-Log "WARNING: Visual C++ Redistributable installation may have failed (exit code: $($vcRedistProcess.ExitCode)), but proceeding with GlassBar installation"
+            }
+        }
+        catch {
+            Write-Log "WARNING: Error installing Visual C++ Redistributable: $($_.Exception.Message), but proceeding with GlassBar installation"
+        }
+    } else {
+        Write-Log "WARNING: VC++ Redistributable installation script not found at: $vcRedistScriptPath"
+    }
+} else {
+    Write-Log "VC_redist.x64.exe not found at: $vcRedistPath, proceeding without VC++ Redistributable installation"
+}
+
 # Kill any existing GlassBar processes before installation
 Write-Log "Killing any existing GlassBar processes..."
 try {
@@ -31,13 +64,28 @@ catch {
     Write-Log "Note: No existing GlassBar processes found"
 }
 
-# Try different silent installation flags
+# Suppress any potential UAC prompts and make installation completely silent
+Write-Log "Setting up for completely silent installation..."
+try {
+    # Set process priority to below normal to minimize impact
+    $currentProcess = Get-Process -Id $PID
+    $currentProcess.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+    Write-Log "Set process priority to BelowNormal for silent operation"
+}
+catch {
+    Write-Log "Note: Could not adjust process priority"
+}
+
+# Try different silent installation flags - ordered from most silent to least
 $silentFlags = @(
+    "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP- /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS",
+    "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP-",
     "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL",
+    "/S /NOCANCEL /SP-",
     "/S /NOCANCEL",
-    "/silent",
-    "/quiet",
-    "/q"
+    "/silent /norestart",
+    "/quiet /norestart",
+    "/q /norestart"
 )
 
 $installSuccess = $false
@@ -131,8 +179,8 @@ Start-Sleep -Seconds 5
 Write-Log "Starting GlassBar from: $glassBarPath"
 
 try {
-    # Method 1: Start as a normal user process
-    $process = Start-Process -FilePath $glassBarPath -WorkingDirectory (Split-Path $glassBarPath) -PassThru -ErrorAction Stop
+    # Method 1: Start as a normal user process with minimal window
+    $process = Start-Process -FilePath $glassBarPath -WorkingDirectory (Split-Path $glassBarPath) -PassThru -WindowStyle Minimized -ErrorAction Stop
     Write-Log "GlassBar started successfully (PID: $($process.Id))"
     
     # Wait to see if it stays running

@@ -82,11 +82,16 @@ function Start-ErrorDialogKiller {
                 }
                 
                 # Also look for any window with "XAML" or "Fatal error" in the title
-                $processes = Get-Process | Where-Object { $_.MainWindowTitle -like "*Error*" -or $_.MainWindowTitle -like "*XAML*" -or $_.MainWindowTitle -like "*Fatal*" }
+                $processes = Get-Process | Where-Object { $_.MainWindowTitle -like "*Error*" -or $_.MainWindowTitle -like "*XAML*" -or $_.MainWindowTitle -like "*Fatal*" -or $_.MainWindowTitle -like "*Warning*" -or $_.MainWindowTitle -like "*Install*" -or $_.MainWindowTitle -like "*Setup*" }
                 foreach ($proc in $processes) {
                     if ($proc.MainWindowHandle -ne [IntPtr]::Zero) {
-                        Write-JobLog "Found potential error window: $($proc.MainWindowTitle)"
+                        Write-JobLog "Found potential error/install window: $($proc.MainWindowTitle)"
                         [Win32]::PostMessage($proc.MainWindowHandle, [Win32]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero)
+                        Start-Sleep -Milliseconds 100
+                        # Force close if gentle close didn't work
+                        if (-not $proc.HasExited) {
+                            try { $proc.Kill() } catch { }
+                        }
                     }
                 }
                 
@@ -112,6 +117,39 @@ if (-not (Test-Path $InstallerPath)) {
     exit 1
 }
 
+# Install Visual C++ Redistributable first if needed
+Write-Log "Checking and installing Visual C++ Redistributable if needed..."
+$vcRedistPath = Join-Path (Split-Path $InstallerPath -Parent) "VC_redist.x64.exe"
+
+if (Test-Path $vcRedistPath) {
+    Write-Log "Found VC_redist.x64.exe at: $vcRedistPath"
+    
+    # Get the path to our VC++ Redistributable installation script
+    $scriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
+    $vcRedistScriptPath = Join-Path $scriptDir "InstallVCRedistSilently.ps1"
+    
+    if (Test-Path $vcRedistScriptPath) {
+        Write-Log "Installing Visual C++ Redistributable silently..."
+        try {
+            $vcRedistLogPath = "$env:TEMP\ClearGlass_VCRedist_Install.log"
+            $vcRedistProcess = Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$vcRedistScriptPath`" -InstallerPath `"$vcRedistPath`" -LogPath `"$vcRedistLogPath`"" -Wait -PassThru -NoNewWindow -ErrorAction Stop
+            
+            if ($vcRedistProcess.ExitCode -eq 0) {
+                Write-Log "Visual C++ Redistributable installation completed successfully"
+            } else {
+                Write-Log "WARNING: Visual C++ Redistributable installation may have failed (exit code: $($vcRedistProcess.ExitCode)), but proceeding with GlassBar installation"
+            }
+        }
+        catch {
+            Write-Log "WARNING: Error installing Visual C++ Redistributable: $($_.Exception.Message), but proceeding with GlassBar installation"
+        }
+    } else {
+        Write-Log "WARNING: VC++ Redistributable installation script not found at: $vcRedistScriptPath"
+    }
+} else {
+    Write-Log "VC_redist.x64.exe not found at: $vcRedistPath, proceeding without VC++ Redistributable installation"
+}
+
 # Start the error dialog killer job
 Write-Log "Starting error dialog killer..."
 $errorKillerJob = Start-ErrorDialogKiller
@@ -127,12 +165,55 @@ catch {
     Write-Log "Note: No existing GlassBar processes found"
 }
 
-# Install GlassBar
-Write-Log "Starting GlassBar installation..."
+# Set up for completely silent installation
+Write-Log "Setting up for completely silent installation..."
 try {
-    $process = Start-Process -FilePath $InstallerPath -ArgumentList "/S" -Wait -PassThru -NoNewWindow -ErrorAction Stop
-    Write-Log "Installer completed with exit code: $($process.ExitCode)"
-    $installSuccess = ($process.ExitCode -eq 0)
+    # Set process priority to below normal to minimize impact
+    $currentProcess = Get-Process -Id $PID
+    $currentProcess.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+    Write-Log "Set process priority to BelowNormal for silent operation"
+    
+    # Suppress any potential Windows notifications during installation
+    $env:SUPPRESS_OS_NOTIFICATIONS = "1"
+    Write-Log "Suppressed OS notifications for silent operation"
+}
+catch {
+    Write-Log "Note: Could not adjust process settings"
+}
+
+# Install GlassBar with very silent flags
+Write-Log "Starting GlassBar installation with very silent flags..."
+try {
+    # Try the most aggressive silent installation flags first
+    $silentFlags = @(
+        "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP- /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS",
+        "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL /SP-",
+        "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL",
+        "/S /NOCANCEL /SP-",
+        "/S /NOCANCEL"
+    )
+    
+    $installSuccess = $false
+    foreach ($flags in $silentFlags) {
+        Write-Log "Trying installation with flags: $flags"
+        try {
+            $process = Start-Process -FilePath $InstallerPath -ArgumentList $flags -Wait -PassThru -NoNewWindow -ErrorAction Stop
+            Write-Log "Installer completed with exit code: $($process.ExitCode)"
+            if ($process.ExitCode -eq 0) {
+                Write-Log "Installation successful with flags: $flags"
+                $installSuccess = $true
+                break
+            } else {
+                Write-Log "Installation failed with flags: $flags (exit code: $($process.ExitCode))"
+            }
+        }
+        catch {
+            Write-Log "Error with flags '$flags': $($_.Exception.Message)"
+        }
+        
+        # Wait between attempts
+        Start-Sleep -Seconds 2
+    }
 }
 catch {
     Write-Log "Error during installation: $($_.Exception.Message)"
