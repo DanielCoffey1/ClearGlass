@@ -121,29 +121,96 @@ namespace ClearGlass.Services
                     }
 
                     Write-Host 'Configuring services...'
-                    # Set Services to Manual (only if they exist)
+                    # Comprehensive service optimization for optimal performance
+                    
+                    # Services to set to Manual
                     $servicesToManual = @(
-                        'DiagTrack',                     # Connected User Experiences and Telemetry
-                        'dmwappushservice',              # Device Management Wireless Application Protocol
-                        'lfsvc',                         # Geolocation Service
-                        'MapsBroker',                    # Downloaded Maps Manager
-                        'NetTcpPortSharing',             # Net.Tcp Port Sharing Service
-                        'RemoteAccess',                  # Routing and Remote Access
-                        'RemoteRegistry',                # Remote Registry
-                        'SharedAccess',                  # Internet Connection Sharing
-                        'TrkWks',                        # Distributed Link Tracking Client
-                        'WbioSrvc',                      # Windows Biometric Service
-                        'WMPNetworkSvc',                 # Windows Media Player Network Sharing Service
-                        'WSearch'                        # Windows Search
+                        'ALG', 'AppIDSvc', 'AppMgmt', 'AppReadiness', 'AppXSvc', 'Appinfo', 'AxInstSV', 'BDESVC',
+                        'BTAGService', 'BcastDVRUserService_*', 'BluetoothUserService_*', 'Browser', 'CDPSvc',
+                        'COMSysApp', 'CaptureService_*', 'CertPropSvc', 'ClipSVC', 'ConsentUxUserSvc_*',
+                        'CredentialEnrollmentManagerUserSvc_*', 'CscService', 'DcpSvc', 'DevQueryBroker',
+                        'DeviceAssociationBrokerSvc_*', 'DeviceAssociationService', 'DeviceInstall', 'DevicePickerUserSvc_*',
+                        'DevicesFlowUserSvc_*', 'DisplayEnhancementService', 'DmEnrollmentSvc', 'DsSvc', 'DsmSvc',
+                        'EFS', 'EapHost', 'EntAppSvc', 'FDResPub', 'Fax', 'FrameServer', 'FrameServerMonitor',
+                        'GraphicsPerfSvc', 'HomeGroupListener', 'HomeGroupProvider', 'HvHost', 'IEEtwCollectorService',
+                        'IKEEXT', 'InstallService', 'InventorySvc', 'IpxlatCfgSvc', 'KtmRm', 'LicenseManager',
+                        'LxpSvc', 'MSDTC', 'MSiSCSI', 'McpManagementService', 'MessagingService_*',
+                        'MicrosoftEdgeElevationService', 'MixedRealityOpenXRSvc', 'MsKeyboardFilter', 'NPSMSvc_*',
+                        'NaturalAuthentication', 'NcaSvc', 'NcbService', 'NcdAutoSetup', 'NetSetupSvc', 'Netman',
+                        'NgcCtnrSvc', 'NgcSvc', 'NlaSvc', 'P9RdrService_*', 'PNRPAutoReg', 'PNRPsvc', 'PcaSvc',
+                        'PeerDistSvc', 'PenService_*', 'PerfHost', 'PhoneSvc', 'PimIndexMaintenanceSvc_*',
+                        'PlugPlay', 'PolicyAgent', 'PrintNotify', 'PrintWorkflowUserSvc_*', 'PushToInstall',
+                        'QWAVE', 'RasAuto', 'RasMan', 'RetailDemo', 'RmSvc', 'RpcLocator', 'SCPolicySvc',
+                        'SCardSvr', 'SDRSVC', 'SEMgrSvc', 'SNMPTRAP', 'SNMPTrap', 'SSDPSRV', 'ScDeviceEnum',
+                        'SecurityHealthService', 'Sense', 'SensorDataService', 'SensorService', 'SensrSvc',
+                        'SessionEnv', 'SharedAccess', 'SharedRealitySvc', 'SmsRouter', 'SstpSvc', 'StateRepository',
+                        'StiSvc', 'StorSvc', 'TabletInputService', 'TapiSrv', 'TextInputManagementService',
+                        'TieringEngineService', 'TimeBroker', 'TimeBrokerSvc', 'TokenBroker', 'TroubleshootingSvc',
+                        'TrustedInstaller', 'UI0Detect', 'UdkUserSvc_*', 'UmRdpService', 'UnistoreSvc_*',
+                        'UserDataSvc_*', 'UsoSvc', 'VSS', 'VacSvc', 'W32Time', 'WEPHOSTSVC', 'WFDSConMgrSvc',
+                        'WMPNetworkSvc', 'WManSvc', 'WPDBusEnum', 'WSService', 'WaaSMedicSvc', 'WalletService',
+                        'WarpJITSvc', 'WbioSrvc', 'WcsPlugInService', 'WdNisSvc', 'WdiServiceHost', 'WdiSystemHost',
+                        'WebClient', 'Wecsvc', 'WerSvc', 'WiaRpc', 'WinHttpAutoProxySvc', 'WinRM', 'WpcMonSvc',
+                        'XblAuthManager', 'XblGameSave', 'XboxGipSvc', 'XboxNetApiSvc', 'autotimesvc', 'bthserv',
+                        'camsvc', 'cbdhsvc_*', 'cloudidsvc', 'dcsvc', 'defragsvc', 'diagnosticshub.standardcollector.service',
+                        'diagsvc', 'dmwappushservice', 'dot3svc', 'edgeupdate', 'edgeupdatem', 'embeddedmode',
+                        'fdPHost', 'fhsvc', 'hidserv', 'icssvc', 'lfsvc', 'lltdsvc', 'lmhosts', 'msiserver',
+                        'netprofm', 'p2pimsvc', 'p2psvc', 'perceptionsimulation', 'pla', 'seclogon', 'smphost',
+                        'spectrum', 'svsvc', 'swprv', 'upnphost', 'vds', 'vm3dservice', 'vmicguestinterface',
+                        'vmicheartbeat', 'vmickvpexchange', 'vmicrdv', 'vmicshutdown', 'vmictimesync',
+                        'vmicvmsession', 'vmicvss', 'vmvss', 'wbengine', 'wcncsvc', 'webthreatdefsvc',
+                        'wercplsupport', 'wisvc', 'wlidsvc', 'wlpasvc', 'wmiApSrv', 'workfolderssvc', 'wuauserv',
+                        'wudfsvc'
                     )
 
+                    # Services to set to Disabled
+                    $servicesToDisable = @(
+                        'AJRouter', 'AppVClient', 'AssignedAccessManagerSvc', 'DialogBlockingService',
+                        'DiagTrack', 'NetTcpPortSharing', 'RemoteAccess', 'RemoteRegistry', 'UevAgentService',
+                        'shpamsvc', 'ssh-agent', 'tzautoupdate', 'uhssvc'
+                    )
+
+                    # Services to set to AutomaticDelayedStart
+                    $servicesToDelayedStart = @(
+                        'BITS', 'DoSvc', 'MapsBroker', 'sppsvc', 'WSearch', 'wscsvc'
+                    )
+
+                    # Configure services to Manual
                     foreach ($service in $servicesToManual) {
                         if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
                             try {
-                                Write-Host ""Configuring service: $service...""
+                                Write-Host ""Configuring service: $service to Manual...""
                                 Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
                                 Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
-                                Write-Host ""Service $service configured""
+                                Write-Host ""Service $service configured to Manual""
+                            } catch {
+                                Write-Warning ""Could not configure service: $service""
+                            }
+                        }
+                    }
+
+                    # Configure services to Disabled
+                    foreach ($service in $servicesToDisable) {
+                        if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
+                            try {
+                                Write-Host ""Configuring service: $service to Disabled...""
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service -StartupType Disabled -ErrorAction SilentlyContinue
+                                Write-Host ""Service $service configured to Disabled""
+                            } catch {
+                                Write-Warning ""Could not configure service: $service""
+                            }
+                        }
+                    }
+
+                    # Configure services to AutomaticDelayedStart
+                    foreach ($service in $servicesToDelayedStart) {
+                        if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
+                            try {
+                                Write-Host ""Configuring service: $service to AutomaticDelayedStart...""
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service -StartupType AutomaticDelayedStart -ErrorAction SilentlyContinue
+                                Write-Host ""Service $service configured to AutomaticDelayedStart""
                             } catch {
                                 Write-Warning ""Could not configure service: $service""
                             }
@@ -261,17 +328,86 @@ namespace ClearGlass.Services
                         Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\ReCall' -Name 'Enabled' -Value 0 -Type DWord -Force
                     }
                     
+                    # Comprehensive service optimization for optimal performance
+                    
+                    # Services to set to Manual
                     $servicesToManual = @(
-                        'DiagTrack', 'dmwappushservice', 'lfsvc', 'MapsBroker', 'NetTcpPortSharing',
-                        'RemoteAccess', 'RemoteRegistry', 'SharedAccess', 'TrkWks', 'WbioSrvc',
-                        'WMPNetworkSvc', 'WSearch'
+                        'ALG', 'AppIDSvc', 'AppMgmt', 'AppReadiness', 'AppXSvc', 'Appinfo', 'AxInstSV', 'BDESVC',
+                        'BTAGService', 'BcastDVRUserService_*', 'BluetoothUserService_*', 'Browser', 'CDPSvc',
+                        'COMSysApp', 'CaptureService_*', 'CertPropSvc', 'ClipSVC', 'ConsentUxUserSvc_*',
+                        'CredentialEnrollmentManagerUserSvc_*', 'CscService', 'DcpSvc', 'DevQueryBroker',
+                        'DeviceAssociationBrokerSvc_*', 'DeviceAssociationService', 'DeviceInstall', 'DevicePickerUserSvc_*',
+                        'DevicesFlowUserSvc_*', 'DisplayEnhancementService', 'DmEnrollmentSvc', 'DsSvc', 'DsmSvc',
+                        'EFS', 'EapHost', 'EntAppSvc', 'FDResPub', 'Fax', 'FrameServer', 'FrameServerMonitor',
+                        'GraphicsPerfSvc', 'HomeGroupListener', 'HomeGroupProvider', 'HvHost', 'IEEtwCollectorService',
+                        'IKEEXT', 'InstallService', 'InventorySvc', 'IpxlatCfgSvc', 'KtmRm', 'LicenseManager',
+                        'LxpSvc', 'MSDTC', 'MSiSCSI', 'McpManagementService', 'MessagingService_*',
+                        'MicrosoftEdgeElevationService', 'MixedRealityOpenXRSvc', 'MsKeyboardFilter', 'NPSMSvc_*',
+                        'NaturalAuthentication', 'NcaSvc', 'NcbService', 'NcdAutoSetup', 'NetSetupSvc', 'Netman',
+                        'NgcCtnrSvc', 'NgcSvc', 'NlaSvc', 'P9RdrService_*', 'PNRPAutoReg', 'PNRPsvc', 'PcaSvc',
+                        'PeerDistSvc', 'PenService_*', 'PerfHost', 'PhoneSvc', 'PimIndexMaintenanceSvc_*',
+                        'PlugPlay', 'PolicyAgent', 'PrintNotify', 'PrintWorkflowUserSvc_*', 'PushToInstall',
+                        'QWAVE', 'RasAuto', 'RasMan', 'RetailDemo', 'RmSvc', 'RpcLocator', 'SCPolicySvc',
+                        'SCardSvr', 'SDRSVC', 'SEMgrSvc', 'SNMPTRAP', 'SNMPTrap', 'SSDPSRV', 'ScDeviceEnum',
+                        'SecurityHealthService', 'Sense', 'SensorDataService', 'SensorService', 'SensrSvc',
+                        'SessionEnv', 'SharedAccess', 'SharedRealitySvc', 'SmsRouter', 'SstpSvc', 'StateRepository',
+                        'StiSvc', 'StorSvc', 'TabletInputService', 'TapiSrv', 'TextInputManagementService',
+                        'TieringEngineService', 'TimeBroker', 'TimeBrokerSvc', 'TokenBroker', 'TroubleshootingSvc',
+                        'TrustedInstaller', 'UI0Detect', 'UdkUserSvc_*', 'UmRdpService', 'UnistoreSvc_*',
+                        'UserDataSvc_*', 'UsoSvc', 'VSS', 'VacSvc', 'W32Time', 'WEPHOSTSVC', 'WFDSConMgrSvc',
+                        'WMPNetworkSvc', 'WManSvc', 'WPDBusEnum', 'WSService', 'WaaSMedicSvc', 'WalletService',
+                        'WarpJITSvc', 'WbioSrvc', 'WcsPlugInService', 'WdNisSvc', 'WdiServiceHost', 'WdiSystemHost',
+                        'WebClient', 'Wecsvc', 'WerSvc', 'WiaRpc', 'WinHttpAutoProxySvc', 'WinRM', 'WpcMonSvc',
+                        'XblAuthManager', 'XblGameSave', 'XboxGipSvc', 'XboxNetApiSvc', 'autotimesvc', 'bthserv',
+                        'camsvc', 'cbdhsvc_*', 'cloudidsvc', 'dcsvc', 'defragsvc', 'diagnosticshub.standardcollector.service',
+                        'diagsvc', 'dmwappushservice', 'dot3svc', 'edgeupdate', 'edgeupdatem', 'embeddedmode',
+                        'fdPHost', 'fhsvc', 'hidserv', 'icssvc', 'lfsvc', 'lltdsvc', 'lmhosts', 'msiserver',
+                        'netprofm', 'p2pimsvc', 'p2psvc', 'perceptionsimulation', 'pla', 'seclogon', 'smphost',
+                        'spectrum', 'svsvc', 'swprv', 'upnphost', 'vds', 'vm3dservice', 'vmicguestinterface',
+                        'vmicheartbeat', 'vmickvpexchange', 'vmicrdv', 'vmicshutdown', 'vmictimesync',
+                        'vmicvmsession', 'vmicvss', 'vmvss', 'wbengine', 'wcncsvc', 'webthreatdefsvc',
+                        'wercplsupport', 'wisvc', 'wlidsvc', 'wlpasvc', 'wmiApSrv', 'workfolderssvc', 'wuauserv',
+                        'wudfsvc'
                     )
 
+                    # Services to set to Disabled
+                    $servicesToDisable = @(
+                        'AJRouter', 'AppVClient', 'AssignedAccessManagerSvc', 'DialogBlockingService',
+                        'DiagTrack', 'NetTcpPortSharing', 'RemoteAccess', 'RemoteRegistry', 'UevAgentService',
+                        'shpamsvc', 'ssh-agent', 'tzautoupdate', 'uhssvc'
+                    )
+
+                    # Services to set to AutomaticDelayedStart
+                    $servicesToDelayedStart = @(
+                        'BITS', 'DoSvc', 'MapsBroker', 'sppsvc', 'WSearch', 'wscsvc'
+                    )
+
+                    # Configure services to Manual
                     foreach ($service in $servicesToManual) {
                         if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
                             try {
                                 Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
                                 Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
+                            } catch {}
+                        }
+                    }
+
+                    # Configure services to Disabled
+                    foreach ($service in $servicesToDisable) {
+                        if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
+                            try {
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service -StartupType Disabled -ErrorAction SilentlyContinue
+                            } catch {}
+                        }
+                    }
+
+                    # Configure services to AutomaticDelayedStart
+                    foreach ($service in $servicesToDelayedStart) {
+                        if (Get-Service -Name $service -ErrorAction SilentlyContinue) {
+                            try {
+                                Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+                                Set-Service -Name $service -StartupType AutomaticDelayedStart -ErrorAction SilentlyContinue
                             } catch {}
                         }
                     }
