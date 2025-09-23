@@ -27,7 +27,6 @@ namespace ClearGlass
         private readonly WingetService _wingetService;
         private readonly UninstallService _uninstallService;
         private readonly UpdateService _updateService;
-        private readonly GlassBarService _glassBarService;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperPath;
         private readonly string _autologonPath;
@@ -56,7 +55,6 @@ namespace ClearGlass
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
             _updateService = new UpdateService();
-            _glassBarService = new GlassBarService(loggingService);
             
             // Store in Windows' tools directory
             string commonAppData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -289,95 +287,57 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Check if GlassBar is already installed
-                bool installGlassBar = false;
-                if (!_glassBarService.IsGlassBarInstalled())
-                {
-                    // Prompt user about GlassBar installation
-                    var glassBarResult = CustomMessageBox.Show(
-                        "Complete Your Clear Glass Experience!\n\n" +
-                        "Would you like to install the GlassBar addon?\n\n" +
-                        "GlassBar adds a beautiful translucent taskbar effect that perfectly complements the Clear Glass theme. " +
-                        "It uses minimal system resources and enhances the overall aesthetic.\n\n" +
-                        "• Translucent taskbar with glass effect\n" +
-                        "• Lightweight and efficient\n" +
-                        "• Perfectly matches Clear Glass theme\n\n" +
-                        "Install GlassBar addon?",
-                        "GlassBar Addon",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
+                // Show desktop icons first
+                DesktopIconsToggle.IsChecked = true;
+                _themeService.AreDesktopIconsVisible = true;
+                await Task.Delay(200);
 
-                    installGlassBar = (glassBarResult == MessageBoxResult.Yes);
-                }
+                // Apply dark theme first as it's a major change
+                ThemeToggle.IsChecked = true;
+                await Task.Run(() => _themeService.IsDarkMode = true);
+                await Task.Delay(500);
 
-                // Apply the Clear Glass theme
-                await ApplyClearGlassThemeAsync();
+                // First shell refresh after theme change
+                _themeService.RefreshWindows();
+                await Task.Delay(1000); // Increased delay after major theme change
 
-                // Install GlassBar if requested
-                if (installGlassBar)
-                {
-                    var progressDialog = new ProgressDialog(
-                        (message) => { /* Update progress action - handled by UpdateProgress method */ },
-                        () => { /* On complete action - will be handled manually */ }
-                    );
-                    progressDialog.Owner = this;
-                    progressDialog.Show();
-                    
-                    try
-                    {
-                        progressDialog.UpdateProgress("Installing and configuring GlassBar addon...", 70);
-                        
-                        // The PowerShell script now handles both installation and startup
-                        var installSuccess = await _glassBarService.InstallGlassBarAsync();
-                        
-                        progressDialog.UpdateProgress("GlassBar setup completed!", 100);
-                        await Task.Delay(1000);
-                        progressDialog.Close();
-                        
-                        if (installSuccess)
-                        {
-                            CustomMessageBox.Show(
-                                "Clear Glass Theme and GlassBar addon applied successfully!\n\n" +
-                                "GlassBar has been installed and started. The translucent taskbar effect should now be active.\n\n" +
-                                "Any error dialogs that appeared during installation were automatically dismissed.\n\n" +
-                                "Some changes may take a few seconds to fully apply.",
-                                "Success",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            CustomMessageBox.Show(
-                                "Clear Glass Theme applied successfully!\n\n" +
-                                "However, there was an issue installing the GlassBar addon. " +
-                                "You can try installing it manually later if needed.\n\n" +
-                                "Some changes may take a few seconds to fully apply.",
-                                "Partial Success",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        progressDialog.Close();
-                        CustomMessageBox.Show(
-                            "Clear Glass Theme applied successfully!\n\n" +
-                            $"However, there was an error installing GlassBar: {ex.Message}\n\n" +
-                            "Some changes may take a few seconds to fully apply.",
-                            "Partial Success",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
-                    }
-                }
-                else
-                {
-                    CustomMessageBox.Show(
-                        "Clear Glass Theme applied successfully!\n\n" +
-                        "Some changes may take a few seconds to fully apply.",
-                        "Success",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                // Apply taskbar settings
+                TaskbarAlignmentToggle.IsChecked = false;
+                _themeService.IsTaskbarCentered = false;
+                await Task.Delay(200);
+
+                // Apply task view settings
+                TaskViewToggle.IsChecked = false;
+                _themeService.IsTaskViewEnabled = false;
+                await Task.Delay(100);
+
+                // Show search first to ensure proper state, then hide
+                SearchToggle.IsChecked = true;
+                _themeService.IsSearchVisible = true;
+                await Task.Delay(200);
+
+                SearchToggle.IsChecked = false;
+                _themeService.IsSearchVisible = false;
+                await Task.Delay(200);
+
+                // Second shell refresh after UI changes
+                _themeService.RefreshWindows();
+                await Task.Delay(1000); // Increased delay before wallpaper
+
+                // Hide desktop icons
+                DesktopIconsToggle.IsChecked = false;
+                _themeService.AreDesktopIconsVisible = false;
+                await Task.Delay(500); // Increased delay after hiding icons
+
+                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
+                await EnsureWallpaperAsync();
+
+                CustomMessageBox.Show(
+                    "Clear Glass Theme applied successfully!\n\n" +
+                    "Some changes may take a few seconds to fully apply.",
+                    "Success",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -391,57 +351,6 @@ namespace ClearGlass
             {
                 ClearGlassThemeButton.IsEnabled = true;
             }
-        }
-
-        /// <summary>
-        /// Applies the Clear Glass theme settings
-        /// </summary>
-        private async Task ApplyClearGlassThemeAsync()
-        {
-            // Show desktop icons first
-            DesktopIconsToggle.IsChecked = true;
-            _themeService.AreDesktopIconsVisible = true;
-            await Task.Delay(200);
-
-            // Apply dark theme first as it's a major change
-            ThemeToggle.IsChecked = true;
-            await Task.Run(() => _themeService.IsDarkMode = true);
-            await Task.Delay(500);
-
-            // First shell refresh after theme change
-            _themeService.RefreshWindows();
-            await Task.Delay(1000); // Increased delay after major theme change
-
-            // Apply taskbar settings
-            TaskbarAlignmentToggle.IsChecked = false;
-            _themeService.IsTaskbarCentered = false;
-            await Task.Delay(200);
-
-            // Apply task view settings
-            TaskViewToggle.IsChecked = false;
-            _themeService.IsTaskViewEnabled = false;
-            await Task.Delay(100);
-
-            // Show search first to ensure proper state, then hide
-            SearchToggle.IsChecked = true;
-            _themeService.IsSearchVisible = true;
-            await Task.Delay(200);
-
-            SearchToggle.IsChecked = false;
-            _themeService.IsSearchVisible = false;
-            await Task.Delay(200);
-
-            // Second shell refresh after UI changes
-            _themeService.RefreshWindows();
-            await Task.Delay(1000); // Increased delay before wallpaper
-
-            // Hide desktop icons
-            DesktopIconsToggle.IsChecked = false;
-            _themeService.AreDesktopIconsVisible = false;
-            await Task.Delay(500); // Increased delay after hiding icons
-
-            // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-            await EnsureWallpaperAsync();
         }
 
         private async void OnClearGlassClick(object sender, RoutedEventArgs e)
@@ -548,9 +457,6 @@ namespace ClearGlass
                             "Clear Glass Complete!",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);
-
-                        // Now offer GlassBar addon as a bonus enhancement
-                        await OfferGlassBarAddon();
                     }
                     catch (Exception ex)
                     {
@@ -2918,96 +2824,6 @@ namespace ClearGlass
                 }
             }
             catch (Exception) { }
-        }
-
-        /// <summary>
-        /// Offers the GlassBar addon as a bonus enhancement after Clear Glass workflow completes
-        /// </summary>
-        private async Task OfferGlassBarAddon()
-        {
-            try
-            {
-                // Check if GlassBar is already installed
-                if (_glassBarService.IsGlassBarInstalled())
-                {
-                    // GlassBar is already installed, no need to prompt
-                    return;
-                }
-
-                // Prompt user about GlassBar installation as a bonus enhancement
-                var glassBarResult = CustomMessageBox.Show(
-                    "🌟 Complete Your Clear Glass Experience!\n\n" +
-                    "Would you like to add the GlassBar addon for even more visual enhancement?\n\n" +
-                    "GlassBar adds a beautiful translucent taskbar effect that perfectly complements your new Clear Glass theme. " +
-                    "It uses minimal system resources and provides stunning visual effects.\n\n" +
-                    "✨ Translucent taskbar with glass effect\n" +
-                    "⚡ Lightweight and efficient\n" +
-                    "🎨 Perfectly matches Clear Glass theme\n" +
-                    "🔧 Automatic installation and configuration\n\n" +
-                    "Install GlassBar addon?",
-                    "GlassBar Addon - Bonus Enhancement",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (glassBarResult == MessageBoxResult.Yes)
-                {
-                    // Show separate progress dialog for GlassBar installation
-                    var glassBarProgressDialog = new ProgressDialog(
-                        (message) => { /* Update progress action - handled by UpdateProgress method */ },
-                        () => { /* On complete action - will be handled manually */ }
-                    );
-                    glassBarProgressDialog.Owner = this;
-                    glassBarProgressDialog.Show();
-                    
-                    try
-                    {
-                        glassBarProgressDialog.UpdateProgress("Installing and configuring GlassBar addon...", 70);
-                        
-                        // Install GlassBar using the service
-                        var installSuccess = await _glassBarService.InstallGlassBarAsync();
-                        
-                        glassBarProgressDialog.UpdateProgress("GlassBar setup completed!", 100);
-                        await Task.Delay(1000);
-                        glassBarProgressDialog.Close();
-                        
-                        if (installSuccess)
-                        {
-                            CustomMessageBox.Show(
-                                "🎉 GlassBar addon installed successfully!\n\n" +
-                                "The translucent taskbar effect is now active and perfectly complements your Clear Glass theme.\n\n" +
-                                "Your Clear Glass experience is now complete with enhanced visual effects!",
-                                "GlassBar Addon Complete!",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            CustomMessageBox.Show(
-                                "GlassBar addon installation encountered an issue.\n\n" +
-                                "Your Clear Glass theme is still fully functional. You can try installing GlassBar manually later if needed.\n\n" +
-                                "Check the application logs for more details.",
-                                "GlassBar Installation Issue",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Warning);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        glassBarProgressDialog.Close();
-                        CustomMessageBox.Show(
-                            $"An error occurred while installing GlassBar addon:\n\n{ex.Message}\n\n" +
-                            "Your Clear Glass theme is still fully functional. You can try installing GlassBar manually later if needed.",
-                            "GlassBar Installation Error",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Warning);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log the error but don't show it to user since main Clear Glass workflow was successful
-                Debug.WriteLine($"Error in OfferGlassBarAddon: {ex.Message}");
-            }
         }
 
         private async Task ApplyClearGlassThemeSilent()
