@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace ClearGlass
+namespace TaskbarCustomizer
 {
     public partial class App : Application
     {

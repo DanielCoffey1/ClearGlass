@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "WjRydw/lO8IMQYuhS85ka3BdqrzZp+W83Y4HJnyQ43dCVwJ2WnjHPH0BOGdDHvbVNiwE+qfzd/XkToHP6iC/pw==",
+  "dgSpecHash": "mLEDlIoHUS5vTlVZapWExh9PvSBEV9jUM3zGybbTvGLg2mthFqm8nWxPeFSk3pRXXv3A3G7JPUYNJ2CH8qV71w==",
   "success": true,
   "projectFilePath": "C:\\Users\\Daniel\\Documents\\GitHub\\ClearGlass\\ClearGlass.csproj",
   "expectedPackageFiles": [
@@ -19,9 +19,7 @@
     "C:\\Users\\Daniel\\.nuget\\packages\\serilog\\2.12.0\\serilog.2.12.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\serilog.extensions.logging\\3.1.0\\serilog.extensions.logging.3.1.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\serilog.sinks.file\\5.0.0\\serilog.sinks.file.5.0.0.nupkg.sha512",
-    "C:\\Users\\Daniel\\.nuget\\packages\\system.codedom\\6.0.0\\system.codedom.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.diagnostics.diagnosticsource\\6.0.0\\system.diagnostics.diagnosticsource.6.0.0.nupkg.sha512",
-    "C:\\Users\\Daniel\\.nuget\\packages\\system.management\\6.0.0\\system.management.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.text.encodings.web\\6.0.0\\system.text.encodings.web.6.0.0.nupkg.sha512",
     "C:\\Users\\Daniel\\.nuget\\packages\\system.text.json\\6.0.0\\system.text.json.6.0.0.nupkg.sha512"
