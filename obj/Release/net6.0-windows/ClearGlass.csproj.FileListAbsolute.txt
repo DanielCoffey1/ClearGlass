@@ -40,10 +40,3 @@ C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ClearGlas
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ClearGlass.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ref\ClearGlass.dll
 C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ClearGlass.genruntimeconfig.cache
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ProgressDialog.baml
-C:\Users\Daniel\Documents\GitHub\ClearGlass\obj\Release\net6.0-windows\ProgressDialog.g.cs
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\ClearStartMenu.ps1
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\GetInstalledApps.ps1
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\RemoveBloatware.ps1
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\RemoveEdge.ps1
-C:\Users\Daniel\Documents\GitHub\ClearGlass\bin\Release\net6.0-windows\Scripts\RemoveWindowsAi.ps1

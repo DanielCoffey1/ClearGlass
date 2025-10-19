@@ -204,36 +204,16 @@ try {
     Reg.exe add 'HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy' /v 'LetAppsAccessSystemAIModels' /t REG_DWORD /d '2' /f *>$null
     Reg.exe add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsCopilot' /v 'AllowCopilotRuntime' /t REG_DWORD /d '0' /f *>$null
 
-    Update-Progress -Controls $progressControls -Status "Disabling AI Image Creator in Paint..." -Progress 30 -Details "Configuring Paint AI features using user-specific capabilities"
-    # Configure Paint AI features using user-specific capabilities (more effective approach)
-    try {
-        # Create the Paint Capabilities key if it doesn't exist
-        $paintCapabilitiesPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Applets\Paint\Capabilities'
-        if (!(Test-Path $paintCapabilitiesPath)) {
-            New-Item -Path $paintCapabilitiesPath -Force | Out-Null
-        }
-        
-        # Disable Image Creator in Paint
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableImageCreator' -Type DWord -Value 1 -Force
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableImageCreatorV2' -Type DWord -Value 1 -Force
-        
-        # Disable CoCreator in Paint
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableCoCreator' -Type DWord -Value 1 -Force
-        
-        # Disable Generative Fill in Paint
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableGenerativeFill' -Type DWord -Value 1 -Force
-        
-        # Additional Paint AI disabling keys
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableAIFeatures' -Type DWord -Value 1 -Force
-        Set-ItemProperty -Path $paintCapabilitiesPath -Name 'DisableCopilotIntegration' -Type DWord -Value 1 -Force
-        
-        Update-Progress -Controls $progressControls -Status "Paint AI Features Disabled" -Progress 32 -Details "Successfully disabled Paint AI capabilities using user-specific registry keys"
-    }
-    catch {
-        Update-Progress -Controls $progressControls -Status "Paint AI Disable Warning" -Progress 32 -Details "Could not disable Paint AI features: $($_.Exception.Message)"
-    }
-    
-    # Also apply system-wide policies as backup
+    Update-Progress -Controls $progressControls -Status "Disabling AI Image Creator in Paint..." -Progress 30 -Details "Configuring Paint AI features policy settings"
+    # Configure Paint AI features policy settings
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'Behavior' /t REG_DWORD /d '1056800' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'highrange' /t REG_DWORD /d '1' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'lowrange' /t REG_DWORD /d '0' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'mergealgorithm' /t REG_DWORD /d '1' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'policytype' /t REG_DWORD /d '4' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'RegKeyPathRedirect' /t REG_SZ /d 'Software\Microsoft\Windows\CurrentVersion\Policies\Paint' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'RegValueNameRedirect' /t REG_SZ /d 'DisableImageCreator' /f *>$null
+    Reg.exe add 'HKLM\SOFTWARE\Microsoft\PolicyManager\default\WindowsAI\DisableImageCreator' /v 'value' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableImageCreator' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableCocreator' /t REG_DWORD /d '1' /f *>$null
     Reg.exe add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint' /v 'DisableGenerativeFill' /t REG_DWORD /d '1' /f *>$null
