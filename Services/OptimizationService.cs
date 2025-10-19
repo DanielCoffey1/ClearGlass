@@ -212,11 +212,35 @@ namespace ClearGlass.Services
                                 Set-Service -Name $service -StartupType AutomaticDelayedStart -ErrorAction SilentlyContinue
                                 Write-Host ""Service $service configured to AutomaticDelayedStart""
                             } catch {
-                                Write-Warning ""Could not configure service: $service""
+                                            Write-Warning ""Could not configure wildcard service $($matchingService.Name): $($_.Exception.Message)""
+                                            $errorCount++
+                                        }
+                                    }
+                                } else {
+                                    Write-Host ""No services found matching pattern: $serviceName""
+                                    $skippedCount++
+                                }
+                            } else {
+                                # Handle regular services
+                                $existingService = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+                                if ($existingService) {
+                                    Write-Host ""Configuring service: $serviceName -> $startupType""
+                                    Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+                                    Set-Service -Name $serviceName -StartupType $startupType -ErrorAction Stop
+                                    $modifiedCount++
+                                    Write-Host ""Service $serviceName configured successfully""
+                                } else {
+                                    Write-Host ""Service $serviceName not found, skipping""
+                                    $skippedCount++
+                                }
                             }
+                        } catch {
+                            Write-Warning ""Error configuring service $($service.Name): $($_.Exception.Message)""
+                            $errorCount++
                         }
                     }
-                    Write-Host 'Services configured'
+                    
+                    Write-Host ""Service configuration completed: $modifiedCount modified, $skippedCount skipped, $errorCount errors""
 
                     Write-Host 'Resetting restore point settings...'
                     # Reset the restore point creation frequency back to default
@@ -390,6 +414,8 @@ namespace ClearGlass.Services
                                 Set-Service -Name $service -StartupType Manual -ErrorAction SilentlyContinue
                             } catch {}
                         }
+                            }
+                        } catch {}
                     }
 
                     # Configure services to Disabled
