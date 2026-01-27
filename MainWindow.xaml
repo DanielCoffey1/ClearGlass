@@ -1641,6 +1641,36 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <Border Background="#20FFFFFF"
+                                CornerRadius="10"
+                                Margin="0,0,0,15"
+                                Padding="15">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- App Info -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Reinstall Xbox Game Bar"
+                                             FontSize="16"
+                                             FontWeight="SemiBold"
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Margin="0,0,0,5"/>
+                                    <TextBlock Text="Reinstall Xbox Game Bar if it was removed during debloating. Game Bar is required for controller support in some games and provides screen recording, screenshots, and performance monitoring features."
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextSecondary}"
+                                             LineHeight="20"/>
+                                    <Button Content="Reinstall Game Bar"
+                                            Style="{StaticResource TinyButton}"
+                                            Width="120"
+                                            Margin="0,10,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OnReinstallGameBarClick"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
@@ -1813,6 +1843,51 @@
                         Click="OnUninstallAppsClick"
                         HorizontalAlignment="Center"/>
             </Grid>
+        </Border>
+
+        <!-- Installation Progress Overlay -->
+        <Border x:Name="InstallProgressOverlay"
+                Background="#E0000000"
+                CornerRadius="10"
+                Visibility="Collapsed"
+                Panel.ZIndex="2000">
+            <Border Background="#40000000"
+                    CornerRadius="15"
+                    BorderThickness="1"
+                    BorderBrush="{StaticResource GlassBorder}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="30,25"
+                    MinWidth="350">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="0" Color="#60000000"/>
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="InstallProgressTitle"
+                               Text="Installing..."
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,15"/>
+                    <ProgressBar x:Name="InstallProgressBar"
+                                 IsIndeterminate="True"
+                                 Width="280"
+                                 Height="6"
+                                 Background="#30FFFFFF"
+                                 Foreground="{StaticResource PrimaryBlue}"
+                                 BorderThickness="0"
+                                 Margin="0,0,0,15"/>
+                    <TextBlock x:Name="InstallProgressStatus"
+                               Text="Please wait..."
+                               FontSize="13"
+                               Foreground="{StaticResource TextSecondary}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="280"/>
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </Window> 

@@ -2399,10 +2399,104 @@ namespace ClearGlass
             }
         }
 
+        private async void OnReinstallGameBarClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = CustomMessageBox.Show(
+                    "This will reinstall Xbox Game Bar.\n\n" +
+                    "Game Bar provides:\n" +
+                    "• Controller support for games\n" +
+                    "• Screen recording (Win+G)\n" +
+                    "• Screenshots and performance monitoring\n\n" +
+                    "Do you want to continue?",
+                    "Reinstall Xbox Game Bar",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Try using winget first
+                    if (await _wingetService.IsWingetInstalled())
+                    {
+                        try
+                        {
+                            // Show progress overlay
+                            ShowInstallProgress("Installing Xbox Game Bar", "Checking installation status...");
+
+                            await Task.Delay(500); // Brief delay so user sees the overlay
+
+                            UpdateInstallProgress("Downloading and installing...\nThis may take a minute.");
+
+                            await _wingetService.InstallApp("9NZKPSTSNW4P", "Xbox Game Bar");
+
+                            HideInstallProgress();
+
+                            CustomMessageBox.Show(
+                                "Xbox Game Bar has been successfully installed!\n\n" +
+                                "Press Win+G to open Game Bar.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            HideInstallProgress();
+                            Debug.WriteLine($"Winget install failed: {ex.Message}");
+                            // Fall through to Microsoft Store method
+                        }
+                    }
+
+                    // Fallback: Open Microsoft Store page
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "ms-windows-store://pdp/?ProductId=9NZKPSTSNW4P",
+                        UseShellExecute = true
+                    });
+
+                    CustomMessageBox.Show(
+                        "The Microsoft Store has been opened.\n\n" +
+                        "Click 'Get' or 'Install' to complete the installation.\n\n" +
+                        "After installation, press Win+G to open Game Bar.",
+                        "Microsoft Store Opened",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                HideInstallProgress();
+                CustomMessageBox.Show(
+                    $"Error reinstalling Xbox Game Bar: {ex.Message}\n\n" +
+                    "You can manually install it from the Microsoft Store by searching for 'Xbox Game Bar'.",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowInstallProgress(string title, string status)
+        {
+            InstallProgressTitle.Text = title;
+            InstallProgressStatus.Text = status;
+            InstallProgressOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void UpdateInstallProgress(string status)
+        {
+            InstallProgressStatus.Text = status;
+        }
+
+        private void HideInstallProgress()
+        {
+            InstallProgressOverlay.Visibility = Visibility.Collapsed;
+        }
+
         private void OnAppSearchTextChanged(object sender, TextChangedEventArgs e)
         {
             var searchText = AppSearchBox.Text.ToLower();
-            
+
             _installedAppsCollection.Clear();
             var filteredApps = string.IsNullOrWhiteSpace(searchText)
                 ? _originalAppsList
