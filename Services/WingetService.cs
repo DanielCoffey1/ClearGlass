@@ -63,14 +63,15 @@ namespace ClearGlass.Services
                 "After installation is complete, restart Clear Glass to continue.");
         }
 
-        public async Task<bool> IsAppInstalled(string packageId)
+        public async Task<bool> IsAppInstalled(string packageId, string? source = null)
         {
+            var sourceArg = string.IsNullOrEmpty(source) ? "" : $"--source {source}";
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "winget",
-                    Arguments = $"list --id {packageId} --exact --accept-source-agreements",
+                    Arguments = $"list --id {packageId} --exact {sourceArg} --accept-source-agreements",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -83,16 +84,17 @@ namespace ClearGlass.Services
             return process.ExitCode == 0;
         }
 
-        public async Task UpdateApp(string packageId, string appName)
+        public async Task UpdateApp(string packageId, string appName, string? source = null)
         {
             Console.WriteLine($"Checking for {appName} updates...");
-            
+
+            var sourceArg = string.IsNullOrEmpty(source) ? "" : $"--source {source}";
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "winget",
-                    Arguments = $"upgrade --id {packageId} --exact --accept-source-agreements --accept-package-agreements",
+                    Arguments = $"upgrade --id {packageId} --exact {sourceArg} --accept-source-agreements --accept-package-agreements",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -130,7 +132,7 @@ namespace ClearGlass.Services
             }
         }
 
-        public async Task InstallApp(string packageId, string appName)
+        public async Task InstallApp(string packageId, string appName, string? source = null)
         {
             if (!await IsWingetInstalled())
             {
@@ -139,20 +141,21 @@ namespace ClearGlass.Services
             }
 
             // Check if app is already installed
-            if (await IsAppInstalled(packageId))
+            if (await IsAppInstalled(packageId, source))
             {
                 Console.WriteLine($"{appName} is already installed. Checking for updates...");
-                await UpdateApp(packageId, appName);
+                await UpdateApp(packageId, appName, source);
                 return;
             }
 
             Console.WriteLine($"Installing {appName}...");
+            var sourceArg = string.IsNullOrEmpty(source) ? "" : $"--source {source}";
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "winget",
-                    Arguments = $"install --id {packageId} --exact --accept-source-agreements --accept-package-agreements",
+                    Arguments = $"install --id {packageId} --exact {sourceArg} --accept-source-agreements --accept-package-agreements",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

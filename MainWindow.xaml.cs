@@ -515,9 +515,22 @@ namespace ClearGlass
                         progressDialog.UpdateProgress("AI components removed", 60);
 
                         // Run bloatware removal
-                        progressDialog.UpdateProgress("Removing Windows bloatware...", 70);
+                        progressDialog.UpdateProgress("Removing Windows bloatware...", 65);
                         await _bloatwareService.RemoveWindowsBloatwareSilent();
-                        progressDialog.UpdateProgress("Bloatware removed", 80);
+                        progressDialog.UpdateProgress("Bloatware removed", 75);
+
+                        // Close progress dialog temporarily for Game Bar prompt
+                        progressDialog.Close();
+
+                        // Prompt user to reinstall Game Bar for controller support
+                        await PromptForGameBarReinstall();
+
+                        // Reopen progress dialog for theme application
+                        progressDialog = new ProgressDialog(
+                            (step) => progressDialog?.UpdateProgress(step, 0),
+                            () => { }
+                        );
+                        progressDialog.Show();
 
                         // Apply Clear Glass theme
                         progressDialog.UpdateProgress("Applying Clear Glass theme...", 90);
@@ -1003,6 +1016,9 @@ namespace ClearGlass
             if (result == MessageBoxResult.Yes)
             {
                 await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+
+                // Prompt user to reinstall Game Bar for controller support
+                await PromptForGameBarReinstall();
             }
         }
 
@@ -1069,6 +1085,9 @@ namespace ClearGlass
                     
                     // Run bloatware removal
                     await _bloatwareService.RemoveWindowsBloatwareWithStartMenuChoice();
+
+                    // Prompt user to reinstall Game Bar for controller support
+                    await PromptForGameBarReinstall();
 
                     CustomMessageBox.Show(
                         "Full Windows optimization completed successfully!\n\n" +
@@ -2428,7 +2447,7 @@ namespace ClearGlass
 
                             UpdateInstallProgress("Downloading and installing...\nThis may take a minute.");
 
-                            await _wingetService.InstallApp("9NZKPSTSNW4P", "Xbox Game Bar");
+                            await _wingetService.InstallApp("9NZKPSTSNW4P", "Xbox Game Bar", "msstore");
 
                             HideInstallProgress();
 
@@ -2491,6 +2510,80 @@ namespace ClearGlass
         private void HideInstallProgress()
         {
             InstallProgressOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private async Task PromptForGameBarReinstall()
+        {
+            var result = CustomMessageBox.Show(
+                "Xbox Game Bar was removed during bloatware cleanup.\n\n" +
+                "If you play games using a controller, you may want to reinstall Game Bar. " +
+                "Without it, Windows will show a popup every time you use a controller.\n\n" +
+                "Game Bar also provides:\n" +
+                "• Screen recording (Win+G)\n" +
+                "• Screenshots and performance monitoring\n\n" +
+                "Would you like to reinstall Xbox Game Bar?",
+                "Reinstall Xbox Game Bar?",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Try using winget with a timeout
+                if (await _wingetService.IsWingetInstalled())
+                {
+                    try
+                    {
+                        ShowInstallProgress("Installing Xbox Game Bar", "Downloading and installing...\nThis may take a minute.");
+
+                        // Use a timeout to prevent hanging (3 minutes max)
+                        var installTask = _wingetService.InstallApp("9NZKPSTSNW4P", "Xbox Game Bar", "msstore");
+                        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(3));
+
+                        var completedTask = await Task.WhenAny(installTask, timeoutTask);
+
+                        if (completedTask == installTask)
+                        {
+                            await installTask; // Propagate any exceptions
+                            HideInstallProgress();
+
+                            CustomMessageBox.Show(
+                                "Xbox Game Bar has been successfully installed!\n\n" +
+                                "Press Win+G to open Game Bar.",
+                                "Success",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                            return;
+                        }
+                        else
+                        {
+                            HideInstallProgress();
+                            Debug.WriteLine("Winget install timed out after 3 minutes");
+                            // Fall through to Microsoft Store method
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        HideInstallProgress();
+                        Debug.WriteLine($"Winget install failed: {ex.Message}");
+                        // Fall through to Microsoft Store method
+                    }
+                }
+
+                // Fallback: Open Microsoft Store page
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "ms-windows-store://pdp/?ProductId=9NZKPSTSNW4P",
+                    UseShellExecute = true
+                });
+
+                CustomMessageBox.Show(
+                    "The Microsoft Store has been opened.\n\n" +
+                    "Click 'Get' or 'Install' to complete the installation.\n\n" +
+                    "After installation, press Win+G to open Game Bar.",
+                    "Microsoft Store Opened",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
 
         private void OnAppSearchTextChanged(object sender, TextChangedEventArgs e)
