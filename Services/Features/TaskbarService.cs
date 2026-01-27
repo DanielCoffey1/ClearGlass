@@ -26,9 +26,11 @@ namespace ClearGlass.Services.Features
         private bool _taskbarCentered;
         private bool _taskViewEnabled;
         private bool _searchVisible;
+        private readonly LoggingService _log;
 
         public TaskbarService()
         {
+            _log = LoggingService.Instance;
             // Initialize current values
             _taskbarCentered = GetTaskbarCentered();
             _taskViewEnabled = GetTaskViewEnabled();
@@ -40,50 +42,56 @@ namespace ClearGlass.Services.Features
         /// </summary>
         private async Task RestartExplorerAsync(CancellationToken cancellationToken = default)
         {
-            bool explorerKilled = false;
+            var stopwatch = Stopwatch.StartNew();
+            _log.LogSubsection("Restarting Windows Explorer");
 
             try
             {
-                Debug.WriteLine("Restarting Explorer...");
-
                 // Kill all explorer.exe processes
                 var explorerProcesses = Process.GetProcessesByName("explorer");
+                _log.LogProcess("FOUND", "explorer.exe", $"{explorerProcesses.Length} process(es) running");
+
                 if (explorerProcesses.Length > 0)
                 {
+                    _log.LogDetail("Terminating Explorer processes...");
                     foreach (var process in explorerProcesses)
                     {
                         try
                         {
+                            _log.LogProcess("KILL", "explorer.exe", $"PID {process.Id}");
                             process.Kill();
-                            explorerKilled = true;
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Failed to kill explorer process {process.Id}: {ex.Message}");
+                            _log.LogFailure($"Failed to kill explorer process {process.Id}: {ex.Message}");
                         }
                     }
 
                     // Wait for explorer processes to exit
+                    _log.LogWaiting("Waiting for Explorer processes to exit...");
                     var waitStart = DateTime.UtcNow;
                     while (Process.GetProcessesByName("explorer").Length > 0)
                     {
                         if (DateTime.UtcNow - waitStart > TimeSpan.FromSeconds(10))
                         {
-                            Debug.WriteLine("Timeout waiting for explorer to exit, continuing anyway");
+                            _log.LogWarning("Timeout waiting for Explorer to exit - continuing anyway");
                             break;
                         }
                         await Task.Delay(100, cancellationToken);
                     }
+                    _log.LogSuccess("Explorer processes terminated");
                 }
 
                 // Start a new explorer process
+                _log.LogDetail("Starting new Explorer process...");
                 await StartExplorerAsync();
 
                 // Wait for Explorer to stabilize
                 await WaitForExplorerStabilizationAsync(cancellationToken);
 
                 _restartPending = false;
-                Debug.WriteLine("Explorer restarted successfully");
+                stopwatch.Stop();
+                _log.LogSuccess($"Explorer restarted successfully in {stopwatch.Elapsed.TotalSeconds:F2}s");
             }
             catch (OperationCanceledException)
             {
@@ -181,6 +189,7 @@ namespace ClearGlass.Services.Features
         /// </summary>
         private async Task WaitForExplorerStabilizationAsync(CancellationToken cancellationToken = default)
         {
+            _log.LogWaiting("Waiting for Explorer to stabilize...");
             var stopwatch = Stopwatch.StartNew();
             bool taskbarFound = false;
             bool desktopFound = false;
@@ -196,7 +205,7 @@ namespace ClearGlass.Services.Features
                     if (taskbarHwnd != IntPtr.Zero)
                     {
                         taskbarFound = true;
-                        Debug.WriteLine($"Taskbar found after {stopwatch.ElapsedMilliseconds}ms");
+                        _log.LogWinApi("FindWindow", $"Taskbar (Shell_TrayWnd) found and responsive after {stopwatch.ElapsedMilliseconds}ms");
                     }
                 }
 
@@ -207,7 +216,7 @@ namespace ClearGlass.Services.Features
                     if (desktopHwnd != IntPtr.Zero)
                     {
                         desktopFound = true;
-                        Debug.WriteLine($"Desktop found after {stopwatch.ElapsedMilliseconds}ms");
+                        _log.LogWinApi("FindWindow", $"Desktop (Progman) found and responsive after {stopwatch.ElapsedMilliseconds}ms");
                     }
                 }
 
@@ -215,8 +224,9 @@ namespace ClearGlass.Services.Features
                 if (taskbarFound && desktopFound)
                 {
                     // Additional stabilization delay
+                    _log.LogDetail("Both taskbar and desktop responsive - allowing additional stabilization time...");
                     await Task.Delay(500, cancellationToken);
-                    Debug.WriteLine($"Explorer stabilized after {stopwatch.ElapsedMilliseconds}ms total");
+                    _log.LogSuccess($"Explorer fully stabilized in {stopwatch.ElapsedMilliseconds}ms");
                     return;
                 }
 
@@ -224,7 +234,7 @@ namespace ClearGlass.Services.Features
             }
 
             // Timeout - log but don't throw
-            Debug.WriteLine($"Explorer stabilization timed out after {DefaultTimeoutMs}ms. Taskbar: {taskbarFound}, Desktop: {desktopFound}");
+            _log.LogWarning($"Explorer stabilization timed out after {DefaultTimeoutMs / 1000}s (Taskbar: {taskbarFound}, Desktop: {desktopFound})");
         }
 
         /// <summary>
@@ -379,6 +389,7 @@ namespace ClearGlass.Services.Features
             bool? isSearchVisible = null,
             CancellationToken cancellationToken = default)
         {
+            _log.LogSubsection("Configuring Taskbar Settings");
             var failedSettings = new List<string>();
 
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
@@ -386,13 +397,20 @@ namespace ClearGlass.Services.Features
                 cancellationToken.ThrowIfCancellationRequested();
                 failedSettings.Clear();
 
+                if (attempt > 1)
+                {
+                    _log.LogRetry(attempt, MaxRetries, "Applying taskbar settings");
+                }
+
                 try
                 {
                     // Re-read current state from registry at start of each attempt
-                    // This ensures we don't rely on stale cached values
+                    _log.LogDetail("Reading current taskbar state from registry...");
                     var currentTaskbarCentered = GetTaskbarCentered();
                     var currentTaskViewEnabled = GetTaskViewEnabled();
                     var currentSearchVisible = GetSearchVisible();
+
+                    _log.LogDebugDetail($"Current state - Centered: {currentTaskbarCentered}, TaskView: {currentTaskViewEnabled}, Search: {currentSearchVisible}");
 
                     bool anyChanged = false;
 
@@ -401,19 +419,23 @@ namespace ClearGlass.Services.Features
                     {
                         if (currentTaskbarCentered != isTaskbarCentered.Value)
                         {
+                            _log.LogDetail($"Setting taskbar alignment to: {(isTaskbarCentered.Value ? "Center" : "Left")}");
                             if (RegistryHelper.SetValueVerified(RegistryHelper.TaskbarSettingsPath, "TaskbarAl",
                                 isTaskbarCentered.Value ? 1 : 0, RegistryValueKind.DWord))
                             {
+                                _log.LogRegistry("SET", "TaskbarSettings", "TaskbarAl", isTaskbarCentered.Value ? 1 : 0);
                                 _taskbarCentered = isTaskbarCentered.Value;
                                 anyChanged = true;
                             }
                             else
                             {
+                                _log.LogFailure("Failed to set taskbar alignment");
                                 failedSettings.Add("TaskbarAl");
                             }
                         }
                         else
                         {
+                            _log.LogSuccess("Taskbar alignment already set correctly - skipping");
                             _taskbarCentered = isTaskbarCentered.Value;
                         }
                     }
@@ -423,19 +445,23 @@ namespace ClearGlass.Services.Features
                     {
                         if (currentTaskViewEnabled != isTaskViewEnabled.Value)
                         {
+                            _log.LogDetail($"Setting Task View button to: {(isTaskViewEnabled.Value ? "Visible" : "Hidden")}");
                             if (RegistryHelper.SetValueVerified(RegistryHelper.TaskbarSettingsPath, "ShowTaskViewButton",
                                 isTaskViewEnabled.Value ? 1 : 0, RegistryValueKind.DWord))
                             {
+                                _log.LogRegistry("SET", "TaskbarSettings", "ShowTaskViewButton", isTaskViewEnabled.Value ? 1 : 0);
                                 _taskViewEnabled = isTaskViewEnabled.Value;
                                 anyChanged = true;
                             }
                             else
                             {
+                                _log.LogFailure("Failed to set Task View button visibility");
                                 failedSettings.Add("ShowTaskViewButton");
                             }
                         }
                         else
                         {
+                            _log.LogSuccess("Task View button already set correctly - skipping");
                             _taskViewEnabled = isTaskViewEnabled.Value;
                         }
                     }
@@ -445,19 +471,23 @@ namespace ClearGlass.Services.Features
                     {
                         if (currentSearchVisible != isSearchVisible.Value)
                         {
+                            _log.LogDetail($"Setting Search box to: {(isSearchVisible.Value ? "Visible" : "Hidden")}");
                             if (RegistryHelper.SetValueVerified(RegistryHelper.SearchSettingsPath, "SearchboxTaskbarMode",
                                 isSearchVisible.Value ? 1 : 0, RegistryValueKind.DWord))
                             {
+                                _log.LogRegistry("SET", "SearchSettings", "SearchboxTaskbarMode", isSearchVisible.Value ? 1 : 0);
                                 _searchVisible = isSearchVisible.Value;
                                 anyChanged = true;
                             }
                             else
                             {
+                                _log.LogFailure("Failed to set Search box visibility");
                                 failedSettings.Add("SearchboxTaskbarMode");
                             }
                         }
                         else
                         {
+                            _log.LogSuccess("Search box already set correctly - skipping");
                             _searchVisible = isSearchVisible.Value;
                         }
                     }
@@ -465,52 +495,62 @@ namespace ClearGlass.Services.Features
                     if (anyChanged)
                     {
                         _restartPending = true;
+                        _log.LogDetail("Changes detected - Explorer restart will be required");
                     }
 
                     // Small delay to let registry settle
                     await Task.Delay(100, cancellationToken);
 
                     // Verify all settings match expected values
+                    _log.LogDetail("Verifying registry values were written correctly...");
                     bool verified = true;
                     if (isTaskbarCentered.HasValue && !VerifyTaskbarCentered(isTaskbarCentered.Value))
                     {
                         verified = false;
+                        _log.LogFailure("Taskbar alignment verification failed");
                         if (!failedSettings.Contains("TaskbarAl"))
                             failedSettings.Add("TaskbarAl (verify)");
                     }
                     if (isTaskViewEnabled.HasValue && !VerifyTaskViewEnabled(isTaskViewEnabled.Value))
                     {
                         verified = false;
+                        _log.LogFailure("Task View button verification failed");
                         if (!failedSettings.Contains("ShowTaskViewButton"))
                             failedSettings.Add("ShowTaskViewButton (verify)");
                     }
                     if (isSearchVisible.HasValue && !VerifySearchVisible(isSearchVisible.Value))
                     {
                         verified = false;
+                        _log.LogFailure("Search box verification failed");
                         if (!failedSettings.Contains("SearchboxTaskbarMode"))
                             failedSettings.Add("SearchboxTaskbarMode (verify)");
                     }
 
                     if (verified)
                     {
+                        _log.LogSuccess($"All taskbar settings verified successfully (attempt {attempt})");
                         return OperationResult.Succeeded("TaskbarSettings", attempt, "All settings verified");
                     }
 
-                    Debug.WriteLine($"Taskbar verification failed on attempt {attempt}: {string.Join(", ", failedSettings)}");
+                    _log.LogFailure($"Verification failed for: {string.Join(", ", failedSettings)}");
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Taskbar settings attempt {attempt} failed: {ex.Message}");
+                    _log.LogFailure($"Attempt {attempt} failed with exception: {ex.Message}");
                     if (attempt == MaxRetries)
                     {
+                        _log.LogError($"Taskbar settings failed after {MaxRetries} attempts", ex);
                         return OperationResult.Failed("TaskbarSettings", attempt, ex);
                     }
                 }
 
                 // Exponential backoff
-                await Task.Delay(500 * (int)Math.Pow(2, attempt - 1), cancellationToken);
+                var backoffMs = 500 * (int)Math.Pow(2, attempt - 1);
+                _log.LogWaiting($"Waiting {backoffMs}ms before retry...");
+                await Task.Delay(backoffMs, cancellationToken);
             }
 
+            _log.LogFailure($"Taskbar settings verification failed after {MaxRetries} retries");
             return OperationResult.Failed("TaskbarSettings", MaxRetries, null,
                 $"Verification failed: {string.Join(", ", failedSettings)}");
         }
@@ -538,43 +578,60 @@ namespace ClearGlass.Services.Features
         {
             if (!_restartPending)
             {
+                _log.LogDetail("No pending changes - Explorer restart not required");
                 return OperationResult.Succeeded("ExplorerRestart", 1, "No restart needed");
             }
+
+            _log.LogDetail("Pending changes detected - initiating Explorer restart sequence");
 
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (attempt > 1)
+                {
+                    _log.LogRetry(attempt, MaxRetries, "Explorer restart");
+                }
 
                 try
                 {
                     await RestartExplorerAsync(cancellationToken);
 
                     // Verify taskbar and desktop are accessible
+                    _log.LogDetail("Verifying Explorer components are responsive...");
                     var taskbarHwnd = WindowsApi.FindResponsiveWindow(TaskbarWindowClass, 2000);
                     var desktopHwnd = WindowsApi.FindResponsiveWindow(DesktopWindowClass, 2000);
 
                     if (taskbarHwnd != IntPtr.Zero && desktopHwnd != IntPtr.Zero)
                     {
+                        _log.LogSuccess($"Explorer restart completed successfully (attempt {attempt})");
                         return OperationResult.Succeeded("ExplorerRestart", attempt, "Explorer restarted and responsive");
                     }
+
+                    _log.LogFailure($"Explorer components not fully responsive (Taskbar: {taskbarHwnd != IntPtr.Zero}, Desktop: {desktopHwnd != IntPtr.Zero})");
                 }
                 catch (OperationCanceledException)
                 {
+                    _log.LogWarning("Explorer restart was cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Explorer restart attempt {attempt} failed: {ex.Message}");
+                    _log.LogFailure($"Explorer restart attempt {attempt} failed: {ex.Message}");
                     if (attempt == MaxRetries)
                     {
+                        _log.LogError($"Explorer restart failed after {MaxRetries} attempts", ex);
                         return OperationResult.Failed("ExplorerRestart", attempt, ex);
                     }
                 }
 
                 // Exponential backoff
-                await Task.Delay(1000 * (int)Math.Pow(2, attempt - 1), cancellationToken);
+                var backoffMs = 1000 * (int)Math.Pow(2, attempt - 1);
+                _log.LogWaiting($"Waiting {backoffMs}ms before retry...");
+                await Task.Delay(backoffMs, cancellationToken);
             }
 
+            _log.LogFailure($"Explorer not responsive after {MaxRetries} restart attempts");
             return OperationResult.Failed("ExplorerRestart", MaxRetries, null, "Explorer not responsive after retries");
         }
     }

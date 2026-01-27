@@ -28,6 +28,7 @@ namespace ClearGlass.Services
         private readonly WidgetService _widgetService;
         private readonly WallpaperService _wallpaperService;
         private readonly DesktopIconsService _desktopIconsService;
+        private readonly LoggingService _log;
 
         public ThemeService()
         {
@@ -35,6 +36,7 @@ namespace ClearGlass.Services
             _widgetService = new WidgetService();
             _wallpaperService = new WallpaperService();
             _desktopIconsService = new DesktopIconsService();
+            _log = LoggingService.Instance;
         }
 
         private bool IsAdministrator()
@@ -140,65 +142,90 @@ namespace ClearGlass.Services
         /// </summary>
         public async Task<OperationResult> ApplyDarkModeAsync(bool isDarkMode, CancellationToken cancellationToken = default)
         {
+            var themeName = isDarkMode ? "Dark" : "Light";
+            _log.LogSubsection($"Applying {themeName} Theme");
+
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (attempt > 1)
+                {
+                    _log.LogRetry(attempt, MaxRetries, $"Setting {themeName} theme");
+                }
+
                 try
                 {
+                    _log.LogDetail("Configuring accent color settings...");
                     // Set accent color settings with verification
                     RegistryHelper.SetValueWithRetry(RegistryHelper.AccentColorSettingsPath, "EnableTransparency", 1, Microsoft.Win32.RegistryValueKind.DWord, 2);
-                    RegistryHelper.SetValueWithRetry(RegistryHelper.AccentColorSettingsPath, "ColorPrevalence", 0, Microsoft.Win32.RegistryValueKind.DWord, 2);
+                    _log.LogRegistry("SET", "AccentColorSettings", "EnableTransparency", 1);
 
+                    RegistryHelper.SetValueWithRetry(RegistryHelper.AccentColorSettingsPath, "ColorPrevalence", 0, Microsoft.Win32.RegistryValueKind.DWord, 2);
+                    _log.LogRegistry("SET", "AccentColorSettings", "ColorPrevalence", 0);
+
+                    _log.LogDetail("Setting system theme preference...");
                     // Set system theme with verification
                     bool systemThemeSet = RegistryHelper.SetValueVerified(
                         RegistryHelper.PersonalizePath,
                         "SystemUsesLightTheme",
                         isDarkMode ? 0 : 1,
                         Microsoft.Win32.RegistryValueKind.DWord);
+                    _log.LogRegistry("SET", "Personalize", "SystemUsesLightTheme", isDarkMode ? 0 : 1);
 
                     bool appsThemeSet = RegistryHelper.SetValueVerified(
                         RegistryHelper.PersonalizePath,
                         "AppsUseLightTheme",
                         isDarkMode ? 0 : 1,
                         Microsoft.Win32.RegistryValueKind.DWord);
+                    _log.LogRegistry("SET", "Personalize", "AppsUseLightTheme", isDarkMode ? 0 : 1);
 
                     // Flush registry changes
+                    _log.LogDetail("Flushing registry changes...");
                     RegistryHelper.FlushAll(
                         RegistryHelper.PersonalizePath,
                         RegistryHelper.AccentColorSettingsPath);
 
                     // Broadcast the theme change
+                    _log.LogDetail("Broadcasting theme change to Windows...");
                     BroadcastThemeChange();
 
                     // Small delay for system to process
+                    _log.LogWaiting("Waiting for system to apply theme...");
                     await Task.Delay(300, cancellationToken);
 
                     // Verify the change
+                    _log.LogDetail("Verifying theme was applied correctly...");
                     if (systemThemeSet && appsThemeSet && VerifyDarkMode(isDarkMode))
                     {
-                        return OperationResult.Succeeded("DarkMode", attempt, $"Theme set to {(isDarkMode ? "Dark" : "Light")}");
+                        _log.LogSuccess($"{themeName} theme applied successfully (attempt {attempt})");
+                        return OperationResult.Succeeded("DarkMode", attempt, $"Theme set to {themeName}");
                     }
 
-                    Debug.WriteLine($"Dark mode verification failed on attempt {attempt}");
+                    _log.LogFailure($"Theme verification failed on attempt {attempt}");
                 }
                 catch (OperationCanceledException)
                 {
+                    _log.LogWarning("Theme application was cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Dark mode attempt {attempt} failed: {ex.Message}");
+                    _log.LogFailure($"Attempt {attempt} failed: {ex.Message}");
                     if (attempt == MaxRetries)
                     {
+                        _log.LogError($"Failed to apply {themeName} theme after {MaxRetries} attempts", ex);
                         return OperationResult.Failed("DarkMode", attempt, ex);
                     }
                 }
 
                 // Exponential backoff
-                await Task.Delay(500 * (int)Math.Pow(2, attempt - 1), cancellationToken);
+                var backoffMs = 500 * (int)Math.Pow(2, attempt - 1);
+                _log.LogWaiting($"Waiting {backoffMs}ms before retry...");
+                await Task.Delay(backoffMs, cancellationToken);
             }
 
+            _log.LogFailure($"Failed to apply {themeName} theme after {MaxRetries} retries");
             return OperationResult.Failed("DarkMode", MaxRetries, null, "Dark mode verification failed after retries");
         }
 
@@ -382,13 +409,25 @@ namespace ClearGlass.Services
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
+            var stopwatch = Stopwatch.StartNew();
+            _log.ResetStepCounter();
+            _log.LogSectionHeader("APPLYING CLEAR GLASS THEME");
+            _log.LogInformation("Starting theme application with the following settings:");
+            _log.LogDetail($"Dark Mode: {settings.IsDarkMode}");
+            _log.LogDetail($"Taskbar Centered: {settings.IsTaskbarCentered}");
+            _log.LogDetail($"Task View Enabled: {settings.IsTaskViewEnabled}");
+            _log.LogDetail($"Search Visible: {settings.IsSearchVisible}");
+            _log.LogDetail($"Desktop Icons Visible: {settings.AreDesktopIconsVisible}");
+            _log.LogDetail($"Wallpaper: {settings.WallpaperPath ?? "(none)"}");
+
             var results = new List<OperationResult>();
-            int totalSteps = 5; // Dark mode, taskbar, search, desktop icons, wallpaper
+            int totalSteps = 5;
             int currentStep = 0;
 
             try
             {
                 // Step 1: Apply dark mode
+                _log.LogStep(1, totalSteps, "Applying Windows Theme");
                 progress?.Report(new ThemeApplicationProgress("Applying theme...", (++currentStep * 100) / totalSteps));
 
                 if (settings.IsDarkMode != IsDarkMode)
@@ -398,17 +437,23 @@ namespace ClearGlass.Services
 
                     if (darkModeResult.Success)
                     {
-                        // Give the system time to process theme change
+                        _log.LogWaiting("Allowing system to process theme change...");
                         await Task.Delay(500, cancellationToken);
                     }
                 }
                 else
                 {
+                    _log.LogSuccess("Theme already set to desired mode - skipping");
                     results.Add(OperationResult.Succeeded("DarkMode", 1, "No change needed"));
                 }
 
                 // Step 2: Apply taskbar settings
+                _log.LogStep(2, totalSteps, "Configuring Taskbar Settings");
                 progress?.Report(new ThemeApplicationProgress("Configuring taskbar...", (++currentStep * 100) / totalSteps));
+
+                _log.LogDetail($"Taskbar alignment: {(settings.IsTaskbarCentered ? "Center" : "Left")}");
+                _log.LogDetail($"Task View button: {(settings.IsTaskViewEnabled ? "Visible" : "Hidden")}");
+                _log.LogDetail($"Search box: {(settings.IsSearchVisible ? "Visible" : "Hidden")}");
 
                 var taskbarResult = await _taskbarService.ApplySettingsWithRetryAsync(
                     isTaskbarCentered: settings.IsTaskbarCentered,
@@ -417,71 +462,133 @@ namespace ClearGlass.Services
                     cancellationToken);
                 results.Add(taskbarResult);
 
+                if (taskbarResult.Success)
+                {
+                    _log.LogSuccess("Taskbar settings configured successfully");
+                }
+                else
+                {
+                    _log.LogFailure($"Taskbar settings issue: {taskbarResult.VerificationDetails}");
+                }
+
                 // Step 3: Apply desktop icons
+                _log.LogStep(3, totalSteps, "Configuring Desktop Icons");
                 progress?.Report(new ThemeApplicationProgress("Configuring desktop icons...", (++currentStep * 100) / totalSteps));
 
                 if (settings.AreDesktopIconsVisible != AreDesktopIconsVisible)
                 {
+                    _log.LogDetail($"Setting desktop icons to: {(settings.AreDesktopIconsVisible ? "Visible" : "Hidden")}");
                     var iconsResult = await _desktopIconsService.SetDesktopIconsVisibleAsync(
                         settings.AreDesktopIconsVisible,
                         cancellationToken);
                     results.Add(iconsResult);
+
+                    if (iconsResult.Success)
+                    {
+                        _log.LogSuccess($"Desktop icons {(settings.AreDesktopIconsVisible ? "shown" : "hidden")} successfully");
+                    }
+                    else
+                    {
+                        _log.LogFailure($"Desktop icons issue: {iconsResult.VerificationDetails}");
+                    }
                 }
                 else
                 {
+                    _log.LogSuccess("Desktop icons already in desired state - skipping");
                     results.Add(OperationResult.Succeeded("DesktopIcons", 1, "No change needed"));
                 }
 
                 // Step 4: Restart Explorer if needed
+                _log.LogStep(4, totalSteps, "Applying System Changes");
                 progress?.Report(new ThemeApplicationProgress("Applying changes...", (++currentStep * 100) / totalSteps));
 
                 if (_taskbarService.HasPendingChanges)
                 {
+                    _log.LogDetail("Pending changes detected - Explorer restart required");
                     var explorerResult = await _taskbarService.ApplyPendingChangesAsync(cancellationToken);
                     results.Add(explorerResult);
 
                     if (explorerResult.Success)
                     {
-                        // Allow time for Explorer to fully stabilize
+                        _log.LogSuccess("System changes applied successfully");
+                        _log.LogWaiting("Allowing Explorer to stabilize...");
                         await Task.Delay(500, cancellationToken);
+                    }
+                    else
+                    {
+                        _log.LogFailure($"Explorer restart issue: {explorerResult.VerificationDetails}");
                     }
                 }
                 else
                 {
+                    _log.LogSuccess("No Explorer restart needed");
                     results.Add(OperationResult.Succeeded("ExplorerRestart", 1, "No restart needed"));
                 }
 
                 // Step 5: Apply wallpaper
+                _log.LogStep(5, totalSteps, "Setting Desktop Wallpaper");
                 progress?.Report(new ThemeApplicationProgress("Setting wallpaper...", (++currentStep * 100) / totalSteps));
 
                 if (!string.IsNullOrEmpty(settings.WallpaperPath))
                 {
+                    _log.LogDetail($"Wallpaper path: {settings.WallpaperPath}");
                     var wallpaperResult = await _wallpaperService.SetWallpaperWithRetryAsync(
                         settings.WallpaperPath,
                         cancellationToken);
                     results.Add(wallpaperResult);
+
+                    if (wallpaperResult.Success)
+                    {
+                        _log.LogSuccess("Wallpaper applied successfully");
+                    }
+                    else
+                    {
+                        _log.LogFailure($"Wallpaper issue: {wallpaperResult.VerificationDetails}");
+                    }
                 }
                 else
                 {
+                    _log.LogSuccess("No wallpaper specified - skipping");
                     results.Add(OperationResult.Succeeded("Wallpaper", 1, "No wallpaper specified"));
                 }
 
                 // Final broadcast
+                _log.LogDetail("Broadcasting final theme change notification...");
                 BroadcastThemeChange();
 
                 progress?.Report(new ThemeApplicationProgress("Complete", 100));
             }
             catch (OperationCanceledException)
             {
+                _log.LogWarning("Theme application was cancelled by user");
                 results.Add(OperationResult.Failed("Operation", 0, null, "Operation was cancelled"));
                 throw;
             }
             catch (Exception ex)
             {
+                _log.LogError($"Unexpected error during theme application: {ex.Message}", ex);
                 results.Add(OperationResult.Failed("Operation", 0, ex, ex.Message));
             }
 
-            return ThemeApplicationResult.FromResults(results);
+            stopwatch.Stop();
+            var finalResult = ThemeApplicationResult.FromResults(results);
+
+            // Log summary
+            _log.LogSummary("THEME APPLICATION COMPLETE",
+                finalResult.SuccessCount,
+                finalResult.FailureCount,
+                stopwatch.Elapsed);
+
+            if (finalResult.Success)
+            {
+                _log.LogSuccess("All theme settings applied successfully!");
+            }
+            else
+            {
+                _log.LogWarning($"Theme application completed with issues: {finalResult.Summary}");
+            }
+
+            return finalResult;
         }
 
         /// <summary>

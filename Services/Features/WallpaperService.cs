@@ -18,6 +18,7 @@ namespace ClearGlass.Services.Features
     {
         private const int MaxRetries = 3;
         private const string WallpaperRegistryPath = @"Control Panel\Desktop";
+        private readonly LoggingService _log;
 
         private readonly string _windowsWallpaperPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Windows),
@@ -25,6 +26,11 @@ namespace ClearGlass.Services.Features
 
         private string LightWallpaperPath => Path.Combine(_windowsWallpaperPath, "img19.jpg"); // Light Bloom
         private string DarkWallpaperPath => Path.Combine(_windowsWallpaperPath, "img20.jpg");  // Dark Bloom
+
+        public WallpaperService()
+        {
+            _log = LoggingService.Instance;
+        }
 
         private void SetWallpaperStyle()
         {
@@ -116,51 +122,76 @@ namespace ClearGlass.Services.Features
         /// </summary>
         public async Task<OperationResult> SetWallpaperWithRetryAsync(string path, CancellationToken cancellationToken = default)
         {
+            _log.LogSubsection("Setting Desktop Wallpaper");
+            _log.LogDetail($"Wallpaper path: {path}");
+
             if (!File.Exists(path))
             {
+                _log.LogFailure($"Wallpaper file not found: {path}");
                 return OperationResult.Failed("Wallpaper", 0, null, $"Wallpaper file not found: {path}");
             }
+
+            var fileInfo = new FileInfo(path);
+            _log.LogDetail($"File size: {fileInfo.Length / 1024} KB");
 
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (attempt > 1)
+                {
+                    _log.LogRetry(attempt, MaxRetries, "Setting wallpaper");
+                }
+
                 try
                 {
                     // Set wallpaper style
+                    _log.LogDetail("Setting wallpaper style (Fill mode)...");
                     SetWallpaperStyle();
+                    _log.LogRegistry("SET", "Control Panel\\Desktop", "WallpaperStyle", "10 (Fill)");
 
                     // Apply wallpaper image
+                    _log.LogDetail("Applying wallpaper via SystemParametersInfo...");
                     ApplyWallpaperImage(path);
+                    _log.LogWinApi("SystemParametersInfo", "SPI_SETDESKWALLPAPER called");
 
                     // Small delay before verification
+                    _log.LogWaiting("Waiting for wallpaper to apply...");
                     await Task.Delay(200, cancellationToken);
 
                     // Verify the wallpaper was set
+                    _log.LogDetail("Verifying wallpaper was applied correctly...");
                     if (VerifyWallpaper(path))
                     {
+                        _log.LogSuccess($"Wallpaper applied and verified (attempt {attempt})");
                         return OperationResult.Succeeded("Wallpaper", attempt, "Wallpaper applied and verified");
                     }
 
-                    Debug.WriteLine($"Wallpaper verification failed on attempt {attempt}");
+                    var currentPath = GetCurrentWallpaperPath();
+                    _log.LogFailure($"Wallpaper verification failed - expected: {path}, actual: {currentPath ?? "(null)"}");
                 }
                 catch (OperationCanceledException)
                 {
+                    _log.LogWarning("Wallpaper operation was cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Wallpaper attempt {attempt} failed: {ex.Message}");
+                    _log.LogFailure($"Attempt {attempt} failed: {ex.Message}");
                     if (attempt == MaxRetries)
                     {
+                        _log.LogError($"Wallpaper setting failed after {MaxRetries} attempts", ex);
                         return OperationResult.Failed("Wallpaper", attempt, ex);
                     }
                 }
 
                 // Exponential backoff
-                await Task.Delay(500 * (int)Math.Pow(2, attempt - 1), cancellationToken);
+                var backoffMs = 500 * (int)Math.Pow(2, attempt - 1);
+                _log.LogWaiting($"Waiting {backoffMs}ms before retry...");
+                await Task.Delay(backoffMs, cancellationToken);
             }
 
+            _log.LogFailure($"Wallpaper verification failed after {MaxRetries} retries");
             return OperationResult.Failed("Wallpaper", MaxRetries, null, "Wallpaper verification failed after retries");
         }
 

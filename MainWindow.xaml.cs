@@ -29,6 +29,7 @@ namespace ClearGlass
         private readonly WingetService _wingetService;
         private readonly UninstallService _uninstallService;
         private readonly UpdateService _updateService;
+        private readonly LoggingService _log;
         private bool _isThemeChanging = false;
         private readonly string _wallpaperPath;
         private readonly string _autologonPath;
@@ -50,10 +51,10 @@ namespace ClearGlass
         public MainWindow()
         {
             InitializeComponent();
+            _log = LoggingService.Instance;
             _themeService = new ThemeService();
             _optimizationService = new OptimizationService();
-            var loggingService = new LoggingService();
-            _bloatwareService = new BloatwareService(loggingService);
+            _bloatwareService = new BloatwareService(_log);
             _wingetService = new WingetService();
             _uninstallService = new UninstallService(_wingetService);
             _updateService = new UpdateService();
@@ -450,6 +451,10 @@ namespace ClearGlass
 
             if (result == MessageBoxResult.Yes)
             {
+                var totalStopwatch = Stopwatch.StartNew();
+                _log.LogSectionHeader("CLEAR GLASS FULL EXPERIENCE");
+                _log.LogInformation("User initiated complete Clear Glass experience");
+
                 // Show Copilot+ PC warning
                 var copilotWarning = CustomMessageBox.Show(
                     "Windows Copilot+ PC Warning\n\n" +
@@ -465,7 +470,10 @@ namespace ClearGlass
                     MessageBoxImage.Information);
 
                 if (copilotWarning == MessageBoxResult.Cancel)
+                {
+                    _log.LogWarning("User cancelled at Copilot+ PC warning");
                     return;
+                }
 
                 // Ask user if they want to apply additional tweaks
                 var tweaksResult = CustomMessageBox.Show(
@@ -482,6 +490,8 @@ namespace ClearGlass
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
 
+                _log.LogDetail($"Additional tweaks: {(tweaksResult == MessageBoxResult.Yes ? "Yes" : "No")}");
+
                 try
                 {
                     ClearGlassButton.IsEnabled = false;
@@ -489,8 +499,8 @@ namespace ClearGlass
                     // Show unified progress dialog
                     ProgressDialog progressDialog = null!;
                     progressDialog = new ProgressDialog(
-                        (step) => progressDialog?.UpdateProgress(step, 0), // This will be updated in the try block
-                        () => { } // Empty completion action
+                        (step) => progressDialog?.UpdateProgress(step, 0),
+                        () => { }
                     );
                     progressDialog.Show();
 
@@ -499,30 +509,44 @@ namespace ClearGlass
                         // Apply tweaks first if user chose to
                         if (tweaksResult == MessageBoxResult.Yes)
                         {
+                            _log.LogStep(1, 5, "Applying System Tweaks");
                             progressDialog.UpdateProgress("Applying system tweaks...", 10);
                             await ApplyAllTweaksSilent();
+                            _log.LogSuccess("System tweaks applied");
                             progressDialog.UpdateProgress("System tweaks applied", 20);
+                        }
+                        else
+                        {
+                            _log.LogDetail("Skipping additional tweaks (user declined)");
                         }
 
                         // Run Windows settings optimization
+                        _log.LogStep(2, 5, "Optimizing Windows Settings");
                         progressDialog.UpdateProgress("Optimizing Windows settings...", 30);
                         await _optimizationService.TweakWindowsSettingsSilent();
+                        _log.LogSuccess("Windows settings optimized");
                         progressDialog.UpdateProgress("Windows settings optimized", 40);
 
                         // Run Windows AI component removal
+                        _log.LogStep(3, 5, "Removing Windows AI Components");
+                        _log.LogDetail("Removing Copilot, Recall, and other AI features...");
                         progressDialog.UpdateProgress("Removing Windows AI components...", 50);
                         await _optimizationService.RemoveWindowsAIOnlySilent();
+                        _log.LogSuccess("AI components removed");
                         progressDialog.UpdateProgress("AI components removed", 60);
 
                         // Run bloatware removal
+                        _log.LogStep(4, 5, "Removing Windows Bloatware");
                         progressDialog.UpdateProgress("Removing Windows bloatware...", 65);
                         await _bloatwareService.RemoveWindowsBloatwareSilent();
+                        _log.LogSuccess("Bloatware removed");
                         progressDialog.UpdateProgress("Bloatware removed", 75);
 
                         // Close progress dialog temporarily for Game Bar prompt
                         progressDialog.Close();
 
                         // Prompt user to reinstall Game Bar for controller support
+                        _log.LogDetail("Prompting user about Xbox Game Bar reinstallation...");
                         await PromptForGameBarReinstall();
 
                         // Reopen progress dialog for theme application
@@ -533,12 +557,17 @@ namespace ClearGlass
                         progressDialog.Show();
 
                         // Apply Clear Glass theme
+                        _log.LogStep(5, 5, "Applying Clear Glass Theme");
                         progressDialog.UpdateProgress("Applying Clear Glass theme...", 90);
                         await ApplyClearGlassThemeSilent();
                         progressDialog.UpdateProgress("Theme applied", 100);
 
                         // Close progress dialog
                         progressDialog.Close();
+
+                        totalStopwatch.Stop();
+                        _log.LogSummary("CLEAR GLASS COMPLETE", 5, 0, totalStopwatch.Elapsed);
+                        _log.LogSuccess($"Full Clear Glass experience applied in {totalStopwatch.Elapsed.TotalSeconds:F1} seconds");
 
                         // Single final success message
                         CustomMessageBox.Show(
@@ -555,11 +584,12 @@ namespace ClearGlass
                     catch (Exception ex)
                     {
                         progressDialog.Close();
-                        throw; // Re-throw to be caught by outer try-catch
+                        throw;
                     }
                 }
                 catch (Exception ex)
                 {
+                    _log.LogError($"Clear Glass experience failed: {ex.Message}", ex);
                     CustomMessageBox.Show(
                         $"Error applying Clear Glass experience: {ex.Message}",
                         "Error",
@@ -3096,58 +3126,69 @@ namespace ClearGlass
 
         private async Task ApplyClearGlassThemeSilent()
         {
+            _log.LogSubsection("Applying Clear Glass Theme (Silent Mode)");
+
             try
             {
-                // Show desktop icons first
-                DesktopIconsToggle.IsChecked = true;
-                _themeService.AreDesktopIconsVisible = true;
-                await Task.Delay(200);
+                // Use the reliable async method with cancellation support
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                _log.LogDetail("Timeout set to 2 minutes");
 
-                // Apply dark theme first as it's a major change
-                ThemeToggle.IsChecked = true;
-                await Task.Run(() => _themeService.IsDarkMode = true);
-                await Task.Delay(500);
+                // Prepare the theme settings
+                var settings = new ThemeSettings
+                {
+                    IsDarkMode = true,
+                    IsTaskbarCentered = false,
+                    IsTaskViewEnabled = false,
+                    IsSearchVisible = false,
+                    AreDesktopIconsVisible = false,
+                    WallpaperPath = _wallpaperPath
+                };
 
-                // First shell refresh after theme change
-                _themeService.RefreshWindows();
-                await Task.Delay(500);
+                // Ensure wallpaper file exists
+                if (!File.Exists(_wallpaperPath))
+                {
+                    _log.LogDetail("Extracting wallpaper from embedded resources...");
+                    ExtractWallpaperFromResources();
+                    await Task.Delay(200, cts.Token);
+                    _log.LogSuccess("Wallpaper extracted successfully");
+                }
+                else
+                {
+                    _log.LogDetail("Wallpaper file already exists");
+                }
 
-                // Apply taskbar settings
-                TaskbarAlignmentToggle.IsChecked = false;
-                _themeService.IsTaskbarCentered = false;
-                await Task.Delay(200);
+                // Apply settings using the reliable async method
+                _log.LogDetail("Invoking reliable theme application service...");
+                var result = await _themeService.ApplySettingsReliableAsync(settings, null, cts.Token);
 
-                // Apply task view settings
-                TaskViewToggle.IsChecked = false;
-                _themeService.IsTaskViewEnabled = false;
-                await Task.Delay(100);
+                // Update UI toggles to reflect the applied settings
+                _log.LogDetail("Updating UI toggle states...");
+                Dispatcher.Invoke(() =>
+                {
+                    ThemeToggle.IsChecked = true;
+                    TaskbarAlignmentToggle.IsChecked = false;
+                    TaskViewToggle.IsChecked = false;
+                    SearchToggle.IsChecked = false;
+                    DesktopIconsToggle.IsChecked = false;
+                });
 
-                // Show search first to ensure proper state, then hide
-                SearchToggle.IsChecked = true;
-                _themeService.IsSearchVisible = true;
-                await Task.Delay(200);
-
-                SearchToggle.IsChecked = false;
-                _themeService.IsSearchVisible = false;
-                await Task.Delay(200);
-
-                // Second shell refresh after UI changes
-                _themeService.RefreshWindows();
-                await Task.Delay(500);
-
-                // Hide desktop icons
-                DesktopIconsToggle.IsChecked = false;
-                _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(200);
-
-                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-                await Task.Delay(300); // Give UI a moment to fully settle
-                await EnsureWallpaperAsync();
-                await Task.Delay(200); // Short delay after wallpaper change
+                if (result.Success)
+                {
+                    _log.LogSuccess("Clear Glass theme applied successfully (silent mode)");
+                }
+                else
+                {
+                    _log.LogWarning($"Theme application completed with issues: {result.Summary}");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _log.LogWarning("Theme application timed out after 2 minutes");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error applying theme silently: {ex.Message}");
+                _log.LogError($"Error applying theme silently: {ex.Message}", ex);
             }
         }
     }

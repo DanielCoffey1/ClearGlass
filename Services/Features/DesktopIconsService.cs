@@ -17,6 +17,12 @@ namespace ClearGlass.Services.Features
     {
         private const int MaxRetries = 3;
         private const int HandleRetryDelayMs = 200;
+        private readonly LoggingService _log;
+
+        public DesktopIconsService()
+        {
+            _log = LoggingService.Instance;
+        }
 
         /// <summary>
         /// Gets the desktop list view handle using the standard Progman approach
@@ -242,65 +248,90 @@ namespace ClearGlass.Services.Features
         /// </summary>
         public async Task<OperationResult> SetDesktopIconsVisibleAsync(bool visible, CancellationToken cancellationToken = default)
         {
+            var targetState = visible ? "visible" : "hidden";
+            _log.LogSubsection($"Setting Desktop Icons to {targetState}");
+
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (attempt > 1)
+                {
+                    _log.LogRetry(attempt, MaxRetries, $"Setting desktop icons {targetState}");
+                }
+
                 try
                 {
                     // Set registry state with verification
+                    _log.LogDetail($"Writing registry value (HideIcons = {(visible ? 0 : 1)})...");
                     if (!SetDesktopIconsRegistryStateVerified(visible))
                     {
-                        Debug.WriteLine($"Desktop icons registry write failed on attempt {attempt}");
+                        _log.LogFailure($"Registry write verification failed on attempt {attempt}");
                         if (attempt == MaxRetries)
                         {
+                            _log.LogError("Failed to write desktop icons registry value after all attempts");
                             return OperationResult.Failed("DesktopIcons", attempt, null, "Registry write verification failed");
                         }
                         await Task.Delay(500 * (int)Math.Pow(2, attempt - 1), cancellationToken);
                         continue;
                     }
+                    _log.LogRegistry("SET", "Explorer\\Advanced", "HideIcons", visible ? 0 : 1);
 
                     // Get handle with retry
+                    _log.LogDetail("Locating desktop ListView window handle...");
                     var handle = await GetDesktopListViewHandleWithRetryAsync(3, cancellationToken);
                     if (handle != IntPtr.Zero)
                     {
+                        _log.LogWinApi("FindWindow", $"Desktop ListView handle found: 0x{handle.ToInt64():X}");
+
+                        _log.LogDetail($"Calling ShowWindow to {(visible ? "show" : "hide")} icons...");
                         SetDesktopIconsVisibility(handle, visible);
 
                         // Small delay before verification
                         await Task.Delay(100, cancellationToken);
 
                         // Verify the change
+                        _log.LogDetail("Verifying desktop icons state...");
                         if (VerifyDesktopIconsState(visible))
                         {
+                            _log.LogSuccess($"Desktop icons {targetState} and verified (attempt {attempt})");
                             return OperationResult.Succeeded("DesktopIcons", attempt, $"Icons {(visible ? "shown" : "hidden")} and verified");
                         }
+                        _log.LogFailure("Desktop icons state verification failed");
                     }
                     else
                     {
+                        _log.LogWarning("Could not find desktop ListView handle");
                         // Handle not found but registry is set - partial success
                         if (GetDesktopIconsRegistryState() == visible)
                         {
+                            _log.LogSuccess("Registry state set correctly - icons will update after Explorer restart");
                             return OperationResult.Succeeded("DesktopIcons", attempt, "Registry set, handle not available (may need Explorer restart)");
                         }
                     }
                 }
                 catch (OperationCanceledException)
                 {
+                    _log.LogWarning("Desktop icons operation was cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Desktop icons attempt {attempt} failed: {ex.Message}");
+                    _log.LogFailure($"Attempt {attempt} failed: {ex.Message}");
                     if (attempt == MaxRetries)
                     {
+                        _log.LogError($"Desktop icons operation failed after {MaxRetries} attempts", ex);
                         return OperationResult.Failed("DesktopIcons", attempt, ex);
                     }
                 }
 
                 // Exponential backoff
-                await Task.Delay(500 * (int)Math.Pow(2, attempt - 1), cancellationToken);
+                var backoffMs = 500 * (int)Math.Pow(2, attempt - 1);
+                _log.LogWaiting($"Waiting {backoffMs}ms before retry...");
+                await Task.Delay(backoffMs, cancellationToken);
             }
 
+            _log.LogFailure($"Desktop icons verification failed after {MaxRetries} retries");
             return OperationResult.Failed("DesktopIcons", MaxRetries, null, "Verification failed after retries");
         }
     }
