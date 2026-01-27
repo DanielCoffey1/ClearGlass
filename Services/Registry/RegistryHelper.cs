@@ -108,6 +108,84 @@ namespace ClearGlass.Services.Registry
         }
 
         /// <summary>
+        /// Flushes registry changes for multiple paths at once
+        /// </summary>
+        public static void FlushAll(params string[] keyPaths)
+        {
+            foreach (var keyPath in keyPaths)
+            {
+                FlushChanges(keyPath);
+            }
+        }
+
+        /// <summary>
+        /// Sets a value in the registry with verification (write, flush, read-back)
+        /// </summary>
+        /// <returns>True if the value was written and verified successfully</returns>
+        public static bool SetValueVerified(string keyPath, string valueName, object value, RegistryValueKind valueKind)
+        {
+            try
+            {
+                SetValue(keyPath, valueName, value, valueKind);
+                FlushChanges(keyPath);
+
+                // Read back and verify
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath);
+                if (key == null) return false;
+
+                var readBack = key.GetValue(valueName);
+                if (readBack == null) return false;
+
+                // Compare values based on type
+                if (valueKind == RegistryValueKind.DWord)
+                {
+                    return Convert.ToInt32(readBack) == Convert.ToInt32(value);
+                }
+                else if (valueKind == RegistryValueKind.String)
+                {
+                    return string.Equals(readBack.ToString(), value.ToString(), StringComparison.Ordinal);
+                }
+                else
+                {
+                    return readBack.Equals(value);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in verified registry write for {valueName}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sets a value in the registry with verification and retry logic
+        /// </summary>
+        /// <returns>True if the value was written and verified successfully</returns>
+        public static bool SetValueWithRetry(string keyPath, string valueName, object value, RegistryValueKind valueKind, int maxRetries = 3)
+        {
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                if (SetValueVerified(keyPath, valueName, value, valueKind))
+                {
+                    if (attempt > 1)
+                    {
+                        Debug.WriteLine($"Registry write for {valueName} succeeded on attempt {attempt}");
+                    }
+                    return true;
+                }
+
+                if (attempt < maxRetries)
+                {
+                    // Exponential backoff: 100ms, 200ms, 400ms
+                    System.Threading.Thread.Sleep(100 * (int)Math.Pow(2, attempt - 1));
+                }
+            }
+
+            Debug.WriteLine($"Registry write for {valueName} failed after {maxRetries} attempts");
+            return false;
+        }
+
+        /// <summary>
         /// Sets a value in HKEY_LOCAL_MACHINE registry with error handling
         /// </summary>
         public static void SetMachineValue(string keyPath, string valueName, object value, RegistryValueKind valueKind)

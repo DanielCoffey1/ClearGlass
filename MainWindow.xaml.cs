@@ -1,6 +1,8 @@
 using System.Windows;
+using System.Threading;
 using System.Threading.Tasks;
 using ClearGlass.Services;
+using ClearGlass.Services.Models;
 using System;
 using System.Windows.Threading;
 using System.Net.Http;
@@ -150,24 +152,76 @@ namespace ClearGlass
             ThemeToggle.IsChecked = _themeService.IsDarkMode;
         }
 
-        private void OnTaskbarAlignmentToggle(object sender, RoutedEventArgs e)
+        private async void OnTaskbarAlignmentToggle(object sender, RoutedEventArgs e)
         {
-            _themeService.IsTaskbarCentered = TaskbarAlignmentToggle.IsChecked ?? false;
+            TaskbarAlignmentToggle.IsEnabled = false;
+            try
+            {
+                bool centered = TaskbarAlignmentToggle.IsChecked ?? false;
+                await _themeService.ApplyTaskbarSettingAsync(isTaskbarCentered: centered);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Taskbar alignment toggle error: {ex.Message}");
+            }
+            finally
+            {
+                TaskbarAlignmentToggle.IsEnabled = true;
+            }
         }
 
-        private void OnTaskViewToggle(object sender, RoutedEventArgs e)
+        private async void OnTaskViewToggle(object sender, RoutedEventArgs e)
         {
-            _themeService.IsTaskViewEnabled = TaskViewToggle.IsChecked ?? false;
+            TaskViewToggle.IsEnabled = false;
+            try
+            {
+                bool enabled = TaskViewToggle.IsChecked ?? false;
+                await _themeService.ApplyTaskbarSettingAsync(isTaskViewEnabled: enabled);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Task view toggle error: {ex.Message}");
+            }
+            finally
+            {
+                TaskViewToggle.IsEnabled = true;
+            }
         }
 
-        private void OnSearchToggle(object sender, RoutedEventArgs e)
+        private async void OnSearchToggle(object sender, RoutedEventArgs e)
         {
-            _themeService.IsSearchVisible = SearchToggle.IsChecked ?? false;
+            SearchToggle.IsEnabled = false;
+            try
+            {
+                bool visible = SearchToggle.IsChecked ?? false;
+                await _themeService.ApplyTaskbarSettingAsync(isSearchVisible: visible);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Search toggle error: {ex.Message}");
+            }
+            finally
+            {
+                SearchToggle.IsEnabled = true;
+            }
         }
 
-        private void OnDesktopIconsToggle(object sender, RoutedEventArgs e)
+        private async void OnDesktopIconsToggle(object sender, RoutedEventArgs e)
         {
-            _themeService.AreDesktopIconsVisible = DesktopIconsToggle.IsChecked ?? false;
+            DesktopIconsToggle.IsEnabled = false;
+            try
+            {
+                bool visible = DesktopIconsToggle.IsChecked ?? false;
+                await _themeService.ApplyDesktopIconsAsync(visible);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Desktop icons toggle error: {ex.Message}");
+            }
+            finally
+            {
+                DesktopIconsToggle.IsEnabled = true;
+            }
         }
 
         private async void OnThemeToggle(object sender, RoutedEventArgs e)
@@ -283,61 +337,87 @@ namespace ClearGlass
 
         private async void OnClearGlassThemeClick(object sender, RoutedEventArgs e)
         {
+            CancellationTokenSource? cts = null;
+
             try
             {
                 ClearGlassThemeButton.IsEnabled = false;
 
-                // Show desktop icons first
-                DesktopIconsToggle.IsChecked = true;
-                _themeService.AreDesktopIconsVisible = true;
-                await Task.Delay(200);
+                // Create cancellation token with 2 minute timeout
+                cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 
-                // Apply dark theme first as it's a major change
-                ThemeToggle.IsChecked = true;
-                await Task.Run(() => _themeService.IsDarkMode = true);
-                await Task.Delay(500);
+                // Prepare the theme settings
+                var settings = new ThemeSettings
+                {
+                    IsDarkMode = true,
+                    IsTaskbarCentered = false,
+                    IsTaskViewEnabled = false,
+                    IsSearchVisible = false,
+                    AreDesktopIconsVisible = false,
+                    WallpaperPath = _wallpaperPath
+                };
 
-                // First shell refresh after theme change
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay after major theme change
+                // Ensure wallpaper file exists
+                if (!File.Exists(_wallpaperPath))
+                {
+                    ExtractWallpaperFromResources();
+                    await Task.Delay(200, cts.Token);
+                }
 
-                // Apply taskbar settings
-                TaskbarAlignmentToggle.IsChecked = false;
-                _themeService.IsTaskbarCentered = false;
-                await Task.Delay(200);
+                // Progress reporting
+                var progress = new Progress<ThemeApplicationProgress>(p =>
+                {
+                    Debug.WriteLine($"Theme application: {p.Step} ({p.PercentComplete}%)");
+                });
 
-                // Apply task view settings
-                TaskViewToggle.IsChecked = false;
-                _themeService.IsTaskViewEnabled = false;
-                await Task.Delay(100);
+                // Apply settings using the reliable async method
+                var result = await _themeService.ApplySettingsReliableAsync(settings, progress, cts.Token);
 
-                // Show search first to ensure proper state, then hide
-                SearchToggle.IsChecked = true;
-                _themeService.IsSearchVisible = true;
-                await Task.Delay(200);
+                // Update UI toggles to reflect the applied settings
+                Dispatcher.Invoke(() =>
+                {
+                    ThemeToggle.IsChecked = true;
+                    TaskbarAlignmentToggle.IsChecked = false;
+                    TaskViewToggle.IsChecked = false;
+                    SearchToggle.IsChecked = false;
+                    DesktopIconsToggle.IsChecked = false;
+                });
 
-                SearchToggle.IsChecked = false;
-                _themeService.IsSearchVisible = false;
-                await Task.Delay(200);
+                // Report result
+                if (result.Success)
+                {
+                    CustomMessageBox.Show(
+                        "Clear Glass Theme applied successfully!\n\n" +
+                        result.Summary,
+                        "Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    // Partial success - some operations may have failed
+                    string failedOps = string.Join("\n", result.OperationResults
+                        .Where(r => !r.Success)
+                        .Select(r => $"- {r.OperationName}: {r.VerificationDetails ?? r.LastException?.Message ?? "Failed"}"));
 
-                // Second shell refresh after UI changes
-                _themeService.RefreshWindows();
-                await Task.Delay(1000); // Increased delay before wallpaper
-
-                // Hide desktop icons
-                DesktopIconsToggle.IsChecked = false;
-                _themeService.AreDesktopIconsVisible = false;
-                await Task.Delay(500); // Increased delay after hiding icons
-
-                // Final step: Apply Clear Glass wallpaper after all UI changes are complete
-                await EnsureWallpaperAsync();
-
+                    CustomMessageBox.Show(
+                        $"Clear Glass Theme applied with some issues:\n\n" +
+                        $"Succeeded: {result.SuccessCount}, Failed: {result.FailureCount}\n\n" +
+                        $"Failed operations:\n{failedOps}\n\n" +
+                        "Some changes may still take effect after Explorer restarts.",
+                        "Partial Success",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+            catch (OperationCanceledException)
+            {
                 CustomMessageBox.Show(
-                    "Clear Glass Theme applied successfully!\n\n" +
-                    "Some changes may take a few seconds to fully apply.",
-                    "Success",
+                    "Theme application timed out or was cancelled.\n\n" +
+                    "Some settings may have been partially applied.",
+                    "Timeout",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
@@ -349,6 +429,7 @@ namespace ClearGlass
             }
             finally
             {
+                cts?.Dispose();
                 ClearGlassThemeButton.IsEnabled = true;
             }
         }
